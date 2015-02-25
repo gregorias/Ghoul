@@ -1,0 +1,113 @@
+\chapter{Threats and defenses in DHT}
+  Distributed hash table is a type of peer-to-peer system providing topology
+  creation and maintainance protocols. They are typically designed for and
+  tightly coupled with data storage protocols for key-value pairs, hence the
+  hash-table part. DHTs suffer from various vulnerabilities, which mostly stem
+  from two diffuclties:
+  \begin{enumerate}
+    \item Node identity is a virtual concept and lacks connection to the real
+      world. DHTs as a distributed storage space rely on data and message
+      redundancy and cohesiveness of the topology. Both are easily broken if an
+      attacker may either arbitrarily place itself in the topology (Eclipse
+      attack) or get as many nodes as it wants (Sybil attack).
+
+    \item Each node only maintains a local view over the network, which does not
+      provide enough context to detect and prevent any malicious behaviour.
+  \end{enumerate}
+
+\section{Eclipse attack}
+  The main purpose behind attacks on DHTs are denial of service, either global
+  or local, where we only want stop part of the network from working or
+  subversion. In order to achieve those goals an attacker may want to increase
+  its presence in the system by poisoning nodes' routing tables with entries
+  pointing to colluding nodes. When a node's routing table is sufficiently
+  filled with malicious nodes an attacker may begin the real attack. This
+  process of routing table poisoning is called an eclipse attack, because when
+  an attacker may eclipse part of the network by returning bogus answers to
+  queries.
+
+  \subsection{Prevention mechanisms}
+
+  The general principles behind eclipse attack are: data and routing table
+  redundancy, verifiability of routing table, lookup query redundancy.
+
+
+\section{Sybil attack}
+  DHTs routing mechanisms rely on the assumption that nodes are placed uniformly
+  inside its key space and only a fraction of the network may fail, either due
+  to churn or node failure. In case of eclipse attack or routing attack
+  prevention mechanism they additionally assume that only a given portion of the
+  network may be malicious. Those assumptions can be easily violated in an open
+  DHT.
+
+  Firstly, key generation is not verifiable. There is no way for a node to
+  verify whether given key has been generated randomly. It is possible to use a
+  statistical test to verify uniformity constraints, but they are often not
+  enough to accuse specific node of malicious behaviour.
+
+  Secondly, DHTs operate on an ephemeral sense of identity represented by a key.
+  A Sybil attack happens when an attacker uses a single physical computer to
+  represent multiple DHT nodes increasing his power without incurring additional
+  cost. Since most protocols rely on honest nodes having a majority, a Sybil
+  attack can shut down the system by even a modest attacker.
+
+  Preventing a Sybil attack requires a gatekeeper or, more accurately, a
+  bouncer. A protocol which prevents a single physical node to enter more than
+  once and a way to throw out offenders. Achieving that in a fully distributed
+  way is difficult. It is not possible to achieve adequate security if nodes
+  only have access to their immediate surroundings. Such a limited view lacks
+  necessary information to distinguish between bening and malicious behaviour.
+  Additionally it's much easier to simply eclipse a node. Protocols that
+  overcome this obstacle by sharing information globally do so at the cost of
+  performance and scalibility. Such cost usually makes a DHT unpractical for
+  larger networks. That's why most practical solutions make use of a central
+  authority. This authority serves as a trusted entry point to the network, it
+  generates signed random keys for newcomers and checks global constraints.
+
+  Central authority has well-known drawbacks. Most of them stem from the fact
+  that such authority represents a single point of failure. A failure of this
+  authority may cause shut down of the network. Compromised authority is a
+  security risk. It also acts negatively on scalability. Apart from
+  technological disadvantages central authority is often an organizational
+  problem. It forces an agent to maintain it in order to provide a service, this
+  is done reluctantatly since it makes the agent responsible for maintaining the
+  service and also Peer-to-Peer user community may be distrustful over
+  centralized solution.
+
+\subsection{Prevention mechanisms}
+
+  The conclusion that only central authority solutions are practical for
+  prevention of Sybil attacks was first deduced by \cite{dou02}, which also is
+  the first paper studying this class of attacks \cite[p. 5]{urd11}
+
+  [Tutaj jest praktycznie to co w \cite{urd11}]
+  \subsubsection{Castro et. al.}
+  Castro et. al. \cite{cas02} agrees with \cite{dou02} conclusion and proposes
+  using a set of central trusted authorities which certify random key and public
+  key pair. They suggest adding an IP address to the certificate.
+  [O tym, że IP nie jest skuteczne, bo spoofing, privacy IPv6. Dodatkowo
+  przeszkadza NAT]
+  [O tym, że jest bardziej elastyczne i pozwola na zrobienie dowolnego
+  aplikacjo-zależnego systemu uwierzytelniania, np. pobieranie kasy, puzzle itp]
+
+  \subsubsection{Sybil Control}
+
+
+
+  \section{Content poisoning}
+  \section{Routing poisoning}
+
+  \section{Denial of Service}
+
+Description of what is DHT and what kind of attacks do we recognize. To each
+threat I describe possible solutions existing in the literature.
+
+
+\chapter{Technologies used in my application}
+
+\section{Certificates, Web-of-trust, revocation}
+\section{Distributed Key Generation?}
+\section{Distributed robust random number generation}
+\section{REST}
+\section{SSL}
+

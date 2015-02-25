@@ -1,0 +1,13 @@
+build
+.git
+.gradle
+
+#TeX files
+
+*.aux
+*.out
+*.pdf
+*.log
+*.dvi
+*.idx
+*.toc
