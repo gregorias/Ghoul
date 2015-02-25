@@ -81,26 +81,79 @@
   the first paper studying this class of attacks \cite[p. 5]{urd11}
 
   [Tutaj jest praktycznie to co w \cite{urd11}]
-  \subsubsection{Castro et. al.}
+  \subsubsection{Centralized gatekeeper}
   Castro et. al. \cite{cas02} agrees with \cite{dou02} conclusion and proposes
   using a set of central trusted authorities which certify random key and public
-  key pair. They suggest adding an IP address to the certificate.
-  [O tym, że IP nie jest skuteczne, bo spoofing, privacy IPv6. Dodatkowo
-  przeszkadza NAT]
-  [O tym, że jest bardziej elastyczne i pozwola na zrobienie dowolnego
-  aplikacjo-zależnego systemu uwierzytelniania, np. pobieranie kasy, puzzle itp]
+  key pair. They suggest adding an IP address to the certificate, so that the
+  certificate would be binded to physical host. Unfortunately this solution is
+  known to be problematic. First of all IP address can be spoofed and with IPv6
+  privacy extensions changed al together. Second of all it would cause a problem
+  for users behind NAT.
 
-  \subsubsection{Sybil Control}
+  Centralized gatekeeper gives much flexibility in implementing an
+  authentication and sybil attack prevention scheme. For example there may be
+  required a small monetary payment for entry into the DHT network or a
+  computational puzzle may have to solved.
+
+  \subsubsection{Distinction based on network footprint}
+
+  Without centralized authority network peers would have to register new nodes
+  in a distributed way. To distinguish distinct identities from same ones they
+  may use network characterestics. Such characteristic are usually easy to check
+  in the sense that any node may do it, giving low barrier of entry to the
+  network, but it carries an assumption that they are unfalsifiable, which is
+  not always the case.
+
+  A simple ID calculation based on IP address and port number is proposed by
+  Dinger and Hartensteing \cite[p. 6]{dou02}. They propose that a node would
+  register $r$ Chord registration nodes whose position is calculated from hash
+  of node's ID. If majority of registration nodes accept the new node then it is
+  said to be accepted. A node registration fails if number nodes with given IP
+  address exceeds a constant $a$. This solution requires all nodes to confirm
+  validity of their neighbours.
+
+  IP addresses may be spoofed and cause a problem for NAT users. Wang et. al.
+  \cite[p. 7]{dou02} proposed adding router's IP and MAC address and RTT
+  measurements between the node a designated set of landmarks. A similar idea
+  may be found in Bazzi and Konjevod \cite[p. 7]{dou02} where nodes are put into
+  $d$-dimensional space based on physical location of a node and a node are said
+  to be distinct if their coordinates are far away enough.
+
+  \subsubsection{Distinction based on social network}
+
+  Another class of defenses uses a social network, a graph of trust
+  relationships established by humans, to discover or mitigate a Sybil attack.
+  In such defenses it is assumed that each node can verifiably identify itself
+  as a node in the social network and that each edge forms a trust relationship
+  which means that two people are friends and that they trust each other not to
+  launch a Sybil attack. If any node was to launch a Sybil attack then the
+  social network graph will exhibit special properties which may be detected. 
+
+  Although such schemes show good performance, both in terms of application
+  overhead and detectability, they are difficult to apply in real world
+  applications.  [TODO aplikacja musi skądś ten graf wziąć co często jest
+  niemile widziane lub niepraktyczne]
+
+  SybilGuard \cite{hai06} mitigates effects of a Sybil attack by limiting the
+  number of sybil nodes and recognized sybil groups. It defines the edges
+  between honest nodes and sybil nodes as attack edges and notes that in a
+  social graph there can be only few such edges. Then it allows a node to
+  partition its neighbours into classes and guarantees with high probability
+  that a number of classes that contain a Sybil node is limited by the number of
+  attack edges. Although the scheme does not detect Sybil nodes it gives a
+  guarantee that with a sufficient redundandancy an attacker will not be able to
+  intercept a query or manipulate data.
+
+  \subsubsection{Puzzles}
+
+  SybilControl
 
 
 
-  \section{Content poisoning}
-  \section{Routing poisoning}
+\section{Content poisoning}
+\section{Routing poisoning}
 
-  \section{Denial of Service}
-
-Description of what is DHT and what kind of attacks do we recognize. To each
-threat I describe possible solutions existing in the literature.
+\section{Denial of Service}
 
 
 \chapter{Technologies used in my application}
