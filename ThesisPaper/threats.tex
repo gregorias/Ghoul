@@ -16,20 +16,38 @@
   \end{enumerate}
 
 \section{Eclipse attack}
-  The main purpose behind attacks on DHTs are denial of service, either global
-  or local, where we only want stop part of the network from working or
-  subversion. In order to achieve those goals an attacker may want to increase
-  its presence in the system by poisoning nodes' routing tables with entries
-  pointing to colluding nodes. When a node's routing table is sufficiently
-  filled with malicious nodes an attacker may begin the real attack. This
-  process of routing table poisoning is called an eclipse attack, because when
-  an attacker may eclipse part of the network by returning bogus answers to
-  queries.
+  Attacks on DHT can have 3 different goals:
+  denial of service - the attacker aims to either stop the entire system from
+  functioning or deny access from or to a part of it,
+  subversion - the attacker wants to provide false data to other nodes or
+  control them,
+  information - the attacker wants to gather information about some nodes
+  activity.
+
+  Those goals are greatly facilitated if an attacker controls the routing tables
+  of other nodes. An attack which poisons routing tables of other nodes by
+  disproportionately filling them with entries to colluding malicious nodes is
+  called an eclipse attack. The name comes from one of its effects, if a node's
+  routing table is filled with malicious nodes it is effectively partitioned
+  from the rest of the network.
 
   \subsection{Prevention mechanisms}
 
-  The general principles behind eclipse attack are: data and routing table
-  redundancy, verifiability of routing table, lookup query redundancy.
+  Sit and Morris \cite{sit02} have been among the first to discuss general
+  guidelines against preventing attacks in DHT networks. They advise desinging
+  the system with verifiable constrainst so that a node can distinguish
+  malicious behaviour from honest one and provide a proof to other nodes.
+  Mechanisms, mainly data and node look up, should have a built-in redundancy so
+  that a malicious node presence can be avoided in at least one path of
+  execution. The lookup itself should be interactive and allow for clear view of
+  progress, which allows a node to verify its correctness and initiate
+  redundancy protocols if necessary. Finally, as in any distributed system,
+  points of single responsibility should be avoided for obvious reasons.
+  
+  \subsubsection{Redundant routing table}
+  One way of providing protection against eclipse
+  
+  Castro et al. \cite{urd11} have r
 
 
 \section{Sybil attack}
@@ -145,22 +163,19 @@
   intercept a query or manipulate data.
 
   \subsubsection{Puzzles}
+  SybilControl\cite{li12} is a distributed scheme for sybil prevention using
+  computational puzzles. Every node is supposed to periodically generate a
+  puzzle for itself based on puzzles of its neighbours and solve. Such puzzle
+  is verifiable by any node using novel multi-hop verification and serves as a
+  proof-of-work. Nodes that can not present an up-to-date proof-of-work are
+  suspected of being a Sybil identity and removed from routing tables. This
+  effectively bounds a number of sybil identities an attacker can create.
 
-  SybilControl
-
-
+  Computation puzzles have the advantage of being flexible. They can be done by
+  any node, provided it has enough resources and can also scale their
+  difficulty. It is also much harder for an attacker to fake solving them or use
+  social engineering like in social network solutions.
 
 \section{Content poisoning}
-\section{Routing poisoning}
 
 \section{Denial of Service}
-
-
-\chapter{Technologies used in my application}
-
-\section{Certificates, Web-of-trust, revocation}
-\section{Distributed Key Generation?}
-\section{Distributed robust random number generation}
-\section{REST}
-\section{SSL}
-
