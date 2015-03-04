@@ -1,4 +1,8 @@
-\chapter{Threats and defenses in DHT}
+\chapter{DHT, its weaknesses, and defense mechanisms}
+\section{DHT overview}
+  [TODO write a section explaining what is DHT and how it works. Also
+    explain Kademlia, Chord and Pastry]
+
   Distributed hash table is a type of peer-to-peer system providing topology
   creation and maintainance protocols. They are typically designed for and
   tightly coupled with data storage protocols for key-value pairs, hence the
@@ -44,11 +48,49 @@
   redundancy protocols if necessary. Finally, as in any distributed system,
   points of single responsibility should be avoided for obvious reasons.
   
-  \subsubsection{Redundant routing table}
-  One way of providing protection against eclipse
-  
-  Castro et al. \cite{urd11} have r
+  \subsubsection{Constrained routing table}
+  Castro et al. \cite[p. 20]{urd11} have modified Pastry with additional
+  constrained routing table and back up routing mechanism to protecct against
+  eclipse attacks. If node key's assignment is truly random and routing table
+  entries are narrowly specified then it is difficult for an attacker to inject
+  malicious entries. DHTs such as Kademlia and Pastry are therefore more
+  vulnerable than Chord.
 
+  \subsubsection{Node scrambling}
+  A different method to mitigate an eclipse attack is to constantly move node's
+  ids in unpredictable ways so that it is infeasable to eclipse a local
+  keyspace. Such solution is proposed by Condie et al. \cite[p. 21]{urd11}.
+  Condie shows that a periodical random, impredictable node reassignment
+  augmented by techniques which mitigate negative churn effects, that is
+  grouping nodes into different timeout groups so that timeouts are not
+  synchronized and precalculation of future routing table, significantly
+  improves Castro's solution.
+
+  Awerbach and Scheideler \cite{awe10}, while proposing a robust, distributed
+  random number generator propose a scheme of global node rearrengment on each
+  join node. In such a scheme once a join node they show that using a robust
+  cuckoo rule to move $O(\log n)$ nodes makes the network resilient to
+  join-leave attacks.
+
+  \subsubsection{Topology graph analysis}
+  Singh et al. \cite[p. 23]{urd11} observe that if malicious nodes form only a
+  fraction of the network then during an Eclipse attack their in-degree must be
+  higher than average in-degree of honest nodes. Therefore they propose a
+  protocol which limits in-degree of nodes. Each node $x$ maintains an
+  additional backpointer table, which contains nodes having $x$ in their routing
+  tables. Every node $y$ periodically checks backpointer tables of their
+  neighbours and if they are larger than a global constant or does not contain
+  $y$ then it removes $x$ from its routing table.
+
+  This scheme requires the backpointer check to be anonynomous, therefore the
+  Scheme uses a common technique of onion routing using anonymizer network to
+  achieve that. Anonymizer are not assumed to be honest and therefore it
+  possible that a honest node will be labeled as malicious with small
+  probability.
+
+  This scheme is effective at limiting eclipse attacks, but it requires the
+  global in-degree bound to be tight, especially for large networks, which may
+  decrease the efficiency of base protocol.
 
 \section{Sybil attack}
   DHTs routing mechanisms rely on the assumption that nodes are placed uniformly
@@ -176,6 +218,28 @@
   difficulty. It is also much harder for an attacker to fake solving them or use
   social engineering like in social network solutions.
 
-\section{Content poisoning}
+\section{Discussion}
+  Eclipse and Sybil attacks do not usually constitute the goal of an attack, but
+  are used to facilitate it. Such goal are usually to deny access to a resource
+  or to fake it.
 
-\section{Denial of Service}
+  Attacks that aim to fake possession of requested resource are best counter
+  with cryptography. Using signatures, self-certyfying data, or Merkle hash
+  trees, like in bittorrent, is an effective and efficient deterrent.
+  To protect against malicious nodes dropping data or routing information the
+  system needs to use replication and redundant routing. 
+
+  Replication against malicious opponent is trickier than with her. There are
+  two main strategies for replication: Place given resource at nodes with key
+  close to the key of the resource or spread it over the network \cite[p.
+  38]{urd11}. The first strategies allows for more efficient retrieval in DHTs
+  such as Kademlia or Pastry, but is also more vulnerable to localized eclipse
+  attack. Both strategies are easy to attack if an attacker has ability to
+  choose her identifier arbitrarily and therefore a secure DHT requires secure
+  node id assignment.
+
+\section{Examples of real attacks}
+These are not just theoretical divagations, but discussed attacks are really
+used in practice:
+
+[TODO attacks on Vanish, Maze, Kad (Poisoning kad network)]
