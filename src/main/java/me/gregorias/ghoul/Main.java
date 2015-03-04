@@ -1,4 +1,4 @@
-package me.gregorias;
+package me.gregorias.ghoul;
 
 /**
  * Initial main class.
