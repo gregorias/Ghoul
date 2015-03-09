@@ -27,12 +27,19 @@ public class UDPByteSender implements ByteSender {
   /**
    * Send given message. This method blocks till the sending operation is
    * finished.
+   *
+   * @param dest Destination address
+   * @param message Message to send
    */
   @Override
-  public void sendMessage(InetSocketAddress dest, byte[] message) throws IOException {
+  public void sendMessage(InetSocketAddress dest, byte[] message) {
     LOGGER.debug("sendMessage({}, {})", dest, message.length);
 
     ByteBuffer buffer = Utils.arrayToByteBuffer(message);
-    mDatagramChannel.send(buffer, dest);
+    try {
+      mDatagramChannel.send(buffer, dest);
+    } catch (IOException e) {
+      LOGGER.error("sendMessage(): IOException has been thrown when sending message.", e);
+    }
   }
 }

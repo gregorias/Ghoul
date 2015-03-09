@@ -6,7 +6,7 @@ import java.util.BitSet;
 import java.util.Random;
 
 /**
- * Immutable 160 bit long Kademlia key.
+ * Immutable 160 bit long Kademlia key. The LSB has index 0.
  *
  * @author Grzegorz Milka
  */
@@ -25,11 +25,9 @@ public class Key implements Serializable {
   /**
    * Creates a key from integer in a little-endian bit fashion.
    *
-   * @param key
-   *          nonnegative number
-   * @throws IllegalArgumentException
+   * @param key nonnegative number
    */
-  public Key(int key) throws IllegalArgumentException {
+  public Key(int key) {
     if (key < 0) {
       throw new IllegalArgumentException("Key should be a nonnegative number.");
     }
@@ -47,9 +45,7 @@ public class Key implements Serializable {
   /**
    * Creates a key from a string representing hex number.
    *
-   * @param key
-   *          hexadecimal number in string
-   * @throws IllegalArgumentException
+   * @param key hexadecimal number in string
    */
   public Key(String key) {
     this(Integer.parseInt(key, HEX));
@@ -73,6 +69,7 @@ public class Key implements Serializable {
   }
 
   /**
+   * @param otherKey key to which distance should be calculated
    * @return distance {@link BitSet} between two keys in little-endian encoding.
    */
   BitSet calculateDistance(Key otherKey) {
@@ -83,6 +80,7 @@ public class Key implements Serializable {
    * Following assertion is true: assert (new Key(1)).getDistanceBit(new Key(2))
    * == 1
    *
+   * @param otherKey key to which distance should be calculated
    * @return most significant bit index of distance between this key and
    *         argument.
    */

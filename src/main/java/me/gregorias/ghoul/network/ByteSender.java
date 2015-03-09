@@ -1,6 +1,5 @@
 package me.gregorias.ghoul.network;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 
 /**
@@ -10,10 +9,10 @@ import java.net.InetSocketAddress;
  */
 public interface ByteSender {
   /**
-   * Sends message
+   * Sends a message do given IP address. It keeps non-runtime errors are silent.
    *
    * @param destination Destination address
-   * @param message
+   * @param message Message to send
    */
-  void sendMessage(InetSocketAddress destination, byte[] message) throws IOException;
+  void sendMessage(InetSocketAddress destination, byte[] message);
 }

@@ -71,15 +71,17 @@ public final class UDPByteListeningService implements ByteListeningService, Runn
         continue;
       }
 
-      if (mListener != null) {
-        mListener.receiveMessage(inetSender, msg);
+      synchronized (this) {
+        if (mListener != null) {
+          mListener.receiveMessage(inetSender, msg);
+        }
       }
     }
   }
 
   public void start() throws IOException {
     LOGGER.debug("start()");
-    SocketAddress localAddress = InetSocketAddress.createUnresolved("0.0.0.0", mLocalPort);;
+    SocketAddress localAddress = new InetSocketAddress(mLocalPort);
     mDatagramChannel.bind(localAddress);
     mServiceExecutor.execute(this);
   }

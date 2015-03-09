@@ -11,20 +11,24 @@ public interface KademliaRouting {
   /**
    * findClosestNodes with size equal to bucket size parameter.
    *
+   * @param key key to look up
    * @see KademliaRouting#findClosestNodes
+   * @return Found nodes
+   *
+   * @throws InterruptedException method has been interrupted
+   * @throws me.gregorias.ghoul.kademlia.KademliaException kademlia could not finish the operation
    */
   Collection<NodeInfo> findClosestNodes(Key key) throws InterruptedException, KademliaException;
 
   /**
    * Find size number of nodes closest to given {@link Key}.
    *
-   * @param key
-   *          key to look up
-   * @param size
-   *          number of nodes to find
+   * @param key key to look up
+   * @param size number of nodes to find
    * @return up to size found nodes
-   * @throws InterruptedException
-   * @throws KademliaException
+   *
+   * @throws InterruptedException method has been interrupted
+   * @throws me.gregorias.ghoul.kademlia.KademliaException kademlia could not finish the operation
    */
   Collection<NodeInfo> findClosestNodes(Key key, int size) throws InterruptedException,
       KademliaException;
@@ -47,14 +51,14 @@ public interface KademliaRouting {
   /**
    * Connect and initialize this peer.
    *
-   * @throws KademliaException
+   * @throws KademliaException kademlia could not finish the operation
    */
   void start() throws KademliaException;
 
   /**
    * Disconnects peer from network.
    *
-   * @throws KademliaException
+   * @throws KademliaException kademlia could not finish the operation
    */
   void stop() throws KademliaException;
 }
