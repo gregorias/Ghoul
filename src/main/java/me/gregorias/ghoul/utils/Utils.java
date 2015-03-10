@@ -22,7 +22,9 @@ public class Utils {
   }
 
   public static byte[] serializeBitSet(BitSet set, int byteLength) {
-    assert byteLength * BITS_IN_BYTE >= set.length();
+    if (byteLength * BITS_IN_BYTE < set.length()) {
+      throw new IllegalArgumentException();
+    }
     byte[] serializedBitSet = new byte[byteLength];
     for (int i = 0; i < set.length(); ++i) {
       if (set.get(i)) {
@@ -44,5 +46,4 @@ public class Utils {
     }
     return bitSet;
   }
-
 }
