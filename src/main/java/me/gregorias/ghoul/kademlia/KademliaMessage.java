@@ -7,15 +7,17 @@ import java.io.Serializable;
  * It should information about source and destination, but both may be null if the situation
  * requires it.
  */
-abstract class Message implements Serializable {
+abstract class KademliaMessage implements Serializable {
   private static final long serialVersionUID = 1L;
 
   private final NodeInfo mSrcNodeInfo;
   private final NodeInfo mDestNodeInfo;
+  private final int mId;
 
-  Message(NodeInfo src, NodeInfo dest) {
+  KademliaMessage(NodeInfo src, NodeInfo dest, int id) {
     mSrcNodeInfo = src;
     mDestNodeInfo = dest;
+    mId = id;
   }
 
   public NodeInfo getDestinationNodeInfo() {
@@ -24,5 +26,9 @@ abstract class Message implements Serializable {
 
   public NodeInfo getSourceNodeInfo() {
     return mSrcNodeInfo;
+  }
+
+  public int getId() {
+    return mId;
   }
 }

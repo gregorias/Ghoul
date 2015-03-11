@@ -4,15 +4,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-class FindNodeReplyMessage extends Message {
+class FindNodeReplyMessage extends KademliaMessage {
   private static final long serialVersionUID = 1L;
 
   private final List<NodeInfo> mFoundNodes;
 
   public FindNodeReplyMessage(NodeInfo srcNodeInfo,
                               NodeInfo destNodeInfo,
+                              int id,
                               Collection<NodeInfo> foundNodes) {
-    super(srcNodeInfo, destNodeInfo);
+    super(srcNodeInfo, destNodeInfo, id);
     mFoundNodes = new ArrayList<>(foundNodes);
   }
 
