@@ -20,6 +20,7 @@ public class Utils {
   public static ByteBuffer arrayToByteBuffer(byte[] array) {
     ByteBuffer buffer = ByteBuffer.allocate(array.length);
     buffer.put(array);
+    buffer.flip();
     return buffer;
   }
 

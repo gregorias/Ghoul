@@ -297,6 +297,7 @@ class KademliaRoutingImpl implements KademliaRouting {
         // possible candidates shows up
         while (getPendingNodes().size() > 0) {
           FindNodeTaskEvent event = mEventQueue.take();
+          LOGGER.trace("FindNodeTask.call(): key = {}, received event: {}", mSearchedKey, event);
           if (event instanceof FindNodeTaskReplyEvent) {
             handleReply(((FindNodeTaskReplyEvent) event).mMsg);
           } else if (event instanceof FindNodeTaskTimeoutEvent) {
@@ -310,7 +311,8 @@ class KademliaRoutingImpl implements KademliaRouting {
 
         unregisterAllEventListenersForThisTask();
         mEventQueue.clear();
-        return  getQueriedNodes().stream().limit(mResponseSize).collect(Collectors.toList());
+        LOGGER.debug("FindNodeTask.call() -> returning found nodes.");
+        return getQueriedNodes().stream().limit(mResponseSize).collect(Collectors.toList());
       } catch (InterruptedException e) {
         throw new IllegalStateException("FindNodeTask.run(): Unexpected interrupt.", e);
       } finally {
@@ -466,6 +468,7 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
 
     private void sendRequestsToInitialCandidates() {
+      LOGGER.trace("FindNodeTask.sendRequestsToInitialCandidates()");
       Collection<Key> keysToQuery = mAllNodes.keySet().stream().
           limit(min(mResponseSize, mAlpha)).
           collect(Collectors.toList());
@@ -592,6 +595,7 @@ class KademliaRoutingImpl implements KademliaRouting {
 
     @Override
     public void run() {
+      LOGGER.trace("HeartBeatTask.run()");
       mReadRunningLock.lock();
       try {
         if (!mIsRunning) {

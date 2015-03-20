@@ -59,6 +59,7 @@ public final class UDPByteListeningService implements ByteListeningService, Runn
       try {
         SocketAddress sender = mDatagramChannel.receive(recvBuffer);
         inetSender = (InetSocketAddress) sender;
+        recvBuffer.flip();
         msg = byteBufferToArray(recvBuffer);
         recvBuffer.clear();
       } catch (IOException e) {

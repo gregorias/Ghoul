@@ -33,7 +33,7 @@ public class UDPByteSender implements ByteSender {
    */
   @Override
   public void sendMessage(InetSocketAddress dest, byte[] message) {
-    LOGGER.debug("sendMessage({}, {})", dest, message.length);
+    LOGGER.trace("sendMessage({}, {})", dest, message.length);
 
     ByteBuffer buffer = Utils.arrayToByteBuffer(message);
     try {

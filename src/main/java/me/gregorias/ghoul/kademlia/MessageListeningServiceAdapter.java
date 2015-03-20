@@ -52,7 +52,7 @@ class MessageListeningServiceAdapter implements ListeningService {
           mListener.receive(msg.get());
         }
       } else {
-        LOGGER.trace("Received undeserializable message.");
+        LOGGER.trace("Received undeserializable message of length: {}.", byteMsg.length);
       }
     }
   }
