@@ -1,7 +1,12 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.utils.DeserializationException;
+import me.gregorias.ghoul.utils.Utils;
+
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.Random;
 
@@ -15,6 +20,7 @@ public class Key implements Serializable {
   public static final int HEX = 16;
   private static final long serialVersionUID = 1L;
   private static final int BINARY = 2;
+  private static final int BYTE_SIZE = 8;
   private final BitSet mKey;
 
   public Key(BitSet key) {
@@ -135,13 +141,32 @@ public class Key implements Serializable {
         strBuilder.append("0");
       }
     }
-    BigInteger bigInteger = new BigInteger(strBuilder.toString(), BINARY);
-    return bigInteger;
+    return new BigInteger(strBuilder.toString(), BINARY);
   }
 
   @Override
   public String toString() {
     return toInt().toString(HEX);
+  }
+
+  public static Key deserialize(ByteBuffer buffer) throws DeserializationException {
+    byte[] serializedBitSet = new byte[KEY_LENGTH / BYTE_SIZE];
+    try {
+      for (int byteIdx = 0; byteIdx < KEY_LENGTH / BYTE_SIZE; ++byteIdx) {
+        serializedBitSet[byteIdx] = buffer.get();
+      }
+    } catch (BufferUnderflowException e) {
+      throw new DeserializationException(e);
+    }
+    BitSet bitSet = Utils.deserializeBitSet(serializedBitSet);
+    return new Key(bitSet);
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    byte[] serializedBitSet = Utils.serializeBitSet(mKey, KEY_LENGTH / BYTE_SIZE);
+    for (int byteIdx = 0; byteIdx < KEY_LENGTH / BYTE_SIZE; ++byteIdx) {
+      buffer.put(serializedBitSet[byteIdx]);
+    }
   }
 
   Key xor(Key otherKey) {

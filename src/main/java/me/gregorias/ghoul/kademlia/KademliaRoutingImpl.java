@@ -1,70 +1,52 @@
 package me.gregorias.ghoul.kademlia;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.Optional;
-import java.util.PriorityQueue;
 import java.util.Random;
-import java.util.Set;
 import java.util.SortedMap;
-import java.util.SortedSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-import jdk.nashorn.internal.ir.Block;
-import me.gregorias.ghoul.network.NetworkAddressDiscovery;
-import me.gregorias.ghoul.utils.BoundedSortedSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import static java.lang.Math.min;
 
-/** Implementation of Kademlia routing. */
+/** Implementation of Kademlia routing */
 class KademliaRoutingImpl implements KademliaRouting {
   private static final Logger LOGGER = LoggerFactory.getLogger(KademliaRoutingImpl.class);
-  private final Random mRandom;
 
-  private final Collection<InetSocketAddress> mInitialPeerAddresses;
   private final Collection<NodeInfo> mInitialKnownPeers;
-
-  private final List<List<NodeInfo>> mBuckets;
+  private final KademliaRoutingTable mRoutingTable;
 
   /**
-   * List of nodes expecting to be put into a bucket if a place for them is
-   * emptied.
+   * Concurrency coefficient in node lookups
    */
-  private final List<List<NodeInfo>> mBucketsWaitingList;
+  private final int mAlpha;
+  private final int mBucketSize;
   private final Key mLocalKey;
   private InetSocketAddress mLocalAddress;
   private final MessageSender mMessageSender;
   private final ListeningService mListeningService;
   private final MessageListener mMessageListener;
-  private final NetworkAddressDiscovery mNetAddrDiscovery;
-  private final int mBucketSize;
+
 
   /**
    * Map from expected message id to a collection of FindNodeTaskEvent queues expecting response
@@ -72,67 +54,81 @@ class KademliaRoutingImpl implements KademliaRouting {
    */
   private final Map<Integer, Collection<BlockingQueue<FindNodeTaskEvent>>> mFindNodeListeners;
 
-  /**
-   * Concurrency coefficient in node lookups
-   */
-  private final int mAlpha;
-  private final int mEntryRefreshDelay;
+  private Future<?> mHeartBeatFuture = null;
+  private final long mHeartBeatDelay;
+  private final TimeUnit mHeartBeatDelayUnit;
+
+  private BlockingQueue<NodeDiscoveryTaskEvent> mNodeDiscoveryListener;
+  private Future<?> mNodeDiscoveryFuture = null;
+
+  private Optional<NeighbourListener> mNeighbourListener;
+  private final Lock mNeighbourListenerLock;
 
   private final long mMessageTimeout;
   private final TimeUnit mMessageTimeoutUnit;
 
   private final ScheduledExecutorService mScheduledExecutor;
-
-  private final EntryRefresher mEntryRefresher;
-  private final AddressChangeObserver mAddrChangeObserver;
+  private final Random mRandom;
 
   private final Lock mReadRunningLock;
   private final Lock mWriteRunningLock;
 
   private boolean mIsRunning = false;
-  private ScheduledFuture<?> mRefreshFuture = null;
 
-
-  /** TODO */
+  /**
+   * Constructs an implementation of KademliaRouting.
+   *
+   * @param localNodeInfo      information about node represented by this peer
+   * @param sender             MessageSender module for this peer
+   * @param listeningService   ListeningService module for this peer
+   * @param bucketSize         maximal of a single bucket
+   * @param alpha              concurrency factor in find node request
+   * @param initialKnownPeers  Initial peers which are used for bootstraping the routing table
+   * @param messageTimeout     timeout for message
+   * @param messageTimeoutUnit timeout unit
+   * @param heartBeatDelay     heart beat delay
+   * @param heartBeatDelayUnit heart beat delay unit
+   * @param scheduledExecutor  executor used for executing tasks
+   * @param random             random number generator
+   */
   KademliaRoutingImpl(NodeInfo localNodeInfo,
                       MessageSender sender,
                       ListeningService listeningService,
-                      NetworkAddressDiscovery netAddrDiscovery,
-                      ScheduledExecutorService scheduledExecutor,
                       int bucketSize,
                       int alpha,
-                      int entryRefreshDelay,
-                      Collection<InetSocketAddress> initialPeerAddresses,
                       Collection<NodeInfo> initialKnownPeers,
                       long messageTimeout,
                       TimeUnit messageTimeoutUnit,
+                      long heartBeatDelay,
+                      TimeUnit heartBeatDelayUnit,
+                      ScheduledExecutorService scheduledExecutor,
                       Random random) {
     assert bucketSize > 0;
     mRandom = random;
     mBucketSize = bucketSize;
     mAlpha = alpha;
-    mEntryRefreshDelay = entryRefreshDelay;
-    mBuckets = initializeBuckets();
-    mBucketsWaitingList = initializeBuckets();
+    mRoutingTable = new KademliaRoutingTable(localNodeInfo.getKey(), bucketSize);
     mLocalKey = localNodeInfo.getKey();
     mLocalAddress = localNodeInfo.getSocketAddress();
     mMessageSender = sender;
     mListeningService = listeningService;
     mMessageListener = new MessageListenerImpl();
-    mNetAddrDiscovery = netAddrDiscovery;
+
+    mNeighbourListener = Optional.empty();
+    mNeighbourListenerLock = new ReentrantLock();
 
     mFindNodeListeners = new HashMap<>();
+    mNodeDiscoveryListener = new LinkedBlockingQueue<>();
 
     mMessageTimeout = messageTimeout;
     mMessageTimeoutUnit = messageTimeoutUnit;
 
+    mHeartBeatDelay = heartBeatDelay;
+    mHeartBeatDelayUnit = heartBeatDelayUnit;
+
     mScheduledExecutor = scheduledExecutor;
 
-    mInitialPeerAddresses = new LinkedList<>(initialPeerAddresses);
     mInitialKnownPeers = new LinkedList<>(initialKnownPeers);
-
-    mEntryRefresher = new EntryRefresher();
-    mAddrChangeObserver = new AddressChangeObserver();
 
     ReadWriteLock rwLock = new ReentrantReadWriteLock();
     mReadRunningLock = rwLock.readLock();
@@ -157,16 +153,10 @@ class KademliaRoutingImpl implements KademliaRouting {
   }
 
   @Override
-  /** TODO */
-  public Collection<NodeInfo> getRoutingTable() {
-    Collection<NodeInfo> routingTable = new ArrayList<>();
-    for (Collection<NodeInfo> bucket : mBuckets) {
-      routingTable.addAll(bucket);
-    }
-    return routingTable;
+  public Collection<NodeInfo> getFlatRoutingTable() {
+    return mRoutingTable.flatten();
   }
 
-  /** TODO */
   public boolean isRunning() {
     mReadRunningLock.lock();
     boolean isRunning = mIsRunning;
@@ -175,7 +165,26 @@ class KademliaRoutingImpl implements KademliaRouting {
   }
 
   @Override
-  /** TODO */
+  public void registerNeighbourListener(NeighbourListener listener) {
+    mNeighbourListenerLock.lock();
+    try {
+      mNeighbourListener = Optional.of(listener);
+    } finally {
+      mNeighbourListenerLock.unlock();
+    }
+  }
+
+  @Override
+  public void unregisterNeighbourListener() {
+    mNeighbourListenerLock.lock();
+    try {
+      mNeighbourListener = Optional.empty();
+    } finally {
+      mNeighbourListenerLock.unlock();
+    }
+  }
+
+  @Override
   public void start() throws KademliaException {
     LOGGER.debug("start()");
     mWriteRunningLock.lock();
@@ -185,15 +194,20 @@ class KademliaRoutingImpl implements KademliaRouting {
       }
 
       /* Connect to initial peers */
-      clearBuckets();
-      LOGGER.trace("start() -> addPeersToBuckets");
-      addPeersToBuckets(mInitialKnownPeers);
+      LOGGER.trace("start(): initializeRoutingTable");
+      initializeRoutingTable();
 
-      mNetAddrDiscovery.addObserver(mAddrChangeObserver);
-
-      LOGGER.trace("start() -> registerListener");
+      LOGGER.trace("start(): registerListener");
       mListeningService.registerListener(mMessageListener);
-      mRefreshFuture = mScheduledExecutor.schedule(mEntryRefresher, 0, TimeUnit.MILLISECONDS);
+
+      NodeDiscoveryTask nodeDiscoveryTask = new NodeDiscoveryTask();
+      mNodeDiscoveryFuture = mScheduledExecutor.submit(nodeDiscoveryTask);
+
+      mHeartBeatFuture = mScheduledExecutor.scheduleWithFixedDelay(new HeartBeatTask(),
+          0,
+          mHeartBeatDelay,
+          mHeartBeatDelayUnit);
+
       mIsRunning = true;
     } finally {
       mWriteRunningLock.unlock();
@@ -201,56 +215,32 @@ class KademliaRoutingImpl implements KademliaRouting {
   }
 
   @Override
-  /** TODO */
   public void stop() throws KademliaException {
+    LOGGER.debug("stop()");
     mWriteRunningLock.lock();
     try {
-      LOGGER.info("stop()");
+      mHeartBeatFuture.cancel(true);
+
+      mNodeDiscoveryListener.put(new NodeDiscoveryTaskStopTaskEvent());
+      LOGGER.trace("stop(): Inside lock");
       if (!mIsRunning) {
         throw new IllegalStateException("Kademlia is not running.");
       }
-      mRefreshFuture.cancel(true);
+      mNodeDiscoveryFuture.get();
+
       mListeningService.unregisterListener(mMessageListener);
       mIsRunning = false;
+    } catch (ExecutionException | InterruptedException e) {
+      LOGGER.error("stop(): Unexpected exception.", e);
     } finally {
       mWriteRunningLock.unlock();
     }
     LOGGER.info("stop() -> void");
   }
 
-  /** TODO */
-  private class AddressChangeObserver implements Observer {
-    @Override
-    public void update(Observable arg0, Object arg1) {
-      InetSocketAddress newAddress = (InetSocketAddress) arg1;
-      changeAddress(newAddress);
-      mScheduledExecutor.schedule(mEntryRefresher, 0, TimeUnit.MILLISECONDS);
-    }
-  }
-
-  /** TODO */
-  private class EntryRefresher implements Runnable {
-    private final Logger mLogger = LoggerFactory.getLogger(EntryRefresher.class);
-
-    @Override
-    public synchronized void run() {
-      mLogger.debug("run()");
-      mReadRunningLock.lock();
-      try {
-        if (!mIsRunning) {
-          return;
-        }
-        findClosestNodes(mLocalKey);
-        mRefreshFuture = mScheduledExecutor.schedule(this, mEntryRefreshDelay,
-            TimeUnit.MILLISECONDS);
-      } catch (InterruptedException e) {
-        mLogger.error("Caught unexpected InterruptedException.", e);
-      } finally {
-        mReadRunningLock.unlock();
-      }
-      mLogger.debug("run(): void");
-    }
-
+  @Override
+  public String toString() {
+    return String.format("KademliaRoutingImpl{mLocalKey:%s}", mLocalKey);
   }
 
   /* Find node search implementation */
@@ -293,11 +283,11 @@ class KademliaRoutingImpl implements KademliaRouting {
 
     @Override
     public Collection<NodeInfo> call() {
-      LOGGER.debug("FindNodeTask.run(): key = {}", mSearchedKey);
+      LOGGER.debug("FindNodeTask.call(): key = {}", mSearchedKey);
       mReadRunningLock.lock();
       try {
         if (!mIsRunning) {
-          throw new IllegalStateException("Called findClosestNodes() on nonrunning kademlia.");
+          throw new IllegalStateException("Called findClosestNodes() on non-running kademlia.");
         }
 
         mAllNodes = initializeAllNodes();
@@ -307,10 +297,10 @@ class KademliaRoutingImpl implements KademliaRouting {
         // possible candidates shows up
         while (getPendingNodes().size() > 0) {
           FindNodeTaskEvent event = mEventQueue.take();
-          if (event instanceof ReplyFindNodeTaskEvent) {
-            handleReply(((ReplyFindNodeTaskEvent) event).mMsg);
-          } else if (event instanceof TimeoutFindNodeTaskEvent) {
-            handleTimeOut(((TimeoutFindNodeTaskEvent) event).mTimedOutNodeInfo);
+          if (event instanceof FindNodeTaskReplyEvent) {
+            handleReply(((FindNodeTaskReplyEvent) event).mMsg);
+          } else if (event instanceof FindNodeTaskTimeoutEvent) {
+            handleTimeOut(((FindNodeTaskTimeoutEvent) event).mTimedOutNodeInfo);
           } else {
             throw new IllegalStateException("Unexpected event has been received.");
           }
@@ -335,6 +325,11 @@ class KademliaRoutingImpl implements KademliaRouting {
       public NodeInfoWithStatus(NodeInfo info) {
         mInfo = info;
         mStatus = FindNodeStatus.UNQUERIED;
+      }
+
+      @Override
+      public String toString() {
+        return String.format("NodeInfoWithStatus{mInfo:%s, mStatus:%s}", mInfo, mStatus);
       }
     }
 
@@ -376,6 +371,7 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
 
     private void handleReply(FindNodeReplyMessage replyMessage) {
+      LOGGER.trace("FindNodeTask.handleReply({})", replyMessage);
       NodeInfoWithStatus info = mAllNodes.get(replyMessage.getSourceNodeInfo().getKey());
       if (info != null) {
         unregisterEventListenerForThisTask(info.mInfo.getKey(), replyMessage.getId());
@@ -405,6 +401,7 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
 
     private void handleTimeOut(NodeInfo nodeInfo) {
+      LOGGER.trace("FindNodeTask.handleTimeout({})", nodeInfo);
       NodeInfoWithStatus info = mAllNodes.get(nodeInfo.getKey());
       if (info != null) {
         if (info.mStatus == FindNodeStatus.PENDING) {
@@ -416,14 +413,19 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
 
     private SortedMap<Key, NodeInfoWithStatus> initializeAllNodes() {
-      Collection<NodeInfo> closeNodes = getClosestRoutingTableNodes(mSearchedKey, mResponseSize);
+      Collection<NodeInfo> closeNodes = mRoutingTable.getClosestNodes(mSearchedKey, mResponseSize);
       SortedMap<Key, NodeInfoWithStatus> allNodes = new TreeMap<>(new KeyComparator(mSearchedKey));
       closeNodes.stream().
           forEach((NodeInfo info) -> allNodes.put(info.getKey(), new NodeInfoWithStatus(info)));
+
+      NodeInfoWithStatus localNodeInfo = new NodeInfoWithStatus(getLocalNodeInfo());
+      localNodeInfo.mStatus = FindNodeStatus.QUERIED;
+      allNodes.put(mLocalKey, localNodeInfo);
       return allNodes;
     }
 
     private void sendFindNodeMessage(NodeInfoWithStatus nodeInfoWithStatus) {
+      LOGGER.trace("FindNodeTask.sendFindNodeMessage({})", nodeInfoWithStatus);
       assert nodeInfoWithStatus.mStatus == FindNodeStatus.UNQUERIED;
 
       int messageId = registerFindNodeTaskEventListener(mEventQueue);
@@ -435,18 +437,17 @@ class KademliaRoutingImpl implements KademliaRouting {
           mSearchedKey);
 
       mMessageSender.sendMessage(nodeInfoWithStatus.mInfo.getSocketAddress(), msg);
-      mScheduledExecutor.schedule(
-          () -> {
-            boolean hasPutSuccessfully = false;
-            while (!hasPutSuccessfully) {
-              try {
-                mEventQueue.put(new TimeoutFindNodeTaskEvent(nodeInfoWithStatus.mInfo));
-                hasPutSuccessfully = true;
-              } catch (InterruptedException e) {
-                LOGGER.error("TimeoutHandler(): Unexpected interrupt", e);
-              }
+      mScheduledExecutor.schedule(() -> {
+          boolean hasPutSuccessfully = false;
+          while (!hasPutSuccessfully) {
+            try {
+              mEventQueue.put(new FindNodeTaskTimeoutEvent(nodeInfoWithStatus.mInfo));
+              hasPutSuccessfully = true;
+            } catch (InterruptedException e) {
+              LOGGER.error("TimeoutHandler(): Unexpected interrupt", e);
             }
-          },
+          }
+        },
           mMessageTimeout,
           mMessageTimeoutUnit);
       nodeInfoWithStatus.mStatus = FindNodeStatus.PENDING;
@@ -470,7 +471,9 @@ class KademliaRoutingImpl implements KademliaRouting {
           collect(Collectors.toList());
       for (Key keyToQuery : keysToQuery) {
         NodeInfoWithStatus status = mAllNodes.get(keyToQuery);
-        sendFindNodeMessage(status);
+        if (status.mStatus == FindNodeStatus.UNQUERIED) {
+          sendFindNodeMessage(status);
+        }
       }
     }
 
@@ -506,24 +509,43 @@ class KademliaRoutingImpl implements KademliaRouting {
 
   private static interface FindNodeTaskEvent { }
 
-  private static class ReplyFindNodeTaskEvent implements FindNodeTaskEvent {
+  private static class FindNodeTaskReplyEvent implements FindNodeTaskEvent {
     public final FindNodeReplyMessage mMsg;
 
-    public ReplyFindNodeTaskEvent(FindNodeReplyMessage msg) {
+    public FindNodeTaskReplyEvent(FindNodeReplyMessage msg) {
       mMsg = msg;
     }
   }
 
-  private static class TimeoutFindNodeTaskEvent implements FindNodeTaskEvent {
+  private static class FindNodeTaskTimeoutEvent implements FindNodeTaskEvent {
     public final NodeInfo mTimedOutNodeInfo;
 
-    public TimeoutFindNodeTaskEvent(NodeInfo timedOutNodeInfo) {
+    public FindNodeTaskTimeoutEvent(NodeInfo timedOutNodeInfo) {
       mTimedOutNodeInfo = timedOutNodeInfo;
     }
   }
 
-  // TODO This method will go into blocking infinite loop if mFindNodeListeners is full or close to
-  // full
+  /**
+   * Notify pertinent find node listeners about find node reply message.
+   *
+   * @param msg received reply message
+   */
+  private void notifyFindNodeTaskEventListeners(FindNodeReplyMessage msg) {
+    synchronized (mFindNodeListeners) {
+      Collection<BlockingQueue<FindNodeTaskEvent>> listeners = mFindNodeListeners.get(msg.getId());
+      try {
+        if (listeners != null) {
+          FindNodeTaskEvent event = new FindNodeTaskReplyEvent(msg);
+          for (BlockingQueue<FindNodeTaskEvent> queue : listeners) {
+            queue.put(event);
+          }
+        }
+      } catch (InterruptedException e) {
+        LOGGER.error("notifyFindNodeTaskEventListeners(): unexpected InterruptedException.", e);
+      }
+    }
+  }
+
   /**
    * Register input queue and assigns it random non-conflicting id.
    *
@@ -565,295 +587,288 @@ class KademliaRoutingImpl implements KademliaRouting {
 
   /* End of find node search implementation */
 
-
-  /**
-   * {@link MessageResponseHandler} which puts responses into given queue.
-   *
-   * @author Grzegorz Milka
-   */
-  /** TODO */
-  private class QueuedMessageResponseHandler implements MessageResponseHandler {
-    private final BlockingQueue<Future<KademliaMessage>> mOutputQueue;
-
-    public QueuedMessageResponseHandler(BlockingQueue<Future<KademliaMessage>> outputQueue) {
-      mOutputQueue = outputQueue;
-    }
+  /* Heart beat protocol implementation */
+  private class HeartBeatTask implements Runnable {
 
     @Override
-    public void onResponse(KademliaMessage response) {
-      SettableFuture<KademliaMessage> futureResponse = SettableFuture.<KademliaMessage>create();
-      futureResponse.set(response);
-      processSenderNodeInfo(response.getSourceNodeInfo());
-      mOutputQueue.add(futureResponse);
-    }
-
-    @Override
-    public void onResponseError(IOException exception) {
-      SettableFuture<KademliaMessage> futureResponse = SettableFuture.<KademliaMessage>create();
-      futureResponse.setException(exception);
-      mOutputQueue.add(futureResponse);
-    }
-
-    @Override
-    public void onSendSuccessful() {
-    }
-
-    @Override
-    public void onSendError(IOException exception) {
-      SettableFuture<KademliaMessage> futureResponse = SettableFuture.<KademliaMessage>create();
-      futureResponse.setException(exception);
-      mOutputQueue.add(futureResponse);
-    }
-  }
-
-  /** TODO */
-  private class MessageListenerImpl implements MessageListener {
-    @Override
-    public FindNodeReplyMessage receiveFindNodeMessage(FindNodeMessage msg) {
-      processSenderNodeInfo(msg.getSourceNodeInfo());
-      return new FindNodeReplyMessage(getLocalNodeInfo(), msg.getSourceNodeInfo(),
-          getClosestRoutingTableNodes(msg.getSearchedKey(), mBucketSize));
-    }
-
-    @Override
-    public PongMessage receiveGetKeyMessage(GetKeyMessage msg) {
-      processSenderNodeInfo(msg.getSourceNodeInfo());
-      return new PongMessage(getLocalNodeInfo(), msg.getSourceNodeInfo());
-    }
-
-    @Override
-    public PongMessage receivePingMessage(PingMessage msg) {
-      processSenderNodeInfo(msg.getSourceNodeInfo());
-      return new PongMessage(getLocalNodeInfo(), msg.getSourceNodeInfo());
-    }
-  }
-
-  /** TODO */
-  private class PingCheckMessageHandler implements MessageResponseHandler {
-    private final int mBucketId;
-    private final List<NodeInfo> mBucket;
-    private final List<NodeInfo> mBucketWaitingList;
-
-    public PingCheckMessageHandler(int bucketId) {
-      mBucketId = bucketId;
-      mBucket = mBuckets.get(mBucketId);
-      mBucketWaitingList = mBucketsWaitingList.get(mBucketId);
-    }
-
-    @Override
-    public void onResponse(KademliaMessage response) {
-      LOGGER.debug("onResponse()");
-      synchronized (mBucket) {
-        replaceNodeInfo(mBucket, 0, mBucket.get(0));
-        mBucketWaitingList.remove(0);
-        checkWaitingQueueAndContinue();
-      }
-    }
-
-    @Override
-    public void onResponseError(IOException exception) {
-      LOGGER.debug("onResponseError()", exception);
-      onError();
-    }
-
-    @Override
-    public void onSendSuccessful() {
-    }
-
-    @Override
-    public void onSendError(IOException exception) {
-      LOGGER.debug("onSendError()", exception);
-      onError();
-    }
-
-    private void checkWaitingQueueAndContinue() {
-      if (!mBucketWaitingList.isEmpty()) {
-        mMessageSender.sendMessageWithReply(mBucket.get(0).getSocketAddress(), new PingMessage(
-            getLocalNodeInfo(), mBucket.get(0)), this);
-      }
-    }
-
-    private void onError() {
-      synchronized (mBucket) {
-        replaceNodeInfo(mBucket, 0, mBucketWaitingList.get(0));
-        mBucketWaitingList.remove(0);
-        checkWaitingQueueAndContinue();
-      }
-    }
-  }
-
-  /** TODO */
-  private void addPeersToBuckets(Collection<NodeInfo> initialKnownPeers) {
-    List<List<NodeInfo>> tempBuckets = initializeBuckets();
-    for (NodeInfo nodeInfo : initialKnownPeers) {
-      if (!nodeInfo.getKey().equals(mLocalKey)) {
-        tempBuckets.get(getLocalKey().getDistanceBit(nodeInfo.getKey())).add(nodeInfo);
-      }
-    }
-    /* Randomize each bucket and put into real one */
-    for (int idx = 0; idx < Key.KEY_LENGTH; ++idx) {
-      List<NodeInfo> tempBucket = tempBuckets.get(idx);
-      Collections.shuffle(tempBuckets.get(idx), mRandom);
-      mBuckets.get(idx).addAll(
-          tempBucket.subList(0, min(
-              tempBucket.size(), mBucketSize - mBuckets.get(idx).size())));
-    }
-  }
-
-  /** TODO */
-  private void changeAddress(InetSocketAddress newAddress) {
-    synchronized (mLocalKey) {
-      mLocalAddress = newAddress;
-    }
-  }
-
-  /** TODO */
-  private void checkKeysOfUnknownPeers(Collection<InetSocketAddress> initialPeerAddresses) {
-    GetKeyMessage gkMsg = prepareGetKeyMessage();
-    BlockingQueue<Future<KademliaMessage>> queue = new LinkedBlockingQueue<>();
-    MessageResponseHandler queuedMsgResponseHandler = new QueuedMessageResponseHandler(queue);
-    for (InetSocketAddress address : initialPeerAddresses) {
-      mMessageSender.sendMessageWithReply(address, gkMsg, queuedMsgResponseHandler);
-    }
-
-    Collection<NodeInfo> responsivePeers = new LinkedList<>();
-    for (int idx = 0; idx < initialPeerAddresses.size(); ++idx) {
+    public void run() {
+      mReadRunningLock.lock();
       try {
-        Future<KademliaMessage> future = queue.take();
-        PongMessage pong = null;
-        try {
-          pong = (PongMessage) future.get();
-          responsivePeers.add(pong.getSourceNodeInfo());
-        } catch (ClassCastException e) {
-          LOGGER.warn("checkKeysOfUnknownPeers() -> received message which is not pong: %s", pong);
-        } catch (ExecutionException e) {
-          LOGGER.error(
-              "checkKeysOfUnknownPeers() -> exception happened when trying to get key from host",
-              e);
+        if (!mIsRunning) {
+          return;
         }
+        Key randomKey = Key.newRandomKey(mRandom);
+        findClosestNodes(randomKey);
       } catch (InterruptedException e) {
-        throw new IllegalStateException("Unexpected interrupt");
+        Thread.currentThread().interrupt();
+      } finally {
+        mReadRunningLock.unlock();
       }
     }
-    addPeersToBuckets(responsivePeers);
   }
 
-  /** TODO */
-  private void clearBuckets() {
-    for (List<NodeInfo> bucket : mBuckets) {
-      bucket.clear();
-    }
-  }
+  /* End of heart beat protocol implementation */
 
-  /** TODO */
-  private int findIndexOfNodeInfo(List<NodeInfo> bucket, Key key) {
-    int idx = 0;
-    for (NodeInfo nodeInfo : bucket) {
-      if (nodeInfo.getKey().equals(key)) {
-        return idx;
-      }
-      ++idx;
-    }
-    return -1;
-  }
-
-  /** TODO */
-  private Collection<NodeInfo> getClosestRoutingTableNodes(final Key key, int size) {
-    KeyComparator keyComparator = new KeyComparator(key);
-    SortedSet<Key> closestKeys = new BoundedSortedSet<>(new TreeSet<>(keyComparator), size);
-    Map<Key, NodeInfo> keyInfoMap = new HashMap<>();
-
-    for (List<NodeInfo> bucket : mBuckets) {
-      synchronized (bucket) {
-        for (NodeInfo nodeInfo : bucket) {
-          keyInfoMap.put(nodeInfo.getKey(), nodeInfo);
-          closestKeys.add(nodeInfo.getKey());
-        }
-      }
-    }
-    keyInfoMap.put(mLocalKey, getLocalNodeInfo());
-    closestKeys.add(mLocalKey);
-
-    Collection<NodeInfo> closestNodes = new ArrayList<>();
-    for (Key closeKey : closestKeys) {
-      closestNodes.add(keyInfoMap.get(closeKey));
-    }
-    LOGGER.trace("getClosestRoutingTableNodes({}, {}): {}", key, size, closestNodes);
-    return closestNodes;
-  }
-
-  /** TODO */
-  private NodeInfo getLocalNodeInfo() {
-    synchronized (mLocalKey) {
-      return new NodeInfo(mLocalKey, mLocalAddress);
-    }
-  }
-
-  /** TODO */
-  private List<List<NodeInfo>> initializeBuckets() {
-    List<List<NodeInfo>> buckets = new ArrayList<>(Key.KEY_LENGTH);
-    for (int idx = 0; idx < Key.KEY_LENGTH; ++idx) {
-      buckets.add(idx, new LinkedList<NodeInfo>());
-    }
-    return buckets;
-  }
-
-  /** TODO */
-  private GetKeyMessage prepareGetKeyMessage() {
-    return new GetKeyMessage(getLocalNodeInfo());
-  }
+  /* Node discovery protocol implementation */
 
   /**
-   * Add (if possible) information from sender of a message.
+   * Task which updates routing table based on incoming messages.
    *
-   * @param sourceNodeInfo
+   * On receipt of a new candidate it puts it into the bucket if there is space. Otherwise it pings
+   * least recently seen node in the corresponding bucket. If node responds then the candidate is
+   * removed, on time out the candidate replaces the pinged node. There can be only
+   * one candidate per bucket at the same time.
+   *
+   * This class implements actor-like semantics of operation.
    */
-  /** TODO */
-  private void processSenderNodeInfo(NodeInfo sourceNodeInfo) {
-    LOGGER.trace("processSenderNodeInfo({})", sourceNodeInfo);
-    if (sourceNodeInfo.getKey().equals(mLocalKey)) {
-      return;
+  private class NodeDiscoveryTask implements Runnable {
+    private final BlockingQueue<NodeDiscoveryTaskEvent> mInputQueue;
+    private final List<Optional<NodeInfo>> mCandidates;
+    private final ExpectedMessageIds mExpectedIds;
+
+    public NodeDiscoveryTask() {
+      mInputQueue = mNodeDiscoveryListener;
+      mCandidates = new ArrayList<>();
+      for (int i = 0; i < Key.KEY_LENGTH; ++i) {
+        mCandidates.add(Optional.empty());
+      }
+      mExpectedIds = new ExpectedMessageIds();
     }
-    int distBit = getLocalKey().getDistanceBit(sourceNodeInfo.getKey());
-    List<NodeInfo> bucket = mBuckets.get(distBit);
-    synchronized (bucket) {
-      int elementIndex = findIndexOfNodeInfo(bucket, sourceNodeInfo.getKey());
-      if (elementIndex == -1) {
-        if (bucket.size() < mBucketSize) {
-          LOGGER.trace("processSenderNodeInfo() -> bucket.add({})", sourceNodeInfo);
-          bucket.add(sourceNodeInfo);
-        } else {
-          NodeInfo firstNodeInfo = bucket.get(0);
-          List<NodeInfo> waitingBucket = mBucketsWaitingList.get(distBit);
-          if (findIndexOfNodeInfo(waitingBucket, sourceNodeInfo.getKey()) == -1) {
-            waitingBucket.add(sourceNodeInfo);
-            if (waitingBucket.size() == 1) {
-              mMessageSender.sendMessageWithReply(firstNodeInfo.getSocketAddress(),
-                  new PingMessage(getLocalNodeInfo(), firstNodeInfo), new PingCheckMessageHandler(
-                      distBit));
-            }
+
+    @Override
+    public void run() {
+      LOGGER.trace("NodeDiscoveryTask.run()");
+      boolean hasStopped = false;
+
+      try {
+        while (!hasStopped) {
+          NodeDiscoveryTaskEvent event = mInputQueue.take();
+          if (event instanceof NodeDiscoveryTaskAddNodeEvent) {
+            handleAddNode((NodeDiscoveryTaskAddNodeEvent) event);
+          } else if (event instanceof NodeDiscoveryTaskPongEvent) {
+            handleReply((NodeDiscoveryTaskPongEvent) event);
+          } else if (event instanceof NodeDiscoveryTaskTimeoutEvent) {
+            handleTimeout((NodeDiscoveryTaskTimeoutEvent) event);
+          } else if (event instanceof NodeDiscoveryTaskStopTaskEvent) {
+            hasStopped = true;
+          } else {
+            LOGGER.error("NodeDiscoveryTask.run(): unknown event type: {}.", event);
           }
         }
+      } catch (InterruptedException e) {
+        LOGGER.error("NodeDiscoveryTask.run(): Unexpected interrupt happened.", e);
+      }
+      LOGGER.debug("NodeDiscoveryTask.run() -> void");
+    }
+
+    /**
+     * A Map wrapper which holds expected message IDs and their keys.
+     */
+    private class ExpectedMessageIds {
+      private final Map<Integer, Collection<Key>> mMessageIdToKeys = new HashMap<>();
+
+      public void addExpectedMessage(int id, Key destination) {
+        if (!mMessageIdToKeys.containsKey(id)) {
+          mMessageIdToKeys.put(id, new ArrayList<>());
+        }
+        mMessageIdToKeys.get(id).add(destination);
+      }
+
+      public void deleteExpectedMessage(int id, Key destination) {
+        if (mMessageIdToKeys.containsKey(id)) {
+          mMessageIdToKeys.get(id).remove(destination);
+          if (mMessageIdToKeys.get(id).isEmpty()) {
+            mMessageIdToKeys.remove(id);
+          }
+        }
+      }
+
+      public boolean isMessageExpected(int id, Key source) {
+        return mMessageIdToKeys.containsKey(id) && mMessageIdToKeys.get(id).contains(source);
+      }
+    }
+
+    private void handleAddNode(NodeDiscoveryTaskAddNodeEvent event) {
+      LOGGER.trace("NodeDiscoveryTask.handleAddNode({})", event);
+      NodeInfo newNodeInfo = event.mNodeInfo;
+      if (!mRoutingTable.contains(newNodeInfo.getKey())) {
+        int distanceBit = mLocalKey.getDistanceBit(newNodeInfo.getKey());
+        if (mRoutingTable.isBucketFull(distanceBit)) {
+          if (mCandidates.get(distanceBit).isPresent()) {
+            LOGGER.trace("NodeDiscoveryTask.handleAddNode({}) -> a candidate for this bucket is"
+                + " already present.", event);
+          } else {
+            mCandidates.set(distanceBit, Optional.of(newNodeInfo));
+            Optional<NodeInfo> oldestNode = mRoutingTable.getLeastRecentlyAccessedNode(distanceBit);
+            assert oldestNode.isPresent();
+            sendPingMessage(oldestNode.get());
+          }
+        } else {
+          mRoutingTable.add(newNodeInfo);
+          notifyNeighbourListener(newNodeInfo);
+        }
       } else {
-        LOGGER.trace("processSenderNodeInfo() -> replaceNodeInfo({}, {})", elementIndex,
-            sourceNodeInfo);
-        replaceNodeInfo(bucket, elementIndex, sourceNodeInfo);
+        mRoutingTable.updateNode(newNodeInfo);
+
+      }
+    }
+
+    private void handleReply(NodeDiscoveryTaskPongEvent event) {
+      LOGGER.trace("NodeDiscoveryTask.handleReply({})", event);
+      PongMessage pong = event.mMsg;
+      if (mExpectedIds.isMessageExpected(pong.getId(), pong.getSourceNodeInfo().getKey())) {
+        mExpectedIds.deleteExpectedMessage(pong.getId(), pong.getSourceNodeInfo().getKey());
+        int distanceBit = mLocalKey.getDistanceBit(pong.getSourceNodeInfo().getKey());
+        mCandidates.set(distanceBit, Optional.empty());
+      } // else time out was first.
+    }
+
+    private void handleTimeout(NodeDiscoveryTaskTimeoutEvent event) {
+      LOGGER.trace("NodeDiscoveryTask.handleTimeout({})", event);
+      if (mExpectedIds.isMessageExpected(event.mPingId, event.mTimedOutNodeInfo.getKey())) {
+        mExpectedIds.deleteExpectedMessage(event.mPingId, event.mTimedOutNodeInfo.getKey());
+        int distanceBit = mLocalKey.getDistanceBit(event.mTimedOutNodeInfo.getKey());
+        Optional<NodeInfo> candidate = mCandidates.set(distanceBit, Optional.empty());
+        if (!candidate.isPresent()) {
+          LOGGER.error("NodeDiscoveryTask.handleTimeout(): Unexpected lack of candidate.");
+        } else {
+          mRoutingTable.replaceNode(event.mTimedOutNodeInfo, candidate.get());
+          notifyNeighbourListener(candidate.get());
+        }
+      }
+    }
+
+    private void sendPingMessage(NodeInfo targetNode) {
+      int pingId = mRandom.nextInt();
+      mMessageSender.sendMessage(targetNode.getSocketAddress(),
+          new PingMessage(getLocalNodeInfo(), targetNode, pingId));
+      mExpectedIds.addExpectedMessage(pingId, targetNode.getKey());
+      mScheduledExecutor.schedule(() -> {
+          boolean hasPutSuccessfully = false;
+          NodeDiscoveryTaskTimeoutEvent timeoutEvent =
+              new NodeDiscoveryTaskTimeoutEvent(targetNode, pingId);
+
+          while (!hasPutSuccessfully) {
+            try {
+              mNodeDiscoveryListener.put(timeoutEvent);
+              hasPutSuccessfully = true;
+            } catch (InterruptedException e) {
+              LOGGER.error("TimeoutHandler(): Unexpected interrupt", e);
+            }
+          }
+        },
+          mMessageTimeout,
+          mMessageTimeoutUnit);
+    }
+  }
+
+  private static interface NodeDiscoveryTaskEvent { }
+
+  private static class NodeDiscoveryTaskAddNodeEvent implements NodeDiscoveryTaskEvent {
+    private final NodeInfo mNodeInfo;
+
+    public NodeDiscoveryTaskAddNodeEvent(NodeInfo nodeInfo) {
+      mNodeInfo = nodeInfo;
+    }
+  }
+
+  private static class NodeDiscoveryTaskPongEvent implements NodeDiscoveryTaskEvent {
+    public final PongMessage mMsg;
+
+    public NodeDiscoveryTaskPongEvent(PongMessage msg) {
+      mMsg = msg;
+    }
+  }
+
+  private static class NodeDiscoveryTaskStopTaskEvent implements NodeDiscoveryTaskEvent { }
+
+  private static class NodeDiscoveryTaskTimeoutEvent implements NodeDiscoveryTaskEvent {
+    public final NodeInfo mTimedOutNodeInfo;
+    public final int mPingId;
+
+    public NodeDiscoveryTaskTimeoutEvent(NodeInfo timedOutNodeInfo, int pingId) {
+      mTimedOutNodeInfo = timedOutNodeInfo;
+      mPingId = pingId;
+    }
+  }
+
+  /* End of node discovery implementation */
+
+  /**
+   * Handler for incoming kademlia messages.
+   */
+  private class MessageListenerImpl implements MessageListener {
+    @Override
+    public void receiveFindNodeMessage(FindNodeMessage msg) {
+      LOGGER.trace("receiveFindNodeMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      Collection<NodeInfo> foundNodes = mRoutingTable.getClosestNodes(msg.getSearchedKey(),
+          mBucketSize);
+      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(),
+          new FindNodeReplyMessage(getLocalNodeInfo(),
+              msg.getSourceNodeInfo(),
+              msg.getId(),
+              foundNodes));
+    }
+
+    @Override
+    public void receiveFindNodeReplyMessage(FindNodeReplyMessage msg) {
+      LOGGER.trace("receiveFindNodeReplyMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      notifyFindNodeTaskEventListeners(msg);
+    }
+
+    @Override
+    public void receivePingMessage(PingMessage msg) {
+      LOGGER.trace("receivePingMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      PongMessage pongMessage = new PongMessage(getLocalNodeInfo(),
+          msg.getSourceNodeInfo(),
+          msg.getId());
+      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
+    }
+
+    @Override
+    public void receivePongMessage(PongMessage msg) {
+      LOGGER.trace("receivePongMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      NodeDiscoveryTaskEvent event = new NodeDiscoveryTaskPongEvent(msg);
+      mNodeDiscoveryListener.add(event);
+    }
+
+    @Override
+    public String toString() {
+      return String.format("KademliaRoutingImpl.MessageListenerImpl{super:%s}",
+          KademliaRoutingImpl.this);
+    }
+
+    private void addCandidate(NodeInfo sourceNodeInfo) {
+      NodeDiscoveryTaskEvent event = new NodeDiscoveryTaskAddNodeEvent(sourceNodeInfo);
+      try {
+        mNodeDiscoveryListener.put(event);
+      } catch (InterruptedException e) {
+        LOGGER.error("addCandidate(): Unexpected interruptedException.", e);
       }
     }
   }
 
-  /**
-   * Replaces node info in given bucket. Assumes we have lock on that bucket.
-   *
-   * @param bucket
-   * @param indexToReplace
-   * @param newNodeInfo
-   */
-  /** TODO */
-  private void replaceNodeInfo(List<NodeInfo> bucket, int indexToReplace, NodeInfo newNodeInfo) {
-    synchronized (bucket) {
-      bucket.remove(indexToReplace);
-      bucket.add(newNodeInfo);
+  private NodeInfo getLocalNodeInfo() {
+    return new NodeInfo(mLocalKey, mLocalAddress);
+  }
+
+  private void initializeRoutingTable() {
+    mRoutingTable.clear();
+    mRoutingTable.addAll(mInitialKnownPeers);
+  }
+
+  private void notifyNeighbourListener(NodeInfo newNodeInfo) {
+    mNeighbourListenerLock.lock();
+    try {
+      if (mNeighbourListener.isPresent()) {
+        mNeighbourListener.get().notifyNewNeighbour(newNodeInfo);
+      }
+    } finally {
+      mNeighbourListenerLock.unlock();
     }
   }
 }

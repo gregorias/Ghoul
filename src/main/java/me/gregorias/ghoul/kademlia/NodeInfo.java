@@ -1,7 +1,11 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.utils.DeserializationException;
+import me.gregorias.ghoul.utils.Utils;
+
 import java.io.Serializable;
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
 
 /**
  * Pair of {@link Key} and associated socket address of a node.
@@ -68,5 +72,16 @@ public class NodeInfo implements Serializable {
   @Override
   public String toString() {
     return String.format("NodeInfo[key: %s, address: %s]", mKey, mSocketAddress);
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    mKey.serialize(buffer);
+    Utils.serializeInetSocketAddress(mSocketAddress, buffer);
+  }
+
+  public static NodeInfo deserialize(ByteBuffer buffer) throws DeserializationException {
+    Key key = Key.deserialize(buffer);
+    InetSocketAddress socketAddress = Utils.deserializeInetSocketAddress(buffer);
+    return new NodeInfo(key, socketAddress);
   }
 }

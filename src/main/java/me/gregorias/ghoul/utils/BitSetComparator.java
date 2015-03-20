@@ -1,5 +1,6 @@
 package me.gregorias.ghoul.utils;
 
+import java.io.Serializable;
 import java.util.BitSet;
 import java.util.Comparator;
 
@@ -9,8 +10,9 @@ import java.util.Comparator;
  *
  * @author Grzegorz Milka
  */
-public class BitSetComparator implements Comparator<BitSet> {
-  public static BitSetComparator COMPARATOR = new BitSetComparator();
+public class BitSetComparator implements Comparator<BitSet>, Serializable {
+  private static final long serialVersionUID = 1L;
+  public static final BitSetComparator COMPARATOR = new BitSetComparator();
 
   @Override
   public int compare(BitSet b1, BitSet b2) {

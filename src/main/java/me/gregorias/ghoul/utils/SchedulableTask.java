@@ -4,9 +4,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+// TODO
 /**
  * Wrapper task which execution should be scheduled and that may be called repeatedly.
  *
@@ -23,8 +23,6 @@ public class SchedulableTask {
   private final int mDelay;
   private final TimeUnit mDelayUnit;
   private final ScheduledExecutorService mExecutor;
-
-  private final ScheduledFuture
 
   public SchedulableTask(Runnable baseTask,
                          int delay,
@@ -49,7 +47,8 @@ public class SchedulableTask {
 
   }
 
-  private class WrapperTask implements Runnable{
+  private class WrapperTask implements Runnable {
+
     @Override
     public void run() {
       try {

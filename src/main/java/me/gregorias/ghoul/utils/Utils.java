@@ -1,5 +1,9 @@
 package me.gregorias.ghoul.utils;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 
@@ -8,6 +12,10 @@ import java.util.BitSet;
  */
 public class Utils {
   private static final int BITS_IN_BYTE = 8;
+  private static final byte IPV4_TAG = 4;
+  private static final int IPV4_BYTE_LENGTH = 4;
+  private static final byte IPV6_TAG = 6;
+  private static final int IPV6_BYTE_LENGTH = 16;
 
   public static ByteBuffer arrayToByteBuffer(byte[] array) {
     ByteBuffer buffer = ByteBuffer.allocate(array.length);
@@ -16,7 +24,7 @@ public class Utils {
   }
 
   public static byte[] byteBufferToArray(ByteBuffer buffer) {
-    byte[] array = new byte[buffer.position()];
+    byte[] array = new byte[buffer.limit()];
     buffer.get(array);
     return array;
   }
@@ -45,5 +53,67 @@ public class Utils {
       }
     }
     return bitSet;
+  }
+
+  public static void serializeInetAddress(InetAddress inetAddress, ByteBuffer buffer) {
+    byte[] address = inetAddress.getAddress();
+    if (address.length == IPV4_BYTE_LENGTH) {
+      if (buffer.capacity() - buffer.position() < (1 + IPV4_BYTE_LENGTH)) {
+        throw new IllegalArgumentException("Insufficient buffer space.");
+      }
+      buffer.put(IPV4_TAG);
+      buffer.put(address);
+    } else if (address.length == IPV6_BYTE_LENGTH) {
+      if (buffer.capacity() - buffer.position() < (1 + IPV6_BYTE_LENGTH)) {
+        throw new IllegalArgumentException("Insufficient buffer space.");
+      }
+      buffer.put(IPV6_TAG);
+      buffer.put(address);
+    } else {
+      throw new IllegalArgumentException("Unknown type of inet address.");
+    }
+  }
+
+  public static InetAddress deserializeInetAddress(ByteBuffer buffer)
+      throws DeserializationException {
+    byte[] address;
+    try {
+      byte ipTag = buffer.get();
+      switch (ipTag) {
+        case IPV4_TAG:
+          address = new byte[IPV4_BYTE_LENGTH];
+          buffer.get(address);
+          break;
+        case IPV6_TAG:
+          address = new byte[IPV6_BYTE_LENGTH];
+          buffer.get(address);
+          break;
+        default:
+          throw new DeserializationException("Unknown message tag.");
+      }
+      return InetAddress.getByAddress(address);
+    } catch (BufferUnderflowException e) {
+      throw new DeserializationException("Buffer has insufficient elements.");
+    } catch (UnknownHostException e) {
+      throw new IllegalStateException("Unexpected UnknownHostException");
+    }
+  }
+
+  public static void serializeInetSocketAddress(InetSocketAddress socketAddress,
+                                                ByteBuffer buffer) {
+    serializeInetAddress(socketAddress.getAddress(), buffer);
+    buffer.putShort((short) socketAddress.getPort());
+  }
+
+  public static InetSocketAddress deserializeInetSocketAddress(ByteBuffer buffer)
+      throws DeserializationException {
+    InetAddress address = deserializeInetAddress(buffer);
+    short port;
+    try {
+      port = buffer.getShort();
+    } catch (BufferUnderflowException e) {
+      throw new DeserializationException(e);
+    }
+    return new InetSocketAddress(address, port);
   }
 }

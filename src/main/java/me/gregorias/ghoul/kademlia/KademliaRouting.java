@@ -34,19 +34,31 @@ public interface KademliaRouting {
       KademliaException;
 
   /**
+   * @return hosts represented in local routing table.
+   */
+  Collection<NodeInfo> getFlatRoutingTable();
+
+  /**
    * @return Key representing this peer
    */
   Key getLocalKey();
 
   /**
-   * @return hosts represented in local routing table.
-   */
-  Collection<NodeInfo> getRoutingTable();
-
-  /**
    * @return is kademlia running.
    */
   boolean isRunning();
+
+  /**
+   * Registers neighbour listener which will receive notifications about newly added nodes.
+   *
+   * @param listener listener to register
+   */
+  void registerNeighbourListener(NeighbourListener listener);
+
+  /**
+   * Unregisters neighbour listener if any is present.
+   */
+  void unregisterNeighbourListener();
 
   /**
    * Connect and initialize this peer.
