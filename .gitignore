@@ -2,8 +2,16 @@ build
 .git
 .gradle
 .idea
+*.jar
+lib
 
-#TeX files
+# Idea files
+
+*.iws
+*.iml
+*.ipr
+
+# TeX files
 
 *.aux
 *.out

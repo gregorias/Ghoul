@@ -1,0 +1,52 @@
+apply plugin: 'java'
+
+def DEPENDENCY_LIB_DIRECTORY = 'lib/'
+
+group = 'me.gregorias'
+version = '0.1'
+
+repositories {
+  mavenCentral()
+}
+
+dependencies {
+  compile group: 'commons-cli', name: 'commons-cli', version: '1.2'
+  compile group: 'me.gregorias', name: 'dfuntest', version: '0.6'
+  compile project(':ghoul-core')
+  runtime group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.10'
+}
+
+compileJava {
+  sourceCompatibility = '1.8'
+  targetCompatibility = '1.8'
+}
+
+
+jar {
+  manifest {
+    attributes 'Main-Class': 
+                  'me.gregorias.ghoul.dfuntest.KademliaConsistencyCheckMain',
+               'Class-Path': generateClassPath(configurations.runtime,
+                 DEPENDENCY_LIB_DIRECTORY)
+  }
+}
+
+task jarJavadoc(type: Jar, dependsOn: javadoc) {
+  classifier = 'javadoc'
+  from javadoc.destinationDir
+}
+
+task jarSource(type: Jar) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+artifacts {
+  archives jarSource
+  archives jarJavadoc
+}
+
+task copyRuntimeDependencies(type: Copy) {
+  from configurations.runtime
+  into DEPENDENCY_LIB_DIRECTORY
+}
