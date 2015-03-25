@@ -24,8 +24,7 @@ compileJava {
 
 jar {
   manifest {
-    attributes 'Main-Class': 
-                  'me.gregorias.ghoul.dfuntest.KademliaConsistencyCheckMain',
+    attributes 'Main-Class': 'me.gregorias.ghoul.dfuntest.DfuntestMain',
                'Class-Path': generateClassPath(configurations.runtime,
                  DEPENDENCY_LIB_DIRECTORY)
   }

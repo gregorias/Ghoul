@@ -1,15 +1,22 @@
+apply plugin: 'idea'
 apply plugin: 'maven'
 
 def configDir = new File(rootDir, 'config')
 
 allprojects {
-  apply plugin: 'idea'
   apply plugin: 'eclipse'
+}
+
+idea {
+  project {
+    languageLevel = '1.8'
+  }
 }
 
 subprojects {
   apply plugin: 'checkstyle'
   apply plugin: 'findbugs'
+  apply plugin: 'idea'
   apply plugin: 'pmd'
 
   checkstyle {

@@ -47,7 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Main entry point for {@link KademliaConsistencyCheckTestScript}.
+ * Main entry point for running {@link KademliaConsistencyCheckTestScript}.
  *
  * It runs dfuntest's TestsScripts for kademlia or displays help message.
  *
@@ -67,9 +67,9 @@ import org.slf4j.LoggerFactory;
  *
  * @author Grzegorz Milka
  */
-public class KademliaConsistencyCheckMain {
+public class DfuntestMain {
   private static final Logger LOGGER = LoggerFactory.getLogger(
-      KademliaConsistencyCheckMain.class);
+      DfuntestMain.class);
 
   private static final String REPORT_PATH_PREFIX = "report_";
 
@@ -258,7 +258,7 @@ public class KademliaConsistencyCheckMain {
 
     if (cmd.hasOption(HELP_OPTION)) {
       HelpFormatter formatter = new HelpFormatter();
-      formatter.printHelp(KademliaConsistencyCheckMain.class.getSimpleName(), options);
+      formatter.printHelp(DfuntestMain.class.getSimpleName(), options);
       return Optional.empty();
     }
 
@@ -313,6 +313,6 @@ public class KademliaConsistencyCheckMain {
     return Optional.of(properties);
   }
 
-  private KademliaConsistencyCheckMain() {
+  private DfuntestMain() {
   }
 }

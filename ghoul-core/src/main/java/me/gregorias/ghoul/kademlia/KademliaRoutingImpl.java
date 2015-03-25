@@ -693,7 +693,7 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
 
     private void handleAddNode(NodeDiscoveryTaskAddNodeEvent event) {
-      LOGGER.trace("NodeDiscoveryTask.handleAddNode({})", event);
+      LOGGER.trace("NodeDiscoveryTask.handleAddNode({})", event.toString());
       NodeInfo newNodeInfo = event.mNodeInfo;
       if (!mRoutingTable.contains(newNodeInfo.getKey())) {
         int distanceBit = mLocalKey.getDistanceBit(newNodeInfo.getKey());
@@ -774,6 +774,11 @@ class KademliaRoutingImpl implements KademliaRouting {
     public NodeDiscoveryTaskAddNodeEvent(NodeInfo nodeInfo) {
       mNodeInfo = nodeInfo;
     }
+
+    @Override
+    public String toString() {
+      return String.format("NodeDiscoveryTaskAddNodeEvent{mNodeInfo:%s}", mNodeInfo);
+    }
   }
 
   private static class NodeDiscoveryTaskPongEvent implements NodeDiscoveryTaskEvent {
@@ -781,6 +786,11 @@ class KademliaRoutingImpl implements KademliaRouting {
 
     public NodeDiscoveryTaskPongEvent(PongMessage msg) {
       mMsg = msg;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("NodeDiscoveryTaskPongEvent{mMsg:%s}", mMsg);
     }
   }
 
@@ -793,6 +803,13 @@ class KademliaRoutingImpl implements KademliaRouting {
     public NodeDiscoveryTaskTimeoutEvent(NodeInfo timedOutNodeInfo, int pingId) {
       mTimedOutNodeInfo = timedOutNodeInfo;
       mPingId = pingId;
+    }
+
+    @Override
+    public String toString() {
+      return String.format("NodeDiscoveryTaskTimeoutEvent{mTimedOutNodeInfo:%s, mPingId:%d}",
+          mTimedOutNodeInfo,
+          mPingId);
     }
   }
 

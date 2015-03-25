@@ -1,6 +1,7 @@
 package me.gregorias.ghoul.dfuntest;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,6 +22,12 @@ import me.gregorias.ghoul.kademlia.NodeInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Test Script which runs all kademlia and periodically checks whether their routing tables form a
+ * a strongly connected graph.
+ *
+ * This test fails iff at least one check gives more than one component or an IOException happens.
+ */
 public class KademliaConsistencyCheckTestScript implements TestScript<KademliaApp> {
   private static final Logger LOGGER = LoggerFactory
       .getLogger(KademliaConsistencyCheckTestScript.class);
@@ -59,7 +66,7 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
         + e.getMessage() + ".");
     }
 
-    LOGGER.info("run(): Starting apps.");
+    LOGGER.info("run(): Starting kademlias.");
     try {
       startKademlias(apps);
     } catch (KademliaException | IOException e) {
@@ -69,7 +76,9 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
     }
 
     mResult = new TestResult(Type.SUCCESS, "Connection graph was consistent the entire time.");
+
     ConsistencyChecker consistencyChecker = new ConsistencyChecker(apps);
+
     LOGGER.info("run(): Scheduling consistency checker.");
     mScheduledExecutor.scheduleWithFixedDelay(consistencyChecker, CHECK_DELAY, CHECK_DELAY,
         CHECK_DELAY_UNIT);
@@ -91,6 +100,16 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
     return mResult;
   }
 
+  @Override
+  public String toString() {
+    return "KademliaConsistencyCheckTestScript";
+  }
+
+  /**
+   * Scheduled runnable which checks whether connection graph is strongly connected.
+   * It shuts itself down after CHECK_COUNT tries or after failed test.
+   * On shut down it informs the main test thread about it.
+   */
   private class ConsistencyChecker implements Runnable {
     private final Collection<KademliaApp> mApps;
     private int mCheckCount;
@@ -107,12 +126,12 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
       try {
         LOGGER.trace("ConsistencyChecker.run(): getConnectionGraph()");
         graph = getConnectionGraph(mApps);
-        LOGGER.trace("ConsistencyChecker.run(): checkConsistency()");
+        LOGGER.trace("ConsistencyChecker.run(): checkConsistency(graph), graph: \n{}",
+            graphToString(graph));
         ConsistencyResult result = checkConsistency(graph);
         if (result.getType() == ConsistencyResult.Type.INCONSISTENT) {
-          mResult = new TestResult(Type.FAILURE, "Graph is not consistent starting from: "
-              + result.getStartVert() + " could only reach " + result.getReachableVerts().size()
-              + ".");
+          mResult = new TestResult(Type.FAILURE, "Found inconsistent graph.\n"
+              + result.getInfo());
           shutDown();
           LOGGER.info("ConsistencyChecker.run() -> failure");
           return;
@@ -145,69 +164,42 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
   }
 
   private static class ConsistencyResult {
-    private final Key mStartVert;
-    private final Collection<Key> mReachableVerts;
-    private final Collection<Key> mUnreachableVerts;
-
-    public ConsistencyResult(Key startVert, Collection<Key> reachableVerts,
-        Collection<Key> unreachableVerts) {
-      mStartVert = startVert;
-      mReachableVerts = new LinkedList<>(reachableVerts);
-      mUnreachableVerts = new LinkedList<>(unreachableVerts);
-    }
-
-    public Collection<Key> getReachableVerts() {
-      return mReachableVerts;
-    }
-
-    public Key getStartVert() {
-      return mStartVert;
-    }
-
-    public Collection<Key> getUnreachableVerts() {
-      return mUnreachableVerts;
-    }
-
-    public Type getType() {
-      if (getUnreachableVerts().size() == 0) {
-        return Type.CONSISTENT;
-      } else {
-        return Type.INCONSISTENT;
-      }
-    }
+    private final Type mType;
+    private final String mInfo;
 
     public static enum Type {
       CONSISTENT, INCONSISTENT
     }
+
+    public ConsistencyResult(Type type, String info) {
+      mType = type;
+      mInfo = info;
+    }
+
+    public String getInfo() {
+      return mInfo;
+    }
+
+    public Type getType() {
+      return mType;
+    }
   }
 
   private static ConsistencyResult checkConsistency(Map<Key, Collection<Key>> graph) {
-    Set<Key> reachableVerts = new HashSet<>();
-    Queue<Key> toVisit = new LinkedList<>();
-    if (graph.size() == 0) {
-      return new ConsistencyResult(new Key(0), new LinkedList<>(), new LinkedList<>());
-    }
-
-    Key firstVert = graph.keySet().iterator().next();
-    toVisit.add(firstVert);
-    reachableVerts.add(firstVert);
-
-    while (!toVisit.isEmpty()) {
-      Key curVert = toVisit.remove();
-      for (Key vert : graph.get(curVert)) {
-        if (!reachableVerts.contains(vert)) {
-          toVisit.add(vert);
-          reachableVerts.add(vert);
-        }
+    Collection<Collection<Key>> components = findStronglyConnectedComponents(graph);
+    if (components.size() > 1) {
+      StringBuilder informationString = new StringBuilder();
+      informationString.append("The connection graph was:\n");
+      informationString.append(graphToString(graph));
+      informationString.append("\nIt's strongly connected components are:\n");
+      for (Collection<Key> component : components) {
+        informationString.append(collectionToString(component));
+        informationString.append("\n");
       }
-    }
-
-    if (graph.size() == reachableVerts.size()) {
-      return new ConsistencyResult(firstVert, reachableVerts, new LinkedList<Key>());
+      return new ConsistencyResult(ConsistencyResult.Type.INCONSISTENT,
+          informationString.toString());
     } else {
-      Set<Key> allVerts = new HashSet<>(graph.keySet());
-      allVerts.removeAll(reachableVerts);
-      return new ConsistencyResult(firstVert, reachableVerts, allVerts);
+      return new ConsistencyResult(ConsistencyResult.Type.CONSISTENT, "");
     }
   }
 
@@ -294,5 +286,128 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
             app.getName(), e);
       }
     }
+  }
+
+  // Graph utilities
+  private static String collectionToString(Collection<Key> collection) {
+    StringBuilder collectionString = new StringBuilder();
+    collectionString.append("[");
+    boolean isFirst = true;
+    for (Key key : collection) {
+      if (!isFirst) {
+        collectionString.append(", ");
+      }
+      collectionString.append(key.toInt().toString());
+      isFirst = false;
+    }
+    collectionString.append("]");
+    return collectionString.toString();
+  }
+
+  private static String graphToString(Map<Key, Collection<Key>> graph) {
+    StringBuilder graphString = new StringBuilder();
+    for (Map.Entry<Key, Collection<Key>> entry : graph.entrySet()) {
+      graphString.append(entry.getKey().toInt().toString() + ": ");
+      graphString.append(collectionToString(entry.getValue()));
+      graphString.append("\n");
+    }
+    return graphString.toString();
+  }
+
+  /**
+   * Find strongly connected components of the graph using Kosaraju's algorithm.
+   *
+   * @param graph graph
+   * @return strongly connected components
+   */
+  private static Collection<Collection<Key>> findStronglyConnectedComponents(
+      Map<Key, Collection<Key>> graph) {
+    LinkedList<Key> reverseExitOrderStack = new LinkedList<>();
+
+    Set<Key> visitedVerts = new HashSet<>();
+
+    // Performs DFS to fill reverseExitOrderStack
+    for (Map.Entry<Key, Collection<Key>> entry : graph.entrySet()) {
+      Key key = entry.getKey();
+      if (visitedVerts.contains(key)) {
+        continue;
+      }
+
+      LinkedList<Key> keyStack = new LinkedList<>();
+      LinkedList<Queue<Key>> neighoursStack = new LinkedList<>();
+
+      visitedVerts.add(key);
+      keyStack.push(key);
+      Queue<Key> neighboursQueue = new LinkedList<>(entry.getValue());
+      neighoursStack.push(neighboursQueue);
+
+      while (!keyStack.isEmpty()) {
+        Key topKey = keyStack.getFirst();
+        neighboursQueue = neighoursStack.getFirst();
+
+        if (neighboursQueue.isEmpty()) {
+          reverseExitOrderStack.push(topKey);
+          neighoursStack.pop();
+          keyStack.pop();
+        } else {
+          Key nextNeighbour = neighboursQueue.poll();
+          if (!visitedVerts.contains(nextNeighbour)) {
+            visitedVerts.add(nextNeighbour);
+            keyStack.push(nextNeighbour);
+            neighboursQueue = new LinkedList<>(graph.get(nextNeighbour));
+            neighoursStack.push(neighboursQueue);
+          }
+        }
+      }
+    }
+
+    Map<Key, Collection<Key>> reversedGraph = reverseGraph(graph);
+
+    Collection<Collection<Key>> stronglyConnectedComponents = new ArrayList<>();
+
+    visitedVerts.clear();
+    while (!reverseExitOrderStack.isEmpty()) {
+      Key topKey = reverseExitOrderStack.pop();
+      if (visitedVerts.contains(topKey)) {
+        continue;
+      }
+
+      Collection<Key> component = new ArrayList<>();
+
+      Queue<Key> toVisit = new LinkedList<>();
+      component.add(topKey);
+      visitedVerts.add(topKey);
+      toVisit.add(topKey);
+
+      while (!toVisit.isEmpty()) {
+        topKey = toVisit.poll();
+        Collection<Key> neighbours = reversedGraph.get(topKey);
+        for (Key neighbour : neighbours) {
+          if (!visitedVerts.contains(neighbour)) {
+            component.add(neighbour);
+            visitedVerts.add(neighbour);
+            toVisit.add(neighbour);
+          }
+        }
+      }
+      stronglyConnectedComponents.add(component);
+    }
+
+    return stronglyConnectedComponents;
+  }
+
+  private static Map<Key, Collection<Key>> reverseGraph(Map<Key, Collection<Key>> graph) {
+    Map<Key, Collection<Key>> reversedGraph = new HashMap<>();
+    for (Key key : graph.keySet()) {
+      reversedGraph.put(key, new ArrayList<>());
+    }
+
+    for (Map.Entry<Key, Collection<Key>> entry : graph.entrySet()) {
+      for (Key neighbour : entry.getValue()) {
+        reversedGraph.get(neighbour).add(entry.getKey());
+      }
+    }
+
+    return reversedGraph;
   }
 }
