@@ -8,8 +8,7 @@ import java.util.BitSet;
 import java.util.Comparator;
 
 /**
- * Comparator of Kademlia {@link Key} with specified key based
- * on closeness.
+ * Comparator of Kademlia {@link Key} based on closeness to specified reference key.
  *
  * @author Grzegorz Milka
  */

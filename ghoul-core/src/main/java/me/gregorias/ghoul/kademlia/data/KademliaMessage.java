@@ -2,12 +2,11 @@ package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
 
+import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
 /**
  * Message sent between kademlia hosts.
- * It should information about source and destination, but both may be null if the situation
- * requires it.
  */
 public abstract class KademliaMessage implements Serializable {
   private static final long serialVersionUID = 1L;
@@ -16,7 +15,7 @@ public abstract class KademliaMessage implements Serializable {
   private final NodeInfo mDestNodeInfo;
   private final int mId;
 
-  public KademliaMessage(NodeInfo src, NodeInfo dest, int id) {
+  public KademliaMessage(@NotNull NodeInfo src, @NotNull NodeInfo dest, int id) {
     mSrcNodeInfo = src;
     mDestNodeInfo = dest;
     mId = id;

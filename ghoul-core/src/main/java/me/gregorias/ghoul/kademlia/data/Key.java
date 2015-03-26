@@ -11,7 +11,9 @@ import java.util.BitSet;
 import java.util.Random;
 
 /**
- * Immutable 160 bit long Kademlia key. The LSB has index 0.
+ * Immutable 160 bit long Kademlia key.
+ *
+ * The least significant bit has index 0.
  *
  * @author Grzegorz Milka
  */
@@ -35,7 +37,7 @@ public class Key implements Serializable {
    */
   public Key(int key) {
     if (key < 0) {
-      throw new IllegalArgumentException("Key should be a nonnegative number.");
+      throw new IllegalArgumentException("Key should be a non-negative number.");
     }
     BitSet bitSet = new BitSet(KEY_LENGTH);
     for (int idx = 0; key > 0; ++idx) {

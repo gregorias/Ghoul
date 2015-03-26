@@ -2,19 +2,23 @@ package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.utils.DeserializationException;
 
+import javax.validation.constraints.NotNull;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * Reply to FIND_NODE message
+ */
 public final class FindNodeReplyMessage extends KademliaMessage {
   private static final long serialVersionUID = 1L;
 
   private final List<NodeInfo> mFoundNodes;
 
-  public FindNodeReplyMessage(NodeInfo srcNodeInfo,
-                              NodeInfo destNodeInfo,
+  public FindNodeReplyMessage(@NotNull NodeInfo srcNodeInfo,
+                              @NotNull NodeInfo destNodeInfo,
                               int id,
                               Collection<NodeInfo> foundNodes) {
     super(srcNodeInfo, destNodeInfo, id);

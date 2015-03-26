@@ -2,6 +2,7 @@ package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.utils.DeserializationException;
 
+import javax.validation.constraints.NotNull;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
@@ -11,7 +12,7 @@ import java.nio.ByteBuffer;
 public final class PongMessage extends KademliaMessage {
   private static final long serialVersionUID = 1L;
 
-  public PongMessage(NodeInfo srcNodeInfo, NodeInfo destNodeInfo, int id) {
+  public PongMessage(@NotNull NodeInfo srcNodeInfo, @NotNull NodeInfo destNodeInfo, int id) {
     super(srcNodeInfo, destNodeInfo, id);
   }
 

@@ -1,8 +1,8 @@
 package me.gregorias.ghoul.kademlia.data;
 
 /**
- * Exception specific to kademlia which may indicate an unexpected IOException or wrongly behaving
- * neighbour node.
+ * Exception specific to kademlia which may indicate an unexpected IOException, wrongly behaving
+ * neighbour node etc.
  */
 public class KademliaException extends Exception {
   private static final long serialVersionUID = 1L;

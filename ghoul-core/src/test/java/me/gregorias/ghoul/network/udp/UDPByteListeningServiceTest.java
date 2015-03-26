@@ -87,7 +87,8 @@ public final class UDPByteListeningServiceTest {
   }
 
   @Test
-  public void shouldReceiveMessageAfterUnexpectedTypeOfSenderAddress() throws IOException, InterruptedException {
+  public void shouldReceiveMessageAfterUnexpectedTypeOfSenderAddress()
+      throws IOException, InterruptedException {
     when(mMockDatagramChannel.receive(any())).thenAnswer(new UnexpectedSenderAnswer())
         .thenAnswer(new MessageAnswer())
         .thenAnswer(new ClosedByInterruptAnswer());
@@ -145,6 +146,7 @@ public final class UDPByteListeningServiceTest {
    * This answer models this behaviour.
    */
   private static class ClosedByInterruptAnswer implements Answer<SocketAddress> {
+    @SuppressFBWarnings({"UW_UNCOND_WAIT", "WA_NOT_IN_LOOP"})
     @Override
     public SocketAddress answer(InvocationOnMock invocation) throws Throwable {
       try {
