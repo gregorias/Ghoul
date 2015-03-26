@@ -34,13 +34,15 @@ import static org.junit.Assert.assertTrue;
 public final class KademliaRoutingBasicTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(KademliaRoutingBasicTest.class);
   private static final Random RANDOM = new Random();
+  private static final long MESSAGE_TIMEOUT = 1;
+  private static final TimeUnit MESSAGE_TIMEOUT_UNIT = TimeUnit.SECONDS;
   private KademliaRoutingBuilder mBuilder = null;
   private LocalMessaging mLocalMessaging;
   private MessageSender mLocalSender;
   private InetSocketAddress mLocalAddress;
 
   @Rule
-  public Timeout mGlobalTimeout = new Timeout(1, TimeUnit.SECONDS);
+  public Timeout mGlobalTimeout = new Timeout(5, TimeUnit.SECONDS);
 
   @Before
   public void setUp() throws KademliaException {
@@ -56,7 +58,7 @@ public final class KademliaRoutingBasicTest {
     mLocalSender = new MessageSenderAdapter(mLocalMessaging.getByteSender(0));
     mBuilder.setExecutor(scheduledExecutor);
     mBuilder.setLocalAddress(mLocalAddress);
-
+    mBuilder.setMessageTimeout(MESSAGE_TIMEOUT, MESSAGE_TIMEOUT_UNIT);
   }
 
   @Test

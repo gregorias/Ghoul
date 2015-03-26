@@ -3,6 +3,7 @@ build
 .gradle
 .idea
 *.jar
+*.swp
 lib
 
 # Idea files

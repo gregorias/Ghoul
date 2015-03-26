@@ -55,7 +55,6 @@ class KademliaRoutingImpl implements KademliaRouting {
   private final ListeningService mListeningService;
   private final MessageListener mMessageListener;
 
-
   /**
    * Map from expected message id to a collection of FindNodeTaskEvent queues expecting response
    * on that id.
@@ -227,13 +226,14 @@ class KademliaRoutingImpl implements KademliaRouting {
     LOGGER.debug("stop()");
     mWriteRunningLock.lock();
     try {
-      mHeartBeatFuture.cancel(true);
-
-      mNodeDiscoveryListener.put(new NodeDiscoveryTaskStopTaskEvent());
-      LOGGER.trace("stop(): Inside lock");
+      LOGGER.trace("stop(): Inside running lock");
       if (!mIsRunning) {
         throw new IllegalStateException("Kademlia is not running.");
       }
+
+      mHeartBeatFuture.cancel(true);
+
+      mNodeDiscoveryListener.put(new NodeDiscoveryTaskStopTaskEvent());
       mNodeDiscoveryFuture.get();
 
       mListeningService.unregisterListener(mMessageListener);
@@ -503,8 +503,7 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
 
     private void unregisterAllEventListenersForThisTask() {
-      for (Key key : mRegisteredListeners.keySet()) {
-        int listenerId = mRegisteredListeners.get(key);
+      for (Integer listenerId : mRegisteredListeners.values()) {
         unregisterFindNodeTaskEventListener(listenerId, mEventQueue);
       }
       mRegisteredListeners.clear();
@@ -616,6 +615,7 @@ class KademliaRoutingImpl implements KademliaRouting {
       } finally {
         mReadRunningLock.unlock();
       }
+      LOGGER.trace("HeartBeatTask.run() -> void");
     }
   }
 

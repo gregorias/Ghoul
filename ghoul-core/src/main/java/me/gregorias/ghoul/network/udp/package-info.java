@@ -1,6 +1,6 @@
 /**
- * Simple Java DatagramChannel based implementation of network interfaces.
+ * Java DatagramChannel-based implementation of network interfaces.
  *
  * @author Grzegorz Milka
  */
-package me.gregorias.kademlia.network.udp;
+package me.gregorias.ghoul.network.udp;

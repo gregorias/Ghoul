@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+<local-net-address>localhost</local-net-address>
+<local-net-port>9000</local-net-port>
+<local-key>0</local-key>
+<bucket-size>2</bucket-size>
+<bootstrap-key>0</bootstrap-key>
+<bootstrap-net-address>localhost</bootstrap-net-address>
+<bootstrap-net-port>9000</bootstrap-net-port>
+<rest-port>10000</rest-port>
+</configuration>

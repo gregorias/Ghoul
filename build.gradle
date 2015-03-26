@@ -27,7 +27,7 @@ subprojects {
   findbugs {
     effort = "max"
     reportLevel = "low"
-    toolVersion = "3.0.0"
+    toolVersion = "3.0.1"
   }
 
   tasks.withType(FindBugs) {
