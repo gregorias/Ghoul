@@ -15,11 +15,11 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import me.gregorias.ghoul.interfaces.rest.RESTApp;
-import me.gregorias.ghoul.kademlia.KademliaException;
+import me.gregorias.ghoul.kademlia.data.KademliaException;
 import me.gregorias.ghoul.kademlia.KademliaRouting;
 import me.gregorias.ghoul.kademlia.KademliaRoutingBuilder;
-import me.gregorias.ghoul.kademlia.Key;
-import me.gregorias.ghoul.kademlia.NodeInfo;
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.network.udp.UDPByteListeningService;
 import me.gregorias.ghoul.network.udp.UDPByteSender;
 import org.apache.commons.configuration.ConfigurationException;

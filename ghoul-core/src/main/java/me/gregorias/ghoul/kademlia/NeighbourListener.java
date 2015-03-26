@@ -1,5 +1,7 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
+
 /**
  * Listener for newly added neighbours.
  */

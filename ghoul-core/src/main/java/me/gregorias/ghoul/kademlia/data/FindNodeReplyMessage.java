@@ -1,4 +1,4 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.utils.DeserializationException;
 
@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-class FindNodeReplyMessage extends KademliaMessage {
+public final class FindNodeReplyMessage extends KademliaMessage {
   private static final long serialVersionUID = 1L;
 
   private final List<NodeInfo> mFoundNodes;

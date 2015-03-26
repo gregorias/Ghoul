@@ -8,10 +8,10 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 
-import me.gregorias.ghoul.kademlia.KademliaException;
+import me.gregorias.ghoul.kademlia.data.KademliaException;
 import me.gregorias.ghoul.kademlia.KademliaRouting;
-import me.gregorias.ghoul.kademlia.Key;
-import me.gregorias.ghoul.kademlia.NodeInfo;
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import org.glassfish.jersey.server.JSONP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

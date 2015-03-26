@@ -1,5 +1,6 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.KademliaMessage;
 import me.gregorias.ghoul.network.ByteSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

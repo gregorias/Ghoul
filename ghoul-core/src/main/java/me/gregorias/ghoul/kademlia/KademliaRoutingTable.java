@@ -1,5 +1,9 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.KeyComparator;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

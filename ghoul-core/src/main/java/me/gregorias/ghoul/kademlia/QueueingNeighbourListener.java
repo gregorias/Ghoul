@@ -1,5 +1,7 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
+
 import java.util.concurrent.BlockingQueue;
 
 /**

@@ -1,4 +1,4 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.utils.DeserializationException;
 
@@ -6,35 +6,22 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
- * FIND_NODE message.
+ * PING message.
  */
-class FindNodeMessage extends KademliaMessage {
+public final class PingMessage extends KademliaMessage {
   private static final long serialVersionUID = 1L;
 
-  private final Key mKey;
-
-  public FindNodeMessage(NodeInfo srcNodeInfo, NodeInfo destNodeInfo, int id, Key searchedKey) {
+  public PingMessage(NodeInfo srcNodeInfo, NodeInfo destNodeInfo, int id) {
     super(srcNodeInfo, destNodeInfo, id);
-    mKey = searchedKey;
-  }
-
-  public Key getSearchedKey() {
-    return mKey;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("FindNodeMessage{mKey:%s}", mKey);
   }
 
   public void serialize(ByteBuffer buffer) {
     getSourceNodeInfo().serialize(buffer);
     getDestinationNodeInfo().serialize(buffer);
     buffer.putInt(getId());
-    mKey.serialize(buffer);
   }
 
-  public static FindNodeMessage deserialize(ByteBuffer buffer) throws DeserializationException {
+  public static PingMessage deserialize(ByteBuffer buffer) throws DeserializationException {
     NodeInfo srcNodeInfo = NodeInfo.deserialize(buffer);
     NodeInfo destNodeInfo = NodeInfo.deserialize(buffer);
     int id;
@@ -43,7 +30,15 @@ class FindNodeMessage extends KademliaMessage {
     } catch (BufferUnderflowException e) {
       throw new DeserializationException(e);
     }
-    Key key = Key.deserialize(buffer);
-    return new FindNodeMessage(srcNodeInfo, destNodeInfo, id, key);
+    return new PingMessage(srcNodeInfo, destNodeInfo, id);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("PingMessage{src:%s, dest:%s, id:%d}",
+        getSourceNodeInfo(),
+        getDestinationNodeInfo(),
+        getId());
   }
 }
+

@@ -1,5 +1,10 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.FindNodeMessage;
+import me.gregorias.ghoul.kademlia.data.FindNodeReplyMessage;
+import me.gregorias.ghoul.kademlia.data.KademliaMessage;
+import me.gregorias.ghoul.kademlia.data.PingMessage;
+import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.utils.DeserializationException;
 import me.gregorias.ghoul.utils.Utils;
 
@@ -8,7 +13,7 @@ import java.nio.ByteBuffer;
 import java.util.Optional;
 
 /**
- * Serialization utility for {@link me.gregorias.ghoul.kademlia.KademliaMessage}.
+ * Serialization utility for {@link KademliaMessage}.
  */
 public class MessageSerializer {
   public static final byte PING_TAG = 0;

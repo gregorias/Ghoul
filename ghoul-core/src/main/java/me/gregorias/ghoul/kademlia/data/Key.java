@@ -1,4 +1,4 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.utils.DeserializationException;
 import me.gregorias.ghoul.utils.Utils;
@@ -57,7 +57,7 @@ public class Key implements Serializable {
     this(Integer.parseInt(key, HEX));
   }
 
-  static Key newRandomKey(Random random) {
+  public static Key newRandomKey(Random random) {
     BitSet generatedBitSet = new BitSet(KEY_LENGTH);
     for (int bitIdx = 0; bitIdx < KEY_LENGTH; ++bitIdx) {
       if (random.nextBoolean()) {
@@ -68,7 +68,7 @@ public class Key implements Serializable {
     return new Key(generatedBitSet);
   }
 
-  static Key xor(Key firstKey, Key secondKey) {
+  public static Key xor(Key firstKey, Key secondKey) {
     BitSet newKey = firstKey.getBitSet();
     newKey.xor(secondKey.mKey);
     return new Key(newKey);
@@ -78,7 +78,7 @@ public class Key implements Serializable {
    * @param otherKey key to which distance should be calculated
    * @return distance {@link BitSet} between two keys in little-endian encoding.
    */
-  BitSet calculateDistance(Key otherKey) {
+  public BitSet calculateDistance(Key otherKey) {
     return xor(otherKey).mKey;
   }
 
@@ -90,7 +90,7 @@ public class Key implements Serializable {
    * @return most significant bit index of distance between this key and
    *         argument.
    */
-  int getDistanceBit(Key otherKey) {
+  public int getDistanceBit(Key otherKey) {
     BitSet distance = otherKey.calculateDistance(this);
     return distance.previousSetBit(distance.length() - 1);
   }

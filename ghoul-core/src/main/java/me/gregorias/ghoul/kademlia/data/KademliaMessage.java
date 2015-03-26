@@ -1,4 +1,6 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
+
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
 
 import java.io.Serializable;
 
@@ -7,14 +9,14 @@ import java.io.Serializable;
  * It should information about source and destination, but both may be null if the situation
  * requires it.
  */
-abstract class KademliaMessage implements Serializable {
+public abstract class KademliaMessage implements Serializable {
   private static final long serialVersionUID = 1L;
 
   private final NodeInfo mSrcNodeInfo;
   private final NodeInfo mDestNodeInfo;
   private final int mId;
 
-  KademliaMessage(NodeInfo src, NodeInfo dest, int id) {
+  public KademliaMessage(NodeInfo src, NodeInfo dest, int id) {
     mSrcNodeInfo = src;
     mDestNodeInfo = dest;
     mId = id;

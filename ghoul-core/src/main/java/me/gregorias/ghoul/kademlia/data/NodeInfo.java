@@ -1,4 +1,4 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.utils.DeserializationException;
 import me.gregorias.ghoul.utils.Utils;

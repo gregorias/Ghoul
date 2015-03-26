@@ -7,7 +7,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import me.gregorias.ghoul.kademlia.KademliaRouting;
-import me.gregorias.ghoul.kademlia.NodeInfo;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import org.glassfish.jersey.server.JSONP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

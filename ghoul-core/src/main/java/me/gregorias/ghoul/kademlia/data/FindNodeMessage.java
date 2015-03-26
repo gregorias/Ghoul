@@ -1,4 +1,4 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
 
 import me.gregorias.ghoul.utils.DeserializationException;
 
@@ -6,22 +6,35 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
- * PONG message.
+ * FIND_NODE message.
  */
-class PongMessage extends KademliaMessage {
+public final class FindNodeMessage extends KademliaMessage {
   private static final long serialVersionUID = 1L;
 
-  public PongMessage(NodeInfo srcNodeInfo, NodeInfo destNodeInfo, int id) {
+  private final Key mKey;
+
+  public FindNodeMessage(NodeInfo srcNodeInfo, NodeInfo destNodeInfo, int id, Key searchedKey) {
     super(srcNodeInfo, destNodeInfo, id);
+    mKey = searchedKey;
+  }
+
+  public Key getSearchedKey() {
+    return mKey;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("FindNodeMessage{mKey:%s}", mKey);
   }
 
   public void serialize(ByteBuffer buffer) {
     getSourceNodeInfo().serialize(buffer);
     getDestinationNodeInfo().serialize(buffer);
     buffer.putInt(getId());
+    mKey.serialize(buffer);
   }
 
-  public static PongMessage deserialize(ByteBuffer buffer) throws DeserializationException {
+  public static FindNodeMessage deserialize(ByteBuffer buffer) throws DeserializationException {
     NodeInfo srcNodeInfo = NodeInfo.deserialize(buffer);
     NodeInfo destNodeInfo = NodeInfo.deserialize(buffer);
     int id;
@@ -30,7 +43,7 @@ class PongMessage extends KademliaMessage {
     } catch (BufferUnderflowException e) {
       throw new DeserializationException(e);
     }
-    return new PongMessage(srcNodeInfo, destNodeInfo, id);
+    Key key = Key.deserialize(buffer);
+    return new FindNodeMessage(srcNodeInfo, destNodeInfo, id, key);
   }
 }
-

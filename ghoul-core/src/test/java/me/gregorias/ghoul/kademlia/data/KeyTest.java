@@ -1,7 +1,8 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
 
 import static org.junit.Assert.assertEquals;
 
+import me.gregorias.ghoul.kademlia.data.Key;
 import org.junit.Test;
 
 public final class KeyTest {

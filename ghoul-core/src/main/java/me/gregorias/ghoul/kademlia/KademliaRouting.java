@@ -1,5 +1,9 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.KademliaException;
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
+
 import java.util.Collection;
 
 /**
@@ -16,7 +20,7 @@ public interface KademliaRouting {
    * @return Found nodes
    *
    * @throws InterruptedException method has been interrupted
-   * @throws me.gregorias.ghoul.kademlia.KademliaException kademlia could not finish the operation
+   * @throws KademliaException kademlia could not finish the operation
    */
   Collection<NodeInfo> findClosestNodes(Key key) throws InterruptedException, KademliaException;
 
@@ -28,7 +32,7 @@ public interface KademliaRouting {
    * @return up to size found nodes
    *
    * @throws InterruptedException method has been interrupted
-   * @throws me.gregorias.ghoul.kademlia.KademliaException kademlia could not finish the operation
+   * @throws KademliaException kademlia could not finish the operation
    */
   Collection<NodeInfo> findClosestNodes(Key key, int size) throws InterruptedException,
       KademliaException;

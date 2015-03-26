@@ -1,5 +1,6 @@
-package me.gregorias.ghoul.kademlia;
+package me.gregorias.ghoul.kademlia.data;
 
+import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.utils.BitSetComparator;
 
 import java.io.Serializable;
@@ -7,12 +8,12 @@ import java.util.BitSet;
 import java.util.Comparator;
 
 /**
- * Comparator of Kademlia {@link me.gregorias.ghoul.kademlia.Key} with specified key based
+ * Comparator of Kademlia {@link Key} with specified key based
  * on closeness.
  *
  * @author Grzegorz Milka
  */
-class KeyComparator implements Comparator<Key>, Serializable {
+public final class KeyComparator implements Comparator<Key>, Serializable {
   private static final long serialVersionUID = 1L;
   private final Key mReferenceKey;
 

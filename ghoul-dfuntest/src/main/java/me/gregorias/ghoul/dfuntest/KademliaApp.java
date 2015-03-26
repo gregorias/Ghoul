@@ -19,9 +19,9 @@ import me.gregorias.dfuntest.Environment;
 import me.gregorias.dfuntest.RemoteProcess;
 import me.gregorias.ghoul.interfaces.rest.NodeInfoBean;
 import me.gregorias.ghoul.interfaces.rest.NodeInfoCollectionBean;
-import me.gregorias.ghoul.kademlia.KademliaException;
-import me.gregorias.ghoul.kademlia.Key;
-import me.gregorias.ghoul.kademlia.NodeInfo;
+import me.gregorias.ghoul.kademlia.data.KademliaException;
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,7 +1,7 @@
 package me.gregorias.ghoul.interfaces.rest;
 
-import me.gregorias.ghoul.kademlia.Key;
-import me.gregorias.ghoul.kademlia.NodeInfo;
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
 
 import java.net.InetSocketAddress;
 

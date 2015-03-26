@@ -16,9 +16,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import me.gregorias.dfuntest.TestResult;
 import me.gregorias.dfuntest.TestScript;
 import me.gregorias.dfuntest.TestResult.Type;
-import me.gregorias.ghoul.kademlia.KademliaException;
-import me.gregorias.ghoul.kademlia.Key;
-import me.gregorias.ghoul.kademlia.NodeInfo;
+import me.gregorias.ghoul.kademlia.data.KademliaException;
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

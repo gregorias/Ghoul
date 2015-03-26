@@ -1,5 +1,13 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.FindNodeMessage;
+import me.gregorias.ghoul.kademlia.data.FindNodeReplyMessage;
+import me.gregorias.ghoul.kademlia.data.KademliaException;
+import me.gregorias.ghoul.kademlia.data.KademliaMessage;
+import me.gregorias.ghoul.kademlia.data.Key;
+import me.gregorias.ghoul.kademlia.data.NodeInfo;
+import me.gregorias.ghoul.kademlia.data.PingMessage;
+import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.local.LocalMessaging;
 import org.junit.Before;
 import org.junit.Rule;

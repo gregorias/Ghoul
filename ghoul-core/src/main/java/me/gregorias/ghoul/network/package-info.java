@@ -3,8 +3,8 @@
  *
  * These interfaces can be implemented by a library client in a way it wants.
  * For example client may have other network services in its application and may wish
- * to use a single port udp which will multiplex messages.
+ * to add NAT hole punching for its communication.
  *
  * @author Grzegorz Milka
  */
-package me.gregorias.kademlia.network;
+package me.gregorias.ghoul.network;
