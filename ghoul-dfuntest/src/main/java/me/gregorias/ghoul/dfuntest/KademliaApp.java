@@ -134,7 +134,7 @@ public class KademliaApp extends App<Environment> {
     runCommand.add("-Dorg.slf4j.simpleLogger.logFile=" + LOG_FILE);
     runCommand.add("-Dorg.slf4j.simpleLogger.defaultLogLevel=trace");
     runCommand.add("-cp");
-    runCommand.add("lib/*:kademlia.jar");
+    runCommand.add("kademlia.jar:lib/*");
     runCommand.add("me.gregorias.ghoul.interfaces.Main");
     runCommand.add("kademlia.xml");
     mProcess = mKademliaEnv.runCommandAsynchronously(runCommand);

@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Observable;
+import java.util.Observer;
 import java.util.Optional;
 import java.util.Random;
 import java.util.SortedMap;
@@ -32,14 +34,35 @@ import me.gregorias.ghoul.kademlia.data.KeyComparator;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
+import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.lang.Math.min;
-
-/** Implementation of Kademlia routing */
-class KademliaRoutingImpl implements KademliaRouting {
+/**
+ *  Implementation of Kademlia routing protocol.
+ *
+ *  This implementation consists of 3 mechanisms:
+ *  <ul>
+ *    <li>Find node protocol - an iterative and parallel protocol described in the paper used for
+ *      finding new nodes.</li>
+ *    <li>Heart beat - A periodic task run in the background which searches for random key in the
+ *      network. It's purpose is to refresh itself inside neighbour routing tables and handle
+ *      churn.</li>
+ *    <li>Node discovery - Upon being contacted by an unknown node this node may be added to
+ *      routing table iff there is space in the bucket or least recently seen node in the bucket
+ *      does not respond to a ping. NodeDiscovery handles this task.</li>
+ *  </ul>
+ *
+ *  Those 3 mechanisms may require at times 3 threads to run concurrently. NodeDiscovery runs in a
+ *  separate thread the entire time, HeartBeat runs periodically and uses FindNode mechanisms
+ *  which uses scheduled tasks to provide timeouts events.
+ *
+ *  Note that many protocols use bucket size as the determinant of the size request or reply.
+ *  Therefore a very low value (&lt; 3) may cause the topology graph to be inconsistent.
+ */
+public class KademliaRoutingImpl implements KademliaRouting {
   private static final Logger LOGGER = LoggerFactory.getLogger(KademliaRoutingImpl.class);
+  private static final int MINIMAL_HEART_BEAT_REQUEST_SIZE = 3;
 
   private final Collection<NodeInfo> mInitialKnownPeers;
   private final KademliaRoutingTable mRoutingTable;
@@ -51,6 +74,8 @@ class KademliaRoutingImpl implements KademliaRouting {
   private final int mBucketSize;
   private final Key mLocalKey;
   private InetSocketAddress mLocalAddress;
+  private final NetworkAddressDiscovery mNetworkAddressDiscovery;
+  private final NewNetworkAddressObserver mNewNetworkAddressObserver;
   private final MessageSender mMessageSender;
   private final ListeningService mListeningService;
   private final MessageListener mMessageListener;
@@ -85,7 +110,8 @@ class KademliaRoutingImpl implements KademliaRouting {
   /**
    * Constructs an implementation of KademliaRouting.
    *
-   * @param localNodeInfo      information about node represented by this peer
+   * @param localKey           key representing this host
+   * @param networkAddressDiscovery address discovery mechanism for this peer
    * @param sender             MessageSender module for this peer
    * @param listeningService   ListeningService module for this peer
    * @param bucketSize         maximal of a single bucket
@@ -98,7 +124,8 @@ class KademliaRoutingImpl implements KademliaRouting {
    * @param scheduledExecutor  executor used for executing tasks
    * @param random             random number generator
    */
-  KademliaRoutingImpl(NodeInfo localNodeInfo,
+  KademliaRoutingImpl(Key localKey,
+                      NetworkAddressDiscovery networkAddressDiscovery,
                       MessageSender sender,
                       ListeningService listeningService,
                       int bucketSize,
@@ -114,9 +141,11 @@ class KademliaRoutingImpl implements KademliaRouting {
     mRandom = random;
     mBucketSize = bucketSize;
     mAlpha = alpha;
-    mRoutingTable = new KademliaRoutingTable(localNodeInfo.getKey(), bucketSize);
-    mLocalKey = localNodeInfo.getKey();
-    mLocalAddress = localNodeInfo.getSocketAddress();
+    mRoutingTable = new KademliaRoutingTable(localKey, bucketSize);
+    mLocalKey = localKey;
+    setLocalAddress(networkAddressDiscovery.getNetworkAddress());
+    mNetworkAddressDiscovery = networkAddressDiscovery;
+    mNewNetworkAddressObserver = new NewNetworkAddressObserver();
     mMessageSender = sender;
     mListeningService = listeningService;
     mMessageListener = new MessageListenerImpl();
@@ -200,6 +229,8 @@ class KademliaRoutingImpl implements KademliaRouting {
         throw new IllegalStateException("Kademlia has already started.");
       }
 
+      setLocalAddress(mNetworkAddressDiscovery.getNetworkAddress());
+      mNetworkAddressDiscovery.addObserver(mNewNetworkAddressObserver);
       /* Connect to initial peers */
       LOGGER.trace("start(): initializeRoutingTable");
       initializeRoutingTable();
@@ -477,9 +508,8 @@ class KademliaRoutingImpl implements KademliaRouting {
 
     private void sendRequestsToInitialCandidates() {
       LOGGER.trace("FindNodeTask.sendRequestsToInitialCandidates()");
-      Collection<Key> keysToQuery = mAllNodes.keySet().stream().
-          limit(min(mResponseSize, mAlpha)).
-          collect(Collectors.toList());
+      Collection<Key> keysToQuery = mAllNodes.keySet().stream().limit(mAlpha)
+          .collect(Collectors.toList());
       for (Key keyToQuery : keysToQuery) {
         NodeInfoWithStatus status = mAllNodes.get(keyToQuery);
         if (status.mStatus == FindNodeStatus.UNQUERIED) {
@@ -510,14 +540,14 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
   }
 
-  private static enum FindNodeStatus {
+  private enum FindNodeStatus {
     QUERIED,
     TIMED_OUT,
     PENDING,
     UNQUERIED
   }
 
-  private static interface FindNodeTaskEvent { }
+  private interface FindNodeTaskEvent { }
 
   private static class FindNodeTaskReplyEvent implements FindNodeTaskEvent {
     public final FindNodeReplyMessage mMsg;
@@ -599,6 +629,7 @@ class KademliaRoutingImpl implements KademliaRouting {
 
   /* Heart beat protocol implementation */
   private class HeartBeatTask implements Runnable {
+    private final int mRequestSize = Math.max(mBucketSize, MINIMAL_HEART_BEAT_REQUEST_SIZE);
 
     @Override
     public void run() {
@@ -609,7 +640,7 @@ class KademliaRoutingImpl implements KademliaRouting {
           return;
         }
         Key randomKey = Key.newRandomKey(mRandom);
-        findClosestNodes(randomKey);
+        findClosestNodes(randomKey, mRequestSize);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
       } finally {
@@ -774,7 +805,7 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
   }
 
-  private static interface NodeDiscoveryTaskEvent { }
+  private interface NodeDiscoveryTaskEvent { }
 
   private static class NodeDiscoveryTaskAddNodeEvent implements NodeDiscoveryTaskEvent {
     private final NodeInfo mNodeInfo;
@@ -881,7 +912,15 @@ class KademliaRoutingImpl implements KademliaRouting {
     }
   }
 
-  private NodeInfo getLocalNodeInfo() {
+  private class NewNetworkAddressObserver implements Observer {
+    @Override
+    public void update(Observable observable, Object arg) {
+      InetSocketAddress newAddress = (InetSocketAddress) arg;
+      setLocalAddress(newAddress);
+    }
+  }
+
+  private synchronized NodeInfo getLocalNodeInfo() {
     return new NodeInfo(mLocalKey, mLocalAddress);
   }
 
@@ -894,11 +933,15 @@ class KademliaRoutingImpl implements KademliaRouting {
     mNeighbourListenerLock.lock();
     try {
       if (mNeighbourListener.isPresent()) {
-        mNeighbourListener.get().notifyNewNeighbour(newNodeInfo);
+        mNeighbourListener.get().notifyAboutNewNeighbour(newNodeInfo);
       }
     } finally {
       mNeighbourListenerLock.unlock();
     }
+  }
+
+  private synchronized void setLocalAddress(InetSocketAddress localAddress) {
+    mLocalAddress = localAddress;
   }
 }
 

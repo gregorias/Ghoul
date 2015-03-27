@@ -8,6 +8,7 @@ import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
+import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.local.LocalMessaging;
 import org.junit.Before;
 import org.junit.Rule;
@@ -48,7 +49,7 @@ public final class KademliaRoutingBasicTest {
   public void setUp() throws KademliaException {
     mLocalMessaging = new LocalMessaging();
 
-    ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(3);
+    ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(6);
 
     mBuilder = new KademliaRoutingBuilder(RANDOM);
     mLocalAddress = new InetSocketAddress(0);
@@ -57,7 +58,7 @@ public final class KademliaRoutingBasicTest {
     mBuilder.setByteSender(mLocalMessaging.getByteSender(0));
     mLocalSender = new MessageSenderAdapter(mLocalMessaging.getByteSender(0));
     mBuilder.setExecutor(scheduledExecutor);
-    mBuilder.setLocalAddress(mLocalAddress);
+    mBuilder.setNetworkAddressDiscovery(new UserGivenNetworkAddressDiscovery(mLocalAddress));
     mBuilder.setMessageTimeout(MESSAGE_TIMEOUT, MESSAGE_TIMEOUT_UNIT);
   }
 

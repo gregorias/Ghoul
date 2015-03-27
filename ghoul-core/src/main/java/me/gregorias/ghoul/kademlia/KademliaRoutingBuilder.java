@@ -1,6 +1,5 @@
 package me.gregorias.ghoul.kademlia;
 
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,6 +22,7 @@ import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.ByteListeningService;
 import me.gregorias.ghoul.network.ByteSender;
+import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,8 +31,10 @@ import org.slf4j.LoggerFactory;
  *
  * If you want multiple kademlia peers on the same listening connection you have
  * to:
- * 1. Set {@link me.gregorias.ghoul.kademlia.ListeningService} only once.
- * 2. Use the same builder for all peers.
+ * <ul>
+ *   <li>Set {@link me.gregorias.ghoul.kademlia.ListeningService} only once.</li>
+ *   <li>Use the same builder for all peers.</li>
+ * </ul>
  *
  * This class is not thread safe.
  *
@@ -58,8 +60,8 @@ public class KademliaRoutingBuilder {
   private int mBucketSize = DEFAULT_BUCKET_SIZE;
   private int mAlpha = DEFAULT_ALPHA;
   private Key mKey;
-  private InetSocketAddress mLocalAddress;
   private Collection<NodeInfo> mInitialPeersWithKeys = new LinkedList<>();
+  private NetworkAddressDiscovery mNetworkAddressDiscovery;
 
   public KademliaRoutingBuilder(Random random) {
     mRandom = random;
@@ -76,17 +78,17 @@ public class KademliaRoutingBuilder {
     checkIfByteListeningServiceIsSet();
     checkIfByteSenderIsSet();
     checkIfExecutorIsSet();
-    checkIfLocalAddressIsSet();
+    checkIfNetworkAddressDiscoveryIsSet();
 
     Key usedKey = getSetKeyOrCreateNew();
-    NodeInfo localNodeInfo = new NodeInfo(usedKey, mLocalAddress);
 
     ListeningService listeningService = new MessageListeningServiceImpl(usedKey,
         mDemultiplexingListener);
 
     LOGGER.debug("createPeer() -> Key: {}", usedKey);
     return new KademliaRoutingImpl(
-        localNodeInfo,
+        mKey,
+        mNetworkAddressDiscovery,
         mMessageSender,
         listeningService,
         mBucketSize,
@@ -167,8 +169,9 @@ public class KademliaRoutingBuilder {
     mHeartBeatDelayUnit = heartBeatDelayUnit;
   }
 
-  public KademliaRoutingBuilder setLocalAddress(InetSocketAddress localAddress) {
-    mLocalAddress = localAddress;
+  public KademliaRoutingBuilder setNetworkAddressDiscovery(
+      NetworkAddressDiscovery networkAddressDiscovery) {
+    mNetworkAddressDiscovery = networkAddressDiscovery;
     return this;
   }
 
@@ -337,9 +340,9 @@ public class KademliaRoutingBuilder {
     }
   }
 
-  private void checkIfLocalAddressIsSet() {
-    if (mLocalAddress == null) {
-      throw new IllegalStateException("Local address is not set.");
+  private void checkIfNetworkAddressDiscoveryIsSet() {
+    if (mNetworkAddressDiscovery == null) {
+      throw new IllegalStateException("Network address discovery is not set.");
     }
   }
 

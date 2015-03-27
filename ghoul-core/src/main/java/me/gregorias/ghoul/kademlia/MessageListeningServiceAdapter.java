@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.Optional;
 
-//TODO
 /**
  * Adapter from {@link me.gregorias.ghoul.network.ByteListeningService} to
  * {@link ListeningService} which deserializes messages using

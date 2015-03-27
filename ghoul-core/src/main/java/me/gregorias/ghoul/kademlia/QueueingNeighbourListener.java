@@ -15,9 +15,9 @@ public class QueueingNeighbourListener implements NeighbourListener {
   }
 
   @Override
-  public void notifyNewNeighbour(NodeInfo neighbour) {
+  public void notifyAboutNewNeighbour(NodeInfo newNeighbour) {
     try {
-      mFoundNeighbours.put(neighbour);
+      mFoundNeighbours.put(newNeighbour);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }

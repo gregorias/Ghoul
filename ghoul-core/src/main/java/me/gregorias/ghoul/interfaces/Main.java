@@ -20,6 +20,7 @@ import me.gregorias.ghoul.kademlia.KademliaRouting;
 import me.gregorias.ghoul.kademlia.KademliaRoutingBuilder;
 import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
+import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.udp.UDPByteListeningService;
 import me.gregorias.ghoul.network.udp.UDPByteSender;
 import org.apache.commons.configuration.ConfigurationException;
@@ -33,16 +34,18 @@ import org.slf4j.LoggerFactory;
  * This main starts up basic kademlia peer and sets up a REST interface.
  * It expects an XML configuration filename as an argument.
  *
- * XML configuration recognizes the following fields:
+ * XML configuration recognizes the following fields
  * <ul>
- * <li> local-net-address - IP/host address of local host. </li>
- * <li> local-net-port - port to be used by local kademlia host. </li>
- * <li> bootstrap-key - the kademlia key of bootstrap host. </li>
- * <li> bootstrap-net-address - IP/host address of boostrap host. </li>
- * <li> bootstrap-net-port - port used by bootstrap host. </li>
- * <li> local-key - key to be used by local kademlia host. </li>
- * <li> bucket-size - size of local kademlia bucket. </li>
- * <li> rest-port - port of local REST interface. </li>
+ * <li> localNetAddress - IP/host address of local host. Mandatory. </li>
+ * <li> localNetPort - port to be used by local kademlia host. Mandatory. </li>
+ * <li> bootstrapKey - the kademlia key of bootstrap host. Mandatory. </li>
+ * <li> bootstrapNetAddress - IP/host address of boostrap host. Mandatory. </li>
+ * <li> bootstrapNetPort - port used by bootstrap host. Mandatory. </li>
+ * <li> localKey - key to be used by local kademlia host. Mandatory. </li>
+ * <li> bucketSize - size of local kademlia bucket. Optional. </li>
+ * <li> concurrencyFactor - The alpha parameter from the kademlia protocol. Optional. </li>
+ * <li> heartBeatDelay - Delay between successive heart beats in seconds. Optional. </li>
+ * <li> restPort - port of local REST interface. Mandatory. </li>
  * </ul>
  *
  * @see me.gregorias.ghoul.interfaces.rest.RESTApp
@@ -50,14 +53,16 @@ import org.slf4j.LoggerFactory;
  * @author Grzegorz Milka
  */
 public class Main {
-  public static final String XML_FIELD_LOCAL_ADDRESS = "local-net-address";
-  public static final String XML_FIELD_LOCAL_PORT = "local-net-port";
-  public static final String XML_FIELD_BOOTSTRAP_KEY = "bootstrap-key";
-  public static final String XML_FIELD_BOOTSTRAP_ADDRESS = "bootstrap-net-address";
-  public static final String XML_FIELD_BOOTSTRAP_PORT = "bootstrap-net-port";
-  public static final String XML_FIELD_LOCAL_KEY = "local-key";
-  public static final String XML_FIELD_BUCKET_SIZE = "bucket-size";
-  public static final String XML_FIELD_REST_PORT = "rest-port";
+  public static final String XML_FIELD_LOCAL_ADDRESS = "localNetAddress";
+  public static final String XML_FIELD_LOCAL_PORT = "localNetPort";
+  public static final String XML_FIELD_BOOTSTRAP_KEY = "bootstrapKey";
+  public static final String XML_FIELD_BOOTSTRAP_ADDRESS = "bootstrapNetAddress";
+  public static final String XML_FIELD_BOOTSTRAP_PORT = "bootstrapNetPort";
+  public static final String XML_FIELD_LOCAL_KEY = "localKey";
+  public static final String XML_FIELD_BUCKET_SIZE = "bucketSize";
+  public static final String XML_FIELD_CONCURRENCY_PARAMETER = "concurrencyParameter";
+  public static final String XML_FIELD_HEART_BEAT_DELAY = "heartBeatDelay";
+  public static final String XML_FIELD_REST_PORT = "restPort";
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws IOException {
@@ -84,11 +89,10 @@ public class Main {
     final int hostZeroPort = kadConfig.getInt(XML_FIELD_BOOTSTRAP_PORT);
     final Key localKey = new Key(kadConfig.getInt(XML_FIELD_LOCAL_KEY));
     final Key bootstrapKey = new Key(kadConfig.getInt(XML_FIELD_BOOTSTRAP_KEY));
-    final int bucketSize = kadConfig.getInt(XML_FIELD_BUCKET_SIZE);
     final URI baseURI = URI.create(String.format("http://%s:%s/", localInetAddress.getHostName(),
         kadConfig.getString(XML_FIELD_REST_PORT)));
 
-    final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(2);
+    final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(3);
     final ExecutorService executor = Executors.newFixedThreadPool(2);
 
     KademliaRoutingBuilder builder = new KademliaRoutingBuilder(new Random());
@@ -112,8 +116,24 @@ public class Main {
     }
     builder.setInitialPeersWithKeys(peersWithKnownAddresses);
     builder.setKey(localKey);
-    builder.setBucketSize(bucketSize);
-    builder.setLocalAddress(new InetSocketAddress(localInetAddress, localPort));
+
+    if (kadConfig.containsKey(XML_FIELD_BUCKET_SIZE)) {
+      final int bucketSize = kadConfig.getInt(XML_FIELD_BUCKET_SIZE);
+      builder.setBucketSize(bucketSize);
+    }
+
+    if (kadConfig.containsKey(XML_FIELD_CONCURRENCY_PARAMETER)) {
+      final int concurrencyParameter = kadConfig.getInt(XML_FIELD_CONCURRENCY_PARAMETER);
+      builder.setConcurrencyParameter(concurrencyParameter);
+    }
+
+    if (kadConfig.containsKey(XML_FIELD_HEART_BEAT_DELAY)) {
+      final long heartBeatDelay = kadConfig.getLong(XML_FIELD_HEART_BEAT_DELAY);
+      builder.setHeartBeatDelay(heartBeatDelay, TimeUnit.MILLISECONDS);
+    }
+
+    builder.setNetworkAddressDiscovery(new UserGivenNetworkAddressDiscovery(
+        new InetSocketAddress(localInetAddress, localPort)));
 
     KademliaRouting kademlia = builder.createPeer();
 

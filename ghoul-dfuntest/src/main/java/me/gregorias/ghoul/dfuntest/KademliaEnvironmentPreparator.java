@@ -39,6 +39,8 @@ public class KademliaEnvironmentPreparator implements EnvironmentPreparator<Envi
       "KademliaEnvironmentPreparator.initialRestPort";
   public static final String BUCKET_SIZE_ARGUMENT_NAME =
       "KademliaEnvironmentPreparator.bucketSize";
+  public static final String HEART_BEAT_DELAY_ARGUMENT_NAME =
+      "KademliaEnvironmentPreparator.heartBeatDelay";
   public static final String USE_DIFFERENT_PORTS_ARGUMENT_NAME =
       "KademliaEnvironmentPreparator.useDifferentPorts";
 
@@ -50,12 +52,14 @@ public class KademliaEnvironmentPreparator implements EnvironmentPreparator<Envi
   private final int mInitialPort;
   private final int mInitialRestPort;
   private final int mBucketSize;
+  private final long mHeartBeatDelay;
   private final boolean mUseDifferentPorts;
 
   /**
    * @param initialPort Port number used by first kademlia application for kademlia.
    * @param initialRestPort Port number used by first kademlia application for REST.
    * @param bucketSize BucketSize of each kademlia peer.
+   * @param heartBeatDelay heart beat delay of each kademlia peer.
    * @param useDifferentPorts Whether each kademlia peer should use a different port.
    * Used when all peers are on the same host.
    */
@@ -63,10 +67,12 @@ public class KademliaEnvironmentPreparator implements EnvironmentPreparator<Envi
   public KademliaEnvironmentPreparator(@Named(INITIAL_PORT_ARGUMENT_NAME) int initialPort,
       @Named(INITIAL_REST_PORT_ARGUMENT_NAME) int initialRestPort,
       @Named(BUCKET_SIZE_ARGUMENT_NAME) int bucketSize,
+      @Named(HEART_BEAT_DELAY_ARGUMENT_NAME) long heartBeatDelay,
       @Named(USE_DIFFERENT_PORTS_ARGUMENT_NAME) boolean useDifferentPorts) {
     mInitialPort = initialPort;
     mInitialRestPort = initialRestPort;
     mBucketSize = bucketSize;
+    mHeartBeatDelay = heartBeatDelay;
     mUseDifferentPorts = useDifferentPorts;
   }
 
@@ -183,6 +189,7 @@ public class KademliaEnvironmentPreparator implements EnvironmentPreparator<Envi
     xmlConfiguration.addProperty(Main.XML_FIELD_BOOTSTRAP_ADDRESS, zeroEnv.getHostname());
     xmlConfiguration.addProperty(Main.XML_FIELD_BOOTSTRAP_PORT, mInitialPort);
     xmlConfiguration.addProperty(Main.XML_FIELD_REST_PORT, mInitialRestPort + portSkew);
+    xmlConfiguration.addProperty(Main.XML_FIELD_HEART_BEAT_DELAY, mHeartBeatDelay);
     env.setProperty(Main.XML_FIELD_LOCAL_ADDRESS, env.getHostname());
     env.setProperty(Main.XML_FIELD_REST_PORT, mInitialRestPort + portSkew);
     return xmlConfiguration;

@@ -12,7 +12,6 @@ repositories {
 }
 
 dependencies {
-  compile group: 'com.google.inject', name: 'guice', version: '4.0-beta5'
   compile group: 'commons-configuration', name: 'commons-configuration', version: '1.10'
   compile group: 'commons-io', name: 'commons-io', version: '2.4'
   compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.10'

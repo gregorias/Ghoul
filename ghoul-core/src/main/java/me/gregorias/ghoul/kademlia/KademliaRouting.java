@@ -38,7 +38,7 @@ public interface KademliaRouting {
       KademliaException;
 
   /**
-   * @return hosts represented in local routing table.
+   * @return hosts present in the local routing table.
    */
   Collection<NodeInfo> getFlatRoutingTable();
 
