@@ -1,12 +1,99 @@
 \chapter{DHT, its weaknesses, and defense mechanisms}
 \section{DHT overview}
-  [TODO write a section explaining what is DHT and how it works. Also
-    explain Kademlia, Chord and Pastry]
 
   Distributed hash table is a type of peer-to-peer system providing topology
   creation and maintainance protocols. They are typically designed for and
   tightly coupled with data storage protocols for key-value pairs, hence the
-  hash-table part. DHTs suffer from various vulnerabilities, which mostly stem
+  hash table part in the name. Popular DHT designs include: Chord, Pastry,
+  Kademlia, CAN.
+
+  A structure of a typical DHT consist of a few main components. First is a
+  keyspace, a collection of identifiers such as 160-bit bitstrings. Those keys
+  are an abstract identification of a node and also serve to partition ownership
+  in the network. Next is an overlay network that is a topology induced by
+  routing tables, neighbourhood tables kept and maintained by each node
+  containing pairing between an abstract key and a network address. Each DHT
+  defines protocols for table maintainance and search of nodes that are not
+  neighbours.
+
+  This kind of structure has certain desired properties. First of is that DHT is
+  completely decentralized, every peer is equal and protocol do not require any
+  for of central coordinator. DHTs are also scalable, in most protocols the size
+  of the routing table is on the order of $O(\log n)$, where $n$ is size of the
+  network and similarly for message count complexity in node search protocol.
+  Third of all DHTs are fault tolerant, in fact their protocols are for the fact
+  that there might be significant churn in the network, churn is the rate node's
+  join/leave speed, and the routing table should be updated often enough to
+  counteract that.
+ 
+  \subsection{Kademlia}
+  Kademlia \cite{may02} is popular choice among many peer-to-peer applications,
+  especially used in bittorrent and edonkey file-sharing applications.
+
+  A node in kademlia network is represented by an n-bit binary key (most popular
+  choices are $n = 128$ or $n = 160$). Kademlia defines a distance in the
+  keyspace as the xor function. That is distance between two keys $x, y$ is
+
+  \[ d(x, y) = x \oplus y\]
+
+  The routing table is a collection of $n$ buckets, where each bucket has
+  maximum size $k$, a system-wide constant. 
+  $i$'th bucket holds active and recently seen nodes such that the first most
+  significant bit that is different from routing table's owner is at position
+  $i$. More formally the $i$'th bucket of node's with key $x$ holds nodes with
+  keys $y$ such that $2^i \leq d(x, y) < 2^{i+1}$.
+
+  Kademlia's node should implement 4 RPC queries:
+
+  \begin{description}
+    \item{\verb|FIND_NODE|} This query is parametrized by the searched key. The
+      response should consists of up to $k$ keys closest the searched key in
+      queried node's routing table or itself.
+    \item{\verb|PING|} This query serves as a heart-beat and node's liveness
+      check. It should be answered with a \verb|PONG| message.
+    \item{\verb|PUT_KEY|} Orders the recipient to store given (key, value) pair
+      in its local storage. Usually the sender first searches for nodes close
+      to the pair's key.
+    \item{\verb|GET_KEY|} Just like \verb|FIND_NODE| this query contains
+      searched key. The recipient should return $k$ closest neighbours plus a
+      (key, value) pair if it's present in its storage.
+  \end{description}
+
+  The main protocol in kademlia is the iterative node search protocol
+  \ref{fig:node_search_alg}.
+
+  \begin{figure}
+    \label{fig:node_search_alg}
+    \begin{algorithmic}[1]
+    \STATE Take $k$ closest nodes to key $y$ in the routing table.
+    \WHILE {There are unqueried nodes in top $k$ closest nodes}
+    \STATE Send \verb|FIND_NODE| queries to unqueried nodes in top $k$ 
+    nodes closest to $y$, such that there are up to $\alpha$ parallel queries.
+    \STATE $e \leftarrow$ response or timeout
+    \IF{$e$ is a response}
+      \STATE Change state of the node to queried. Add its response to the list
+      of
+      nodes under consideration.
+    \ELSE
+      \STATE Remove timed-out node from consideration
+    \ENDIF
+    \ENDWHILE
+  \end{algorithmic}
+    \caption{Node search protocol for key $y$}
+  \end{figure}
+
+  The protocol for finding stored data associated with a key is structurally the
+  same. Only instead \verb|FIND_NODE| \verb|GET_KEY| is sent and reply contains
+  stored data if any.
+
+  Because the distance metric is symmetric kademlia does not require specialized
+  routing table maintainance messages. Instead every with every message receipt
+  a node adds the sender to its routing table if there is space. Otherwise it
+  sends a \verb|PING| message to least recently seen node in given bucket, if it
+  times-out than it is replaced by the new neighbour.
+
+\subsection{Vulnerabilities}
+  DHTs suffer from various vulnerabilities, which mostly stem
   from two diffuclties:
   \begin{enumerate}
     \item Node identity is a virtual concept and lacks connection to the real
@@ -240,6 +327,53 @@
 
 \section{Examples of real attacks}
 These are not just theoretical divagations, but discussed attacks are really
-used in practice:
+used in practice and are effective.
 
-[TODO attacks on Vanish, Maze, Kad (Poisoning kad network)]
+\paragraph{Hijacking attack}
+\cite{wan08} describes an attack on Kad network as implemented by eMule
+file-sharing application. This is a version of a routing table poisoning attack
+in which the attacker abuses lack of authentication and admission of control
+which allows any node to advertise as any other. The is split into two phases:
+\begin{enumerate}
+  \item In the preparation phase the attacker sets up N uniformly distributed
+    virtual nodes which gather routing table information of their neighbours.
+  \item In the attack phase each attacking node send to its neighbours bogus
+    updates of the form \verb|(ID_B, IP_A)\verb|, where \verb|ID_B| is the key
+    of existing victim node present in the recipient's routing table and
+    \verb|IP_A| is the attacker's IP address.
+\end{enumerate}
+
+Authors show that with just 100Mbps bandwith they were able to successfully
+deny 80\% of keyword queries after 1-hour long preparation phase with a
+network with 16000 nodes. Unfortunately, for the attacker, this cost is ongoing
+since the attacking node needs to be responsive.
+
+Authors also provide a version of this attack where instead of providing
+attacker's IP the IP of the attacked node is used. Emule at the time did not
+provide any check against this behaviour so it would be effective in blocking
+any effective look up. They also calculate that in this version it would take
+around 200Mbps of network speed to attack the entire 1 million eMule network
+with the result of blocking up to 75\% queries.
+
+More recent versions of eMule contain basic protections against attacks, such
+as \cite{tim11}:
+\begin{description}
+  \item{flood protection} The number of messages received from one IP in a given
+    time-frame is limited.
+  \item{IP limitations} Only one node with given IP can be present in the
+    routing table.
+  \item{IP verification} Before a contact is added a three-way handshake is
+    performed.
+\end{description}
+
+While those protections defend against small and unsophisticated attack it must
+be noted that the Kad network is still vulnerable to moderately determined
+attacker.
+
+\paragraph{Feasibility of Sybil attack}
+Although Sybil attack is more expensive than above mentioned Hijacking attack
+\cite{tim11} has shown that in Mainline DHT implementation of Kademlia used in
+Bittorrent it still easy. In their experiment they were able to fill neighbours
+routing table with 160 Sybil nodes within 5 minutes after the attack phase has
+begun. While similar attack would be impossible in newer versions of Kad the
+only limitation is the fact that only one IP address is used.
