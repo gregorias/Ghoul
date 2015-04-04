@@ -21,7 +21,38 @@ the general protocol for normal DHT operation will be described and in Section
 
 [TODO This section formalizes the desirable properties and functions of Ghoul]
 
-\section{Overview}
+\section{Goals}
+I decided to build Ghoul to fill a niche of secure open-source DHT network
+implementation. In my experience it is difficult to find a good open-source
+implementation of kademlia. By good I mean one that satisfies all of the
+following criterias:
+
+\begin{description}
+  \item{Simplicty} Implementation of kademlia should do only one thing: operate
+    according to the kademlia protocol.
+  \item{Extensibility} If I want to extend the network protocol with a NAT
+    traversal mechanism I should not be required to modify large portion of the
+    library network communication stack.
+  \item{Documentation} An open-source project should be have maintained
+    documentation to help others contribute/use it.
+  \item{Robustness} Implementation should not break after 1 hour of usage on
+    small sized network in Planetlab.
+\end{description}
+
+I couldn't find an implementation that satisfies all of the above in Java and
+none that would satisfiaibly claim to be secure in any language. I feel that 
+
+\begin{description}
+  \item{Security} The network 
+  \item{Performance} 
+  \item{Simplicity} The entire scheme should be simple to
+    describe. User or developer should be able to understand how the protection
+    schemes work and be
+  \item{Extensibility} The entire scheme should be simple to
+    describe. User or developer should be able to understand how the protection
+    schemes work and be
+\end{description}
+
 Assumption about threats, network (synchrony etc.)
 
 \section{Protocols}

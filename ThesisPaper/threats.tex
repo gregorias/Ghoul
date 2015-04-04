@@ -377,3 +377,18 @@ Bittorrent it still easy. In their experiment they were able to fill neighbours
 routing table with 160 Sybil nodes within 5 minutes after the attack phase has
 begun. While similar attack would be impossible in newer versions of Kad the
 only limitation is the fact that only one IP address is used.
+
+\paragraph{Measurements of present attacks}
+It is very easy to launch a Sybil attack in Mainline DHT and such an attacks has
+distinctive footprint. Wang \cite{Wan12} has set up honeypots in the Mainline
+DHT to detect and analyze possible Sybil attackers. He discovered an attacker
+using a hijacking method described earlier running on Amazon's cloud who
+maintains over 300000 thousand Sybil nodes. This attacker didn't seem to do much
+and might have been just monitoring the network. A different attacker was
+impersonating specific keyspace ranges and had distinctive IP address belonging
+to international ISP service. He was redirecting queries from inside its domain
+to other nodes inside it, localizing the traffic.
+
+Authors conclude that although those attacks didn't seem to do much global harm,
+the easiness with which they are executed proves that there are no costly
+barriers to launching a successful attack to disable majority of DHT queries.
