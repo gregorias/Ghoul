@@ -1,26 +1,4 @@
 \chapter{Ghoul system description}
-Ghoul system is built on top of Kademlia DHT protocol. Each node in the system
-is an independent agent which acts as a Ghoul node and communicates with other
-nodes using messages sent over network transmission. 
-
-Every node acts as a DHT node, that is it initaties and maintain its routing
-table and answers queries. Additionally each node is responsible for maintaining
-the security of the entire network by participation in P2P certificate
-revocation propagation, maintainance of its security certificates and answer in
-security queries.
-
-A relatively small set of nodes, called registration nodes, is responsible for
-faciliting node's join into network by using distributed random key generation
-and certifacte issuance.
-
-[TODO description of chapter]
-This chapter will first describe data structured maintained by each node and
-messages available in the system in Section [TODO ref], then in Section [TODO ref]
-the general protocol for normal DHT operation will be described and in Section
-[TODO ref] I will describe security protocols for key generation.
-
-[TODO This section formalizes the desirable properties and functions of Ghoul]
-
 \section{Goals}
 I decided to build Ghoul to fill a niche of secure open-source DHT network
 implementation. In my experience it is difficult to find a good open-source
@@ -33,27 +11,148 @@ following criterias:
   \item{Extensibility} If I want to extend the network protocol with a NAT
     traversal mechanism I should not be required to modify large portion of the
     library network communication stack.
-  \item{Documentation} An open-source project should be have maintained
+  \item{Documentation} An open-source project should have maintained
     documentation to help others contribute/use it.
   \item{Robustness} Implementation should not break after 1 hour of usage on
     small sized network in Planetlab.
 \end{description}
 
 I couldn't find an implementation that satisfies all of the above in Java and
-none that would satisfiaibly claim to be secure in any language. I feel that 
+none that would satisfiaibly claim to be secure in any language.
+
+Solutions used in KAD network and designed for Mainline DHT use IP address to
+prevent Sybil attack and arbirtary ID choice, this works against unsophisticated
+attacker, but has serious problems stemming from the fact that IP was not
+designed for this use case. IP spoofing, IPv6 privacy extensions and lack of
+anonimity are serious concerns that either disarm such solution or introduce a
+different serious flaw. I feel that lack of adoption of security measures
+that are present in the research literature stems from the stereotype that such
+measures are either hard to implement, slow, hard to satisfy their dependencies,
+or needlessly complicate usage of the network. I wanted to find whether it was
+possible to design and build DHT that satisfies following constraints:
 
 \begin{description}
-  \item{Security} The network 
-  \item{Performance} 
-  \item{Simplicity} The entire scheme should be simple to
-    describe. User or developer should be able to understand how the protection
-    schemes work and be
-  \item{Extensibility} The entire scheme should be simple to
-    describe. User or developer should be able to understand how the protection
-    schemes work and be
+  \item{Security} The DHT should be resistant to common Sybil and eclipse
+    attacks.
+  \item{Performance} The DHT should be as performant as the original protocol
+    where possible, especially in common use cases of finding a node and data
+    storage. In other cases the time of operation should be practical, meaning
+    that time or message complexity should not be greater than $O(\log n)$ for
+    network of size $n$.
+  \item{Simplicity} It should be simple to use. User should not be forced to
+    perform an extensive set up, or configure a large file to just start the
+    DHT.  The entire scheme should be simple to describe. User or developer
+    should be able to understand how the protection schemes work and be able to
+    reason how it would behave in his scheme. It should also be simple
+  \item{Extensibility} The application develop should be able to extend the
+    system with his own security mechanism easily if so desired.
 \end{description}
 
-Assumption about threats, network (synchrony etc.)
+When building the system I assume standard threats and network conditions that
+is:
+
+\begin{itemize}
+  \item An attacker may introduce colluding nodes into the system, but has
+    limited computing and communication power.
+  \item For network communication there is point-to-point message passing
+    primitive which may fail to deliver.
+  \item Nodes may fail arbitrarily.
+\end{itemize}
+
+I believe such system is possible to accomplish and in this chapter I present
+its design.
+
+\section{Overview}
+Ghoul system is built on top of Kademlia DHT protocol. Each node in the system
+is an independent agent which acts as a Ghoul node and communicates with other
+nodes using messages sent over network transmission.
+
+There two kinds of nodes in the system: a DHT node and a registration authority.
+The DHT node is the kademlia node extended with security measures. It initaties
+and maintain its routing table and anwers queries. Additionally each node is
+responsible for maintaining the security of the entire network by participation
+in P2P certificate revocation propagation, maintainance of its security
+certificate, and answer in security queries.
+
+A small set of nodes, called registration nodes, is responsible for faciliting
+node’s join into network by using distributed random key generation and
+certificate issuance. Registration nodes are distributed version of central
+authority, with a twist that they a few of them might be malicious. Their
+existance is motivated by the fact that it is very hard to guarantee random key
+generation and verification in distributed setting, on the other hand I want to
+provide administrative scalability where application's owner may allow other
+parties to provide their registration node's for the protocol and not worry
+whether they have pure intentions as long they do not collude.
+
+\section{Data structures}
+
+\subsection{Public key cryptography}
+Ghoul uses public key cryptography for node authentication and certification.
+Every dht node and registration node generates a public/private key pair on its
+first entry. The private key is always kept private, but public can and should
+be propagated. Additionally public keys of registration nodes are known globally
+by all nodes.
+
+To participate in the network each DHT requires a set of \textbf{certificate}.
+Certificate is a tuple of: (\texttt{NODE\_PUB\_KEY}, \texttt{NODE\_DHT\_KEY},
+\texttt{EXPIRATION\_DATETIME}) signed with a registration's node private key
+such that it is known which node signed it. Such certificate is given by the
+registration node together with \texttt{NODE\_DHT\_KEY} as a proof that that
+node is valid and its key was generated randomly by the registration node or in
+a disitributed way by a set of registration nodes. If the key is generated by a
+group of registration nodes then all of them provide also the certificate.
+
+We say that node is valid if it has at least $m$ non-expired, non-revocated
+certifacates from different hosts. The parameter $m$ should be set to such a
+value that we are sure that there might at most $m-1$ malicious registration
+nodes.
+
+Every node maintains a store for valid certificates that it has received. This
+store may limited in size. In such a case a node may remove certificates last
+seen node's or certificates close to expiration. Additionally every node in the
+routing table must have a valid certificate in the store, otherwise it should be
+removed. If a neighbours certificate is close to expiration than it should be
+sent a \texttt{PING} to get a new certificate.
+
+\subsection{Messages}
+Ghoul extends each DHT message with following fields:
+\begin{description}
+  \item{\texttt{certificateRequest}} Signifies that a response to this message
+    should contain a list of certificates. This is field is set when the
+    recipient is considered to be a neighbour or potential neighbour and either
+    its certificates are not present, not valid, or close to expiration.
+  \item{\texttt{certificates}} A list of valid certificates provided by the
+    registration authority.
+  \item{\texttt{signature}} Signature signed by the sender's private key.
+\end{description}
+
+Just like normal kademlia messages are used for routing table maintainance so
+similarly in Ghoul we attach security information to them. Only the list of
+certificates may have a larger size (each certificate has a size of $\approx$
+1KB), but it is sent only sporadically.
+
+Each one of those additional fields is optional. If the signature field is not
+provided it means that the node is not interested in being part of the network
+and instead just uses it to find information. That is considered normal
+behaviour, such node is not added to the routing table (it may have possibly not
+even provided its key information), and is simply responded with appropiate
+response. Otherwise every node should always sign its messages.
+
+The \texttt{certificateRequest} field is set if all of the following conditions
+are met:
+
+\begin{itemize}
+  \item The recipient's certificate is not present in the store or is close to
+    expiration.
+  \item The recipient is in the routing table or may be considered a candidate.
+\end{itemize}
+
+If the \texttt{certificateRequest} field is set then the recipient should attach
+list of certificates to its response or if no response would be normally given
+then it should respond with a \text{PONG} message.
+
+If a response to the message with the \texttt{certificateRequest} does not have
+a valid list of certificates then it is discarded.
 
 \section{Protocols}
 \subsection{Challenge protocol}
@@ -64,9 +163,10 @@ on number of queries, such as a Sybil attack, and provides a throttle mechanism
 to prevent a node overload.
 
 Whenever the protocol requires the node sending a query or a request to provide
-a proof-of-work for this request the following protocol is used:
+a proof-of-work for this request the challenge protocol is used
+(\ref{fig:chal_prot}).
 
-
+\begin{figure}
 \begin{msc}{Challenge protocol}
 \setlength{\instdist}{9cm}
 \setlength{\envinstdist}{3cm}
@@ -81,7 +181,7 @@ $r\in\{0,1\}^*$, difficulty $p \in \N$, $t := \text{current time}$.
 Save the nonce into active puzzles list. If the answer does not arrive withing
 time $T_0$, remove the nonce from the list.
 \end{minipage}}{server}
-\nextlevel[9]
+\nextlevel[11]
 \mess{Send challenge $m_2 := (t, r, p)_{s_{pr}}$}{server}{client}
 \nextlevel[1]
 \action*{
@@ -97,6 +197,9 @@ Check the validity of the solution. Remove the nonce from active puzzles list.
 \end{minipage}}{server}
 \nextlevel[4]
 \end{msc}
+  \caption{Challenge protocol}
+  \label{fig:chal_prot}
+\end{figure}
 
 The validity check consists of: veryfying signature of $m_2$, checking whether
 nonce is in active puzzles list, checking time, veryfying the solution.
@@ -129,12 +232,35 @@ unbiased if at least one node is honest. More formally:
   nodes respond according to the protocol in a timely manner. Even in the case
   of a byzantine failure then all nodes that generate a key generate the same
   key that is unbiased if at least one node is honest.
+
+  The chance that the malicious participant may manipulate the protocol so that
+  this theorem does not hold is cryptographically negligible.
 \end{theorem}
 
-In \ref{fig:key_gen_alg} the protocol is presented.
+The protocol uses bit-commitment. Bit-commitment is a cryptographic protocol
+such that:
+
+[TODO bit-commitmen description
+
+The protocol that satisfies those properties is defined in \ref{fig:key_gen_alg}.
+
+It consists of 3 phases:
+\begin{enumerate}
+  \item Commit and broadcast random number used to generate the key. This phase
+    is used so that every node commits to its random number and can not change
+    it later.
+  \item Broadcast all received messages to others. This step ensures that every
+    honest node has received the same set of messages and will generate the same
+    key. If any node has sent inconsistent messages to honest nodes
+    than this will be detected here.
+  \item Broadcast key to unlock commitment.
+\end{enumerate}
+
+One may recognize that this protocol consist of first two phases of a 3-phase
+byzantine failure protection protocol. Which is why it has its nonmalleability
+properties.
 
 \begin{figure}
-  \label{fig:key_gen_alg}
   \begin{algorithmic}[1]
   \STATE $k_i \leftarrow $ random key
   \STATE $(h_i, s_i) \leftarrow $ bit commitment string and solution commiting
@@ -158,9 +284,13 @@ In \ref{fig:key_gen_alg} the protocol is presented.
   \STATE $k \leftarrow k_1 \oplus \ldots \oplus k_n$
 \end{algorithmic}
   \caption{Distributed key generation algorithm generating random key $k$}
+  \label{fig:key_gen_alg}
 \end{figure}
 
+An example of this protocol for 3 registrars is shown in
+\ref{fig:key_gen_example}.
 
+\begin{figure}
 \begin{msc}{Distributed key-generation}
 \setlength{\instdist}{5.5cm}
 \setlength{\envinstdist}{3cm}
@@ -187,11 +317,14 @@ In \ref{fig:key_gen_alg} the protocol is presented.
 \nextlevel[2]
 \mess{$((h_A)_A, (h_B)_B, (h_C)_C)_C$}{rc}{ra}
 \end{msc}
+\label{fig:key_gen_example}
+\caption{Example of distributed key-generation for 3 registrars}
+\end{figure}
 
 The protocol uses $O\left(n^2\right)$ messages and is vulnerable to an attack in
 which an attacker simply does not participate in it. However in the large scope
 of the system it's not an issue, because we assume that introducing a registrar
-requires an organization approval which is a nontrivial barrier of entry and
+requires an organizational approval which is a nontrivial barrier of entry and
 later any malicious nodes may be easily detected and removed from the
 centralized lists should it become compromised.
 
@@ -211,6 +344,7 @@ and potentially generate biased keys. The node join protocol prevents such nodes
 from performing a successful attack. Given $m$ malicious nodes the node join
 protocol at least $m+1$ certificates. The following scheme assumes that $m = 1$.
 
+\begin{figure}
 \begin{msc}{Node join protocol}
 \setlength{\instdist}{5.5cm}
 \setlength{\envinstdist}{3cm}
@@ -245,126 +379,10 @@ protocol at least $m+1$ certificates. The following scheme assumes that $m = 1$.
 \nextlevel[1]
 \referenceend{r}
 \end{msc}
+\caption{Node's join protocol}
+\end{figure}
 
+\subsection{Certificate revocation system}
 
-\subsection{Certificate revocation}
-
-[TODO the rest is prelimenary]
-\section{Overview}
-
-
-\section{Data structures and message}
-
-\subsection{Core DHT data structures}
-\subsubsection{Data types}
-\begin{description}
-  \item[KademliaKey] 160-bit number used to identify hosts in the DHT. 
-  \item[PublicKey] A cryptographic public key.
-  \item[PrivateKey] A cryptographic private key.
-  \item[GhoulKeyValidityCertificate] A certificate which certifies randomness of
-    given KademliaKey and PublicKey.
-  \item[KeyIPPair] Association of kademlia key to ip address.
-  \item[RoutingTable] A Kademlia routing table. It consists of 160 buckets
-    containing \textbf{KeyIPPairs} of common Key prefixes.
-\end{description}
-
-\subsection{Messages/Operations}
-\subsubsection{Kademlia messages}
-The general format of messages looks as follows:
-
-Each message comes with a s
-\begin{description}
-  \item[Ping] Fields: Sender's KeyIPPair, Destination Key.  This message request
-    a pong message from destination. A heartbeat message. Used to update
-    KeyIPPair and check whether recipient is alive.
-  \item[Pong] Fields: Sender's KeyIPPair, Destination Key.  This is a response
-    message to pong.
-\end{description}
-
-\subsubsection{Ghoul messages}
-\begin{description}
-  \item[CertificateInfo]   
-  \item[CertificateInfo]   
-\end{description}
-
-\subsection{Messages/Operations}
-
-Perhaps we can run a recursive algorithm to discover size of network
-
-In a centralized solution we can have a server which will:
-  assign keys and check IP address uniqueness
-  help with anonymous rogue node discovery
-  Keey certifites and revocations
-
-Each node can keep a signed proof that a given node promised to keep given
-key,value. Breaking this promise means that a node should be revoked.
-
-If each certificate has a validity period than we can control the ever-growing
-size of network.
-
-Octopus
-
-I think I need to focus on peer, super-peer infrastructure. Each network will
-have a few super-peers, special kinds of peers, known by every node, that will
-be able to: sign someone's key, revoke someone's certificate, perhaps force to
-run a query.
-unlikely (but possible to be malicious), 
-
-The current solution looks like this.
-
-\subsubsection{Data}
-Each peer in kademlia network has following values:
-KID - Public 160-bit kademlia key identifying its position in kademlia network.
-PUBLIC\_KEY, PRIVATE\_KEY - key pair used by this node for cryptography operation.
-CERTIFICATE\_CHAIN - Chain of certificates (up to a super-peer) proving that a
-given KID has been assigned to given public key.
-
-\subsubsection{Messages}
-Explain node structure and fields.
-
-\paragraph{Core DHT operations}
-Each message contains
-
-PING - Query a node for its alive status. 
-PONG - A response to PING message containing current node information.
-FIND - Return the closest nodes to given node.
-FIND\_RESPONSE - Duh.
-
-\paragraph{Key allocation}
-
-ASSIGN\_KEY - A message starting a key allocation sent to super-peers.
-ASSIGN\_KEY\_RESPONSE - A message containing signed key.
-
-\paragraph{Security operations}
-
-Octopus operations
-
-GET\_REVOCATIONS
-
-\subsubsection{Operations}
-\paragraph{Key allocations}
-\paragraph{Core DHT operations}
-Think about DOS when nodes requires someone to put new elements. Perhaps limit
-number of a available messages 
-\paragraph{Random Validity checks}
-\paragraph{Revocation mechanism}
-\paragraph{DO we use trust network?}
-
-\section{Core DHT protocol}
-
-Here will be general Kademlia.
-
-\section{Operations}
-
-\section{Algorithms and general operations}
-
-\subsection{Peer's data}
-Every peer in the network is contains the following data required for the
-system:
-
-\begin{description}
-  \item[dhtkey] 160-bit key either generated randomly and assigned by
-    super-peers or just generated randomly in case of super-peers.
-  \item[routing\_table] A kademlia
-\end{description}
-
+\subsection{SybilControl - Limiting number of sybil nodes with computational
+puzzles}

@@ -137,7 +137,7 @@
   
   \subsubsection{Constrained routing table}
   Castro et al. \cite[p. 20]{urd11} have modified Pastry with additional
-  constrained routing table and back up routing mechanism to protecct against
+  constrained routing table and back up routing mechanism to protect against
   eclipse attacks. If node key's assignment is truly random and routing table
   entries are narrowly specified then it is difficult for an attacker to inject
   malicious entries. DHTs such as Kademlia and Pastry are therefore more
@@ -197,6 +197,11 @@
   represent multiple DHT nodes increasing his power without incurring additional
   cost. Since most protocols rely on honest nodes having a majority, a Sybil
   attack can shut down the system by even a modest attacker.
+
+  Thirdly, DHTs agents use, like in any distributed system, only locally
+  available information to determine their course of actions. However malicious
+  behaviour is often indistinguishable from correct one unless we have
+  information about global state or history.
 
   Preventing a Sybil attack requires a gatekeeper or, more accurately, a
   bouncer. A protocol which prevents a single physical node to enter more than
