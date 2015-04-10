@@ -1,25 +1,23 @@
 \chapter{Motivation}
-Topology creation and maintainance protocols are one of the first choices a
+Topology creation and maintenance protocols are one of the first choices a
 designer of a Peer-to-Peer system has to face. Distributed hash tables, such as
 Chord or Kademlia, are frequently chosen due to their good performance.
-Unfortunately those core protocols rely on correct behaviour of their
-participants and are prone to malicious behaviour. A completely unprotected
+Unfortunately these core protocols rely on correct behavior of their
+participants and are prone to malicious behavior. A completely unprotected
 system may be controlled or shutdown by even a modest adversary.
 
 There exists a rich set of proposals which aim to secure DHTs, and yet most of
 the popular and widely used Peer-to-Peer applications using DHTs, such as:
-Bitorrent Kad, OpenDHT are not using them and are known to be insecure. I feel
-that this is, because those solutions often suffer from faults, such as:
-suboptimal performance, too stringent assumptions, i.e. reliance on central
-authority, but most important of all is lack of good implementation.
+Bitorrent Kad, OpenDHT, are not using them and are known to be insecure. I feel
+that this is the case, because these solutions often are found to be impractical
+by developers. Impracticalities include things such as: suboptimal performance,
+too stringent assumptions, i.e. reliance on central authority, but most
+important of all is lack of good implementation.
 
 This goal of this work is to design and implement an extensible DHT system
-that is protected agains against wide array of attacks, doesn't need to rely on
-central, trusted authority and can self-recover in case an attack happens. This
+that is protected against wide array of attacks, doesn't need to rely on
+central, trusted host and can self-recover in case an attack happens. This
 implementation is done using Java, a popular language thanks to its performance
 and portability, using tested software engineering practices that provide
-elasticity and customazibility necessary to allow easy inclusion of the library
-into an application and extend it should an user want it.
-
-[TODO Currently used non-secure solutions: Yaca, Bittorrent Kad, Coral
-ContentDistribution]
+elasticity and customizability necessary to allow easy inclusion of the library
+into an application and extend it should a user want it.
