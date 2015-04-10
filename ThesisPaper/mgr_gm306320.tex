@@ -7,7 +7,21 @@
 %newtheorem*
 
 \usepackage[utf8]{inputenc}
-\usepackage{polski}
+
+%Fix for paragraph ended before \@tempa was complete
+\let\zz\[\let\zzz\]
+
+\usepackage{xltxtra}
+
+%Fix for paragraph ended before \@tempa was complete
+\let\[\zz\let\]\zzz
+
+%%% fix for \lll
+\let\babellll\lll
+\let\lll\relax
+
+%
+\usepackage{polyglossia}
 
 %newtheorem*
 \usepackage{amsthm}
@@ -38,9 +52,6 @@
 \newcommand{\ul}[1]{\underline{#1}}
 \newcommand{\ol}[1]{\overline{#1}}
 
-
-\usepackage[polish]{babel}
-
 \usepackage{hyperref}
 
 \makeindex
@@ -50,7 +61,7 @@
 \nralbumu{306320}
 \kierunek{Computer Science}
 \opiekun{dr. Krzysztof Rządca\\
-  Department of Mathematics, Informatics, and Mechanics}
+  Faculty of Mathematics, Informatics, and Mechanics}
 \dziedzina{ 
 11.3 Informatyka\\ 
 }

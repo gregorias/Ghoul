@@ -1,0 +1,5 @@
+Use xelatex to create PDF:
+   xelatex mgr_gm306320.pdf
+
+Required packages:
+  lm - latin modern fonts

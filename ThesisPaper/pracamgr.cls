@@ -10,8 +10,6 @@
 
 
 \def\@baseclass{report}
-\def\@rodzajpracy{magisterska}
-\DeclareOption{licencjacka}{\def\@rodzajpracy{licencjacka}}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{\@baseclass}}
 \PassOptionsToClass{a4paper,twoside,openright,11pt}{\@baseclass}
 \ProcessOptions
@@ -36,23 +34,23 @@
     \let\footnoterule\relax
     \let \footnote \thanks
     \begin{center}%
-      {\LARGE\textbf{Uniwersytet Warszawski}\\
-        Wydzia\l{} Matematyki, Informatyki i Mechaniki\par}
+      {\LARGE\textbf{University of Warsaw}\\
+        Faculty of Mathematics, Informatics and Mechanics\par}
       \vspace{1cm plus 1fill} 
       {\Large\bf\@author\par}
       \vspace{0.2cm}
-      {\large Nr albumu: \@nralbumu\par}
+      {\large Student number: \@nralbumu\par}
       \vspace{8mm plus .1fill}
       {\Huge\textbf{\@title}\par}
       \vspace{8mm plus .1fill}
-      {\large\bf Praca \@rodzajpracy\\[3pt]
-        na kierunku \MakeUppercase{\@kierunek} \\
+      {\large\bf Master thesis\\[3pt]
+        in \MakeUppercase{\@kierunek} \\
 %----zakres---
         \@zakres \par}
       \vspace{2cm plus 1.5fill}
       \begin{flushright}\large
         \begin{tabular}{l}
-          Praca wykonana pod kierunkiem\\
+          Supervisor\\
           \bfseries \@opiekun
         \end{tabular}
       \end{flushright}
@@ -67,15 +65,15 @@
     \null
     \vfill
     
-   \textbf{\Large O\'swiadczenie kieruj¡cego prac¡ }
+    \textbf{\Large O\'swiadczenie kieruj\k{a}cego prac\k{a} }
       \vspace{10mm}
       
    Potwierdzam, {\.z}e niniejsza praca zosta{\l}a przygotowana pod moim 
-   kierunkiem i kwalifikuje si¦ do przedstawienia jej w post¦powaniu 
+   kierunkiem i kwalifikuje si\k{e} do przedstawienia jej w post\k{e}powaniu 
    o nadanie tytu{\l}u zawodowego. 
    \vspace{15mm}
    
-   Data \hfill Podpis kieruj¡cego prac¡ 
+   Data \hfill Podpis kieruj\k{a}cego prac\k{a}
    
    \vspace{3cm}
    \textbf{\Large O\'swiadczenie autora (autor\'ow) pracy}
@@ -83,12 +81,13 @@
     
    \'{S}wiadom odpowiedzialno\'sci prawnej o\'swiadczam, {\.z}e niniejsza praca dyplomowa zosta{\l}a 
    napisana przeze mnie samodzielnie i nie zawiera tre\'sci uzyskanych w spos\'ob niezgodny 
-   z obowi¡zuj¡cymi przepisami. 
+   z obowi\k{a}zuj\k{a}cymi przepisami. 
    
    O\'swiadczam r\'ownie{\.z}, {\.z}e przedstawiona praca nie by{\l}a 
-   wcze\'sniej przedmiotem procedur zwi¡zanych z uzyskaniem tytu{\l}u zawodowego w wy{\.z}szej uczelni. 
+   wcze\'sniej przedmiotem procedur zwi\k{a}zanych z uzyskaniem tytu{\l}u zawodowego w wy{\.z}szej uczelni. 
    
-   O\'swiadczam ponadto, {\.z}e niniejsza wersja pracy jest identyczna z za{\l}¡czon¡ wersj¡ elektroniczn¡. 
+   O\'swiadczam ponadto, {\.z}e niniejsza wersja pracy jest identyczna z
+   za{\l}\k{a}czon\k{a} wersj\k{a} elektroniczn\k{a}. 
    \vspace{15mm}
    
    Data \hfill Podpis autora (autor\'ow) pracy
