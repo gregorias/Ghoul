@@ -4,33 +4,35 @@
   Distributed hash table is a type of peer-to-peer system providing topology
   creation and maintenance protocols. They are typically designed for and
   tightly coupled with data storage protocols for key-value pairs, hence the
-  hash table part in the name. Popular DHT designs include: Chord, Pastry,
-  Kademlia, CAN.
+  hash table part in the name. Popular DHT designs include: Chord~\cite{sto03},
+  Pastry \cite{row01}, Kademlia \cite{may02}.
 
-  A structure of a typical DHT consist of a few main components. First is a
+  A structure of a typical DHT consists of a three main components. First is a
   keyspace, a collection of identifiers such as 160-bit bitstrings. Those keys
-  are an abstract identification of a node and also serve to partition ownership
-  in the network. Next is an overlay network that is a topology induced by
-  routing tables, neighborhood tables kept and maintained by each node
-  containing pairing between an abstract key and a network address. Each DHT
-  defines protocols for table maintenance and search of nodes that are not
-  neighbors.
+  are an abstract identification of a node and also serve to partition the
+  keyspace into ownership ranges over the network. Next is an overlay network
+  that is a topology induced by routing tables which contain pairing between an
+  abstract key and a network address. Neighborhood tables are kept and
+  maintained by each node. Finally, DHT specification defines protocols for
+  table maintenance and search of nodes that are not neighbors.
 
-  This kind of structure has certain desired properties. First of is that DHT is
-  completely decentralized, every peer is equal and protocol do not require any
-  for of central coordinator. DHTs are also scalable, in most protocols the size
-  of the routing table is on the order of $O(\log n)$, where $n$ is size of the
-  network and similarly for message count complexity in node search protocol.
-  Third of all DHTs are fault tolerant, in fact their protocols are for the fact
-  that there might be significant churn in the network, churn is the rate node's
-  join/leave speed, and the routing table should be updated often enough to
-  counteract that.
+  This kind of structure has certain desired properties. Firstly, DHT is
+  completely decentralized. Every peer is equal and the protocol does not
+  require any form of central coordinator. DHTs are also scalable, in most
+  protocols the size of the routing table is on the order of $O(\log n)$, where
+  $n$ is size of the network. Similarly for the message count complexity of node
+  search protocol. Third of all, DHTs are fault tolerant. In fact their
+  protocols are designed to be resilient to even significant churn in the
+  network. Churn is the rate of nodes's join/leave speed. To counteract that
+  phenomena the routing table should be updated often enough.
  
   \subsection{Kademlia}
-  Kademlia \cite{may02} is popular choice among many peer-to-peer applications,
-  especially used in bittorrent and edonkey file-sharing applications.
+  Kademlia \cite{may02} is popular choice among many peer-to-peer applications.
+  It well-known for its use in BitTorrent and eDonkey file-sharing applications.
+  Wang and Kangasharju \cite{wan13} measure the size of Kademlia used in
+  Bittorent to be almost 25 million users depending on the time of day.
 
-  A node in kademlia network is represented by an n-bit binary key (most popular
+  A node in Kademlia network is represented by an n-bit binary key (most popular
   choices are $n = 128$ or $n = 160$). Kademlia defines a distance in the
   keyspace as the xor function. That is distance between two keys $x, y$ is
 
@@ -59,7 +61,7 @@
       (key, value) pair if it's present in its storage.
   \end{description}
 
-  The main protocol in kademlia is the iterative node search protocol
+  The main protocol in Kademlia is the iterative node search protocol
   \ref{fig:node_search_alg}.
 
   \begin{figure}
@@ -86,7 +88,7 @@
   same. Only instead \verb|FIND_NODE| \verb|GET_KEY| is sent and reply contains
   stored data if any.
 
-  Because the distance metric is symmetric kademlia does not require specialized
+  Because the distance metric is symmetric Kademlia does not require specialized
   routing table maintenance messages. Instead every with every message receipt
   a node adds the sender to its routing table if there is space. Otherwise it
   sends a \verb|PING| message to least recently seen node in given bucket, if it
@@ -317,7 +319,7 @@
 
   Attacks that aim to fake possession of requested resource are best counter
   with cryptography. Using signatures, self-certifying data, or Merkle hash
-  trees, like in bittorrent, is an effective and efficient deterrent.
+  trees, like in BitTorrent, is an effective and efficient deterrent.
   To protect against malicious nodes dropping data or routing information the
   system needs to use replication and redundant routing. 
 

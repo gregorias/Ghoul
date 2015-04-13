@@ -2,12 +2,12 @@
 \section{Goals}
 I decided to build Ghoul to fill a niche of secure open-source DHT network
 implementation. In my experience it is difficult to find a good open-source
-implementation of kademlia. By good I mean one that satisfies all of the
+implementation of Kademlia. By good I mean one that satisfies all of the
 following criterias:
 
 \begin{description}
-  \item{Simplicty} Implementation of kademlia should do only one thing: operate
-    according to the kademlia protocol.
+  \item{Simplicty} Implementation of Kademlia should do only one thing: operate
+    according to the Kademlia protocol.
   \item{Extensibility} If I want to extend the network protocol with a NAT
     traversal mechanism I should not be required to modify large portion of the
     library network communication stack.
@@ -68,7 +68,7 @@ is an independent agent which acts as a Ghoul node and communicates with other
 nodes using messages sent over network transmission.
 
 There two kinds of nodes in the system: a DHT node and a registration authority.
-The DHT node is the kademlia node extended with security measures. It initaties
+The DHT node is the Kademlia node extended with security measures. It initaties
 and maintain its routing table and anwers queries. Additionally each node is
 responsible for maintaining the security of the entire network by participation
 in P2P certificate revocation propagation, maintainance of its security
@@ -126,7 +126,7 @@ Ghoul extends each DHT message with following fields:
   \item{\texttt{signature}} Signature signed by the sender's private key.
 \end{description}
 
-Just like normal kademlia messages are used for routing table maintainance so
+Just like normal Kademlia messages are used for routing table maintainance so
 similarly in Ghoul we attach security information to them. Only the list of
 certificates may have a larger size (each certificate has a size of $\approx$
 1KB), but it is sent only sporadically.
@@ -390,7 +390,7 @@ protocol at least $m+1$ certificates. The following scheme assumes that $m = 1$.
 puzzles}
 \subsubsection{Goals}
   Verifiable random key generation in Kademlia is a defense against eclipse
-  style attacks, which in kademlia are much harder to launch than in other
+  style attacks, which in Kademlia are much harder to launch than in other
   DHTs, such as Chord, due to nonstrict routing tables and redundant, iterative
   routing algorithm. [TODO citation]. However eclipse attack might not be
   necessary if attacker can perform a Sybil attack. Although this the scope of
@@ -447,7 +447,7 @@ puzzles}
 
 \subsubsection{SybilControl in Ghoul}
   SybilControl requires additional consideration as to how it integrates with
-  kademlia.
+  Kademlia.
 
   First off the protocol loosely defines what constitutes a neighbour. An
   uncareful implementation of SybilControl in which every cryptographic puzzle
