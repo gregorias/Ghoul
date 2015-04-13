@@ -2,7 +2,7 @@
 \section{DHT overview}
 
   Distributed hash table is a type of peer-to-peer system providing topology
-  creation and maintainance protocols. They are typically designed for and
+  creation and maintenance protocols. They are typically designed for and
   tightly coupled with data storage protocols for key-value pairs, hence the
   hash table part in the name. Popular DHT designs include: Chord, Pastry,
   Kademlia, CAN.
@@ -11,10 +11,10 @@
   keyspace, a collection of identifiers such as 160-bit bitstrings. Those keys
   are an abstract identification of a node and also serve to partition ownership
   in the network. Next is an overlay network that is a topology induced by
-  routing tables, neighbourhood tables kept and maintained by each node
+  routing tables, neighborhood tables kept and maintained by each node
   containing pairing between an abstract key and a network address. Each DHT
-  defines protocols for table maintainance and search of nodes that are not
-  neighbours.
+  defines protocols for table maintenance and search of nodes that are not
+  neighbors.
 
   This kind of structure has certain desired properties. First of is that DHT is
   completely decentralized, every peer is equal and protocol do not require any
@@ -55,7 +55,7 @@
       in its local storage. Usually the sender first searches for nodes close
       to the pair's key.
     \item{\verb|GET_KEY|} Just like \verb|FIND_NODE| this query contains
-      searched key. The recipient should return $k$ closest neighbours plus a
+      searched key. The recipient should return $k$ closest neighbors plus a
       (key, value) pair if it's present in its storage.
   \end{description}
 
@@ -87,14 +87,14 @@
   stored data if any.
 
   Because the distance metric is symmetric kademlia does not require specialized
-  routing table maintainance messages. Instead every with every message receipt
+  routing table maintenance messages. Instead every with every message receipt
   a node adds the sender to its routing table if there is space. Otherwise it
   sends a \verb|PING| message to least recently seen node in given bucket, if it
-  times-out than it is replaced by the new neighbour.
+  times-out than it is replaced by the new neighbor.
 
 \subsection{Vulnerabilities}
   DHTs suffer from various vulnerabilities, which mostly stem
-  from two diffuclties:
+  from two difficulties:
   \begin{enumerate}
     \item Node identity is a virtual concept and lacks connection to the real
       world. DHTs as a distributed storage space rely on data and message
@@ -103,7 +103,7 @@
       attack) or get as many nodes as it wants (Sybil attack).
 
     \item Each node only maintains a local view over the network, which does not
-      provide enough context to detect and prevent any malicious behaviour.
+      provide enough context to detect and prevent any malicious behavior.
   \end{enumerate}
 
 \section{Eclipse attack}
@@ -125,9 +125,9 @@
   \subsection{Prevention mechanisms}
 
   Sit and Morris \cite{sit02} have been among the first to discuss general
-  guidelines against preventing attacks in DHT networks. They advise desinging
-  the system with verifiable constrainst so that a node can distinguish
-  malicious behaviour from honest one and provide a proof to other nodes.
+  guidelines against preventing attacks in DHT networks. They advise designing
+  the system with verifiable constraints so that a node can distinguish
+  malicious behavior from honest one and provide a proof to other nodes.
   Mechanisms, mainly data and node look up, should have a built-in redundancy so
   that a malicious node presence can be avoided in at least one path of
   execution. The lookup itself should be interactive and allow for clear view of
@@ -145,16 +145,16 @@
 
   \subsubsection{Node scrambling}
   A different method to mitigate an eclipse attack is to constantly move node's
-  ids in unpredictable ways so that it is infeasable to eclipse a local
+  ids in unpredictable ways so that it is unfeasible to eclipse a local
   keyspace. Such solution is proposed by Condie et al. \cite[p. 21]{urd11}.
-  Condie shows that a periodical random, impredictable node reassignment
+  Condie shows that a periodical random, unpredictable node reassignment
   augmented by techniques which mitigate negative churn effects, that is
   grouping nodes into different timeout groups so that timeouts are not
   synchronized and precalculation of future routing table, significantly
   improves Castro's solution.
 
   Awerbach and Scheideler \cite{awe10}, while proposing a robust, distributed
-  random number generator propose a scheme of global node rearrengment on each
+  random number generator propose a scheme of global node rearrangement on each
   join node. In such a scheme once a join node they show that using a robust
   cuckoo rule to move $O(\log n)$ nodes makes the network resilient to
   join-leave attacks.
@@ -166,10 +166,10 @@
   protocol which limits in-degree of nodes. Each node $x$ maintains an
   additional backpointer table, which contains nodes having $x$ in their routing
   tables. Every node $y$ periodically checks backpointer tables of their
-  neighbours and if they are larger than a global constant or does not contain
+  neighbors and if they are larger than a global constant or does not contain
   $y$ then it removes $x$ from its routing table.
 
-  This scheme requires the backpointer check to be anonynomous, therefore the
+  This scheme requires the backpointer check to be anonymous, therefore the
   Scheme uses a common technique of onion routing using anonymizer network to
   achieve that. Anonymizer are not assumed to be honest and therefore it
   possible that a honest node will be labeled as malicious with small
@@ -190,7 +190,7 @@
   Firstly, key generation is not verifiable. There is no way for a node to
   verify whether given key has been generated randomly. It is possible to use a
   statistical test to verify uniformity constraints, but they are often not
-  enough to accuse specific node of malicious behaviour.
+  enough to accuse specific node of malicious behavior.
 
   Secondly, DHTs operate on an ephemeral sense of identity represented by a key.
   A Sybil attack happens when an attacker uses a single physical computer to
@@ -200,7 +200,7 @@
 
   Thirdly, DHTs agents use, like in any distributed system, only locally
   available information to determine their course of actions. However malicious
-  behaviour is often indistinguishable from correct one unless we have
+  behavior is often indistinguishable from correct one unless we have
   information about global state or history.
 
   Preventing a Sybil attack requires a gatekeeper or, more accurately, a
@@ -208,7 +208,7 @@
   once and a way to throw out offenders. Achieving that in a fully distributed
   way is difficult. It is not possible to achieve adequate security if nodes
   only have access to their immediate surroundings. Such a limited view lacks
-  necessary information to distinguish between bening and malicious behaviour.
+  necessary information to distinguish between benign and malicious behavior.
   Additionally it's much easier to simply eclipse a node. Protocols that
   overcome this obstacle by sharing information globally do so at the cost of
   performance and scalibility. Such cost usually makes a DHT unpractical for
@@ -222,7 +222,7 @@
   security risk. It also acts negatively on scalability. Apart from
   technological disadvantages central authority is often an organizational
   problem. It forces an agent to maintain it in order to provide a service, this
-  is done reluctantatly since it makes the agent responsible for maintaining the
+  is done reluctantly since it makes the agent responsible for maintaining the
   service and also Peer-to-Peer user community may be distrustful over
   centralized solution.
 
@@ -243,7 +243,7 @@
   for users behind NAT.
 
   Centralized gatekeeper gives much flexibility in implementing an
-  authentication and sybil attack prevention scheme. For example there may be
+  authentication and Sybil attack prevention scheme. For example there may be
   required a small monetary payment for entry into the DHT network or a
   computational puzzle may have to solved.
 
@@ -251,7 +251,7 @@
 
   Without centralized authority network peers would have to register new nodes
   in a distributed way. To distinguish distinct identities from same ones they
-  may use network characterestics. Such characteristic are usually easy to check
+  may use network characteristics. Such characteristic are usually easy to check
   in the sense that any node may do it, giving low barrier of entry to the
   network, but it carries an assumption that they are unfalsifiable, which is
   not always the case.
@@ -262,7 +262,7 @@
   of node's ID. If majority of registration nodes accept the new node then it is
   said to be accepted. A node registration fails if number nodes with given IP
   address exceeds a constant $a$. This solution requires all nodes to confirm
-  validity of their neighbours.
+  validity of their neighbors.
 
   IP addresses may be spoofed and cause a problem for NAT users. Wang et. al.
   \cite[p. 7]{dou02} proposed adding router's IP and MAC address and RTT
@@ -287,23 +287,23 @@
   niemile widziane lub niepraktyczne]
 
   SybilGuard \cite{hai06} mitigates effects of a Sybil attack by limiting the
-  number of sybil nodes and recognized sybil groups. It defines the edges
-  between honest nodes and sybil nodes as attack edges and notes that in a
+  number of Sybil nodes and recognized Sybil groups. It defines the edges
+  between honest nodes and Sybil nodes as attack edges and notes that in a
   social graph there can be only few such edges. Then it allows a node to
-  partition its neighbours into classes and guarantees with high probability
+  partition its neighbors into classes and guarantees with high probability
   that a number of classes that contain a Sybil node is limited by the number of
   attack edges. Although the scheme does not detect Sybil nodes it gives a
-  guarantee that with a sufficient redundandancy an attacker will not be able to
+  guarantee that with a sufficient redundancy an attacker will not be able to
   intercept a query or manipulate data.
 
   \subsubsection{Puzzles}
-  SybilControl\cite{li12} is a distributed scheme for sybil prevention using
+  SybilControl\cite{li12} is a distributed scheme for Sybil prevention using
   computational puzzles. Every node is supposed to periodically generate a
-  puzzle for itself based on puzzles of its neighbours and solve. Such puzzle
+  puzzle for itself based on puzzles of its neighbors and solve. Such puzzle
   is verifiable by any node using novel multi-hop verification and serves as a
   proof-of-work. Nodes that can not present an up-to-date proof-of-work are
   suspected of being a Sybil identity and removed from routing tables. This
-  effectively bounds a number of sybil identities an attacker can create.
+  effectively bounds a number of Sybil identities an attacker can create.
 
   Computation puzzles have the advantage of being flexible. They can be done by
   any node, provided it has enough resources and can also scale their
@@ -316,7 +316,7 @@
   or to fake it.
 
   Attacks that aim to fake possession of requested resource are best counter
-  with cryptography. Using signatures, self-certyfying data, or Merkle hash
+  with cryptography. Using signatures, self-certifying data, or Merkle hash
   trees, like in bittorrent, is an effective and efficient deterrent.
   To protect against malicious nodes dropping data or routing information the
   system needs to use replication and redundant routing. 
@@ -341,21 +341,21 @@ in which the attacker abuses lack of authentication and admission of control
 which allows any node to advertise as any other. The is split into two phases:
 \begin{enumerate}
   \item In the preparation phase the attacker sets up N uniformly distributed
-    virtual nodes which gather routing table information of their neighbours.
-  \item In the attack phase each attacking node send to its neighbours bogus
+    virtual nodes which gather routing table information of their neighbors.
+  \item In the attack phase each attacking node send to its neighbors bogus
     updates of the form \verb|(ID_B, IP_A)\verb|, where \verb|ID_B| is the key
     of existing victim node present in the recipient's routing table and
     \verb|IP_A| is the attacker's IP address.
 \end{enumerate}
 
-Authors show that with just 100Mbps bandwith they were able to successfully
+Authors show that with just 100Mbps bandwidth they were able to successfully
 deny 80\% of keyword queries after 1-hour long preparation phase with a
 network with 16000 nodes. Unfortunately, for the attacker, this cost is ongoing
 since the attacking node needs to be responsive.
 
 Authors also provide a version of this attack where instead of providing
 attacker's IP the IP of the attacked node is used. Emule at the time did not
-provide any check against this behaviour so it would be effective in blocking
+provide any check against this behavior so it would be effective in blocking
 any effective look up. They also calculate that in this version it would take
 around 200Mbps of network speed to attack the entire 1 million eMule network
 with the result of blocking up to 75\% queries.
@@ -378,7 +378,7 @@ attacker.
 \paragraph{Feasibility of Sybil attack}
 Although Sybil attack is more expensive than above mentioned Hijacking attack
 \cite{tim11} has shown that in Mainline DHT implementation of Kademlia used in
-Bittorrent it still easy. In their experiment they were able to fill neighbours
+Bittorrent it still easy. In their experiment they were able to fill neighbors
 routing table with 160 Sybil nodes within 5 minutes after the attack phase has
 begun. While similar attack would be impossible in newer versions of Kad the
 only limitation is the fact that only one IP address is used.
