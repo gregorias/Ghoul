@@ -546,10 +546,10 @@ puzzles}
   size of the puzzle size considerably. This kind of behavior may be used to
   slow down the DHT by nodes which gratuitously send challenge updates to all
   nodes in the DHT. Li et al. do not take this into consideration. This can
-  be prevented by including only challenges received from nodes in the routing
-  table and additionally limiting the number of included challenges to those
-  that have been received in the last $2p$ seconds from the $i$ closest nodes.
-  Where $p$ and $i$ are globally defined constants.
+  be prevented by including only challenges received from verified nodes, such
+  as nodes in the routing table, and additionally limiting the number of
+  included challenges to those that have been received in the last $2p$ seconds
+  from the $i$ closest nodes. Where $p$ and $i$ are globally defined constants.
 
   Secondly non-neighbor node verification requires collaboration from
   intermediate nodes, failing nodes may cause the check to fail and malicious
@@ -583,19 +583,105 @@ puzzles}
   that given node is malicious or Sybil they may globally revoke its
   certificate.
 
-  [About size of messages]
-
+  The size of the SybilControl query also needs to be considered. Usually a
+  Kademlia implementation uses UDP protocol for message sending. This means that
+  the maximal size of a single message is 64KB. This gives us a bound on the
+  SybilControl query response. Assuming likely value of keeping 10 last puzzle
+  states in history this means we have 6.4KB for one puzzle state record.
+  Kademlia key and challenge ($B_i || C_{B_i}$) are of size $160 + 16$ or $160
+  + 32$ bytes, that is around 200 bytes. Which forces us to consider only 32
+  neighbor challenges when building a our puzzle. Perhaps even a little bit
+  less to accomodate other metadata. The \texttt{SC\_QUERY} is the only message
+  that has potential to be too large if unconsidered.
 
 \section{Evaluation}
   This section concludes the specification of Ghoul. Here I will evaluate its
   strengths and weaknesses.
+  
+  \subsection{Security}
+  The core advantage of this design is that it secures the DHT from Sybil and
+  eclipse attacks while at the same time it does not take any additional
+  assumptions about available resources, apart from computing power. It does not
+  assume anything about security properties of IP address or other network
+  characteristics or require a Social network, or establishment of symmetric key
+  architecture.
+  
+  This means that setting up Ghoul does not require any more work than setting
+  up a bare Kademlia implementation, sometimes even less since some protection
+  schemes stop working for users behind NAT.
 
-  Ghoul is a collec
+  Also, because we keep the completely abstract nature of identification, that
+  is a pair of DHT key and public key, it is perfectly possible to augment this
+  scheme with other security protocols. Application programmer may augment the
+  scheme anonymization, using transport-level protocols like Tor or DHT-level
+  solution like Octopus~\cite{wan12b}.
 
-  [About performance]
+  Ghoul ensures that keys are generated fairly and that every node performs
+  periodic proof-of-work, which limits the size of a Sybil attack. This coupled
+  with natural redundancy of Kademlia protocol also make launching an eclipse
+  attack much harder.
+
+  Ghoul, however is not invulnerable and has a few weaknesses:
+
+  \begin{description}
+    \item{\textbf{anonymization}} Lack of anonymization gives a snooping
+      attacker a possibility to acquire information about node's behaviour and
+      use it to augment his attack. For example if an attacker can predict
+      whether node verification in the SybilControl scheme is direct or not then
+      this whole scheme is rendered void.
+    \item{\textbf{denial of service}} Additional security mechanisms increase
+      amount of work a node can and needs to perform. If nodes do not limit this
+      a crafty attacker may congest a node with specially defined behaviour. One
+      pernicious example of this class of attack is attack on the certificate
+      revocation scheme. An attacker might introduce a large number of correctly
+      behaving nodes in the system, who after some time start behaving
+      maliciously, which is detected by Ghoul and their certificate's are
+      revoked. On first sight this is a desired behaviour, but if the number of
+      such nodes is very large then the revocation list become large as well.
+      Since each DHT node will try to synchronize this list it may generate
+      traffic large enough to congest it.
+  \end{description}
+
+  \subsection{Performance}
+
+  Ghoul focuses on changing node join and neighbour addition protocol and as
+  such does not change anything else. Especially a typical use of Kademlia for
+  finding nodes or data does incur any performance penalty.
+
+  Node join protocol changes an instantaneous operation into a small distributed
+  protocol with some proof-of-work. Since this happens only once its cost is
+  negligible. From the point of view the central authority the node join
+  protocol requires it to only be able to generate and save nonces and perform
+  the distributed key generation algorithm. Since node's join happens only once
+  in the existance and those operations are lightweight then it means that the
+  central authority can be a simple machine and should not be a performance
+  bottleneck.
+
+  The biggest performance overhead happens during neighbour addition when
+  verification is performed. The verification message complexity is on the order
+  of $O(\log n)$ and requires sending larger messages. This exacerbates effects
+  of churn and the network will take longer time to adapt to topology changes.
+  A more detailed analysis of SybilControl's impact on DHT behaviour can be
+  found in \cite{li12}..
+
+  Since Ghoul uses computational resources for proof-of-work verification
+  therefore this parameter requires careful tuning. Application designer needs
+  to consider the weakest node that should be able to join the DHT and also be
+  aware that a Sybil attacker may create as many identities as is the factor
+  of his computing power compared to the weakest node. Therefore tests with
+  small hardness may prove to be ineffective in blocking an attack. On the other
+  hand a weak node may still use Ghoul without performing any additional work,
+  so we can only consider more powerful ones for creating the DHT.
+
+  \subsection{Other}
+
+  The centralized authority leaves a sour taste to anyone looking for a
+  distributed solution. Although the main reason for its inclusion is lack of
+  an effective and distributed solution for random number generation, I would
+  like to argue that using centralized authority is not really a problem and
+  provides distinct advantages.
+
+  First of a
 
 
-  The centralized authority certainly leaves a sour taste.
   [About the benefits of centralized authority]
-
-  [Problem with revocation spam]
