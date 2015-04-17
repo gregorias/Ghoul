@@ -120,9 +120,6 @@
 \def\@dziedzina{???\ClassError{pracamgr}{Brak dziedziny Socrates-Erasmus}\@ehc}
 \def\klasyfikacja#1{\gdef\@klasyfikacja{#1}}
 \def\@klasyfikacja{???\ClassError{pracamgr}{Brak klasyfikacji tematycznej}\@ehc}
-%-------------------nowe------------
-\def\tytulang#1{\gdef\@tytulang{#1}}
-\def\@tytulang{???\ClassError{pracamgr}{Brak tytulu po angielsku}\@ehc}
 
 
 \renewenvironment{abstract}{%
@@ -136,7 +133,7 @@
 {\par  
   \vspace*{26pt}%
   \begin{center}%
-    \bfseries\large S{\l}owa kluczowe
+    \bfseries\large Keywords
     \@endparpenalty\@M
   \end{center}
   \@keywords\par
@@ -154,11 +151,6 @@
   \@klasyfikacja\par
   \vspace*{26pt}%
 %-------------------nowosc----------------
-  \begin{center}%
-    \bfseries\large Tytu{\l} pracy w j¦zyku angielskim
-    \@endparpenalty\@M
-  \end{center}
-  \@tytulang\par
   \nobreak\vfil\null\endtitlepage\cleardoublepage}
 
 \def\cleardoublepage{\clearpage\if@twoside \ifodd\c@page\else
