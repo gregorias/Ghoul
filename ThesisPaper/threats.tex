@@ -1,4 +1,12 @@
 \chapter{DHT, its weaknesses, and defense mechanisms}
+\section{Chapter overview}
+  In this chapter I define what is a Distributed Hash Table and specify Kademlia
+  DHT protocol, describe reasons and methods of attacks on DHT, and present
+  examples of different classes of protection mechanisms. Finally examples of
+  effectiveness of described attacks on popular, real-world DHT deployments are
+  provided. Those examples show that securing DHT is still an open problem in
+  practice.
+
 \section{DHT overview}
 
   Distributed hash table is a type of peer-to-peer system providing topology
@@ -10,27 +18,28 @@
   A structure of a typical DHT consists of a three main components. First is a
   keyspace, a collection of identifiers such as 160-bit bitstrings. Those keys
   are an abstract identification of a node and serve to partition the keyspace
-  into ownership ranges over the network. Next is an overlay network that is a
-  topology induced by routing tables which contain pairing between an abstract
-  key and a network address. Neighborhood tables are kept and maintained by each
-  node. Finally, DHT specification defines protocols for table maintenance and
-  search of nodes that are not neighbors.
+  into ownership ranges over the network. Second is an overlay network - a
+  topology induced by routing tables. Routing tables contain pairings between
+  abstract keys and network addresses. Neighborhood tables are kept and
+  maintained by each node. The final component of DHT specification are
+  protocols for routing table maintenance and search of nodes that are not
+  neighbors.
 
-  This kind of structure has certain desired properties. Firstly, DHT is
-  completely decentralized. Every peer is equal and the protocol does not
-  require any form of central coordinator. DHTs are also scalable. In most
-  protocols the size of the routing table is on the order of $O(\log n)$, where
-  $n$ is size of the network. Similarly for the message count complexity of node
-  search protocol. Third of all, DHTs are fault tolerant. In fact their
-  protocols are designed to be resilient to even significant churn in the
-  network. Churn is the rate of nodes's join/leave speed. To counteract that
+  This kind of structure has certain desirable properties. Firstly, a DHT is
+  completely decentralized. Every peer plays the same role and the protocol does
+  not require any form of central coordinator. Secondly, DHTs are scalable. In
+  most protocols the size of a routing table is on the order of $O(\log n)$,
+  where $n$ is size of the network. Message count complexity of node search
+  protocol is logarithmic as well. Thirdly, DHTs are fault tolerant. In fact
+  their protocols are designed to be resilient to even significant churn in the
+  network. Churn is the rate of nodes' join/leave speed. To counteract that
   phenomena the routing table should be updated often enough.
  
   \subsection{Kademlia}
-  Kademlia \cite{may02} is popular choice among many peer-to-peer applications.
-  It is well-known for its use in BitTorrent and eDonkey file-sharing
-  applications.  Wang and Kangasharju \cite{wan13} measure the size of Kademlia
-  used in Bittorent to be almost 25 million users depending on the time of day.
+  Kademlia \cite{may02} is a popular choice among many peer-to-peer
+  applications. It is well-known for its use in BitTorrent and eDonkey
+  file-sharing applications. Wang and Kangasharju \cite{wan13} measure the size
+  of Kademlia used in BitTorrent to peak at almost 25 million users.
 
   A node in Kademlia network is represented by an n-bit binary key (most popular
   choices are $n = 128$ or $n = 160$). Kademlia defines a distance in the
@@ -39,62 +48,88 @@
   \[ d(x, y) = x \oplus y\]
 
   The routing table is a collection of $n$ buckets, where each bucket has
-  maximum size $k$, a system-wide constant. 
+  maximum size $k$ -~a~\mbox{system-wide} constant. 
   $i$'th bucket holds active and recently seen nodes such that the first most
   significant bit that is different from routing table's owner is at position
-  $i$. More formally the $i$'th bucket of node's with key $x$ holds nodes with
+  $i$. More formally: the $i$'th bucket of node's with key $x$ holds nodes with
   keys $y$ such that $2^i \leq d(x, y) < 2^{i+1}$.
 
-  Kademlia node implements 4 RPC queries:
+  Kademlia node implements 4 remote procedure call (RPC) queries. In this
+  context RPC is an inter-process communication protocol that defines a query
+  message and an algorithm producing a response message for the query. These
+  query messages are:
 
   \begin{description}
-    \item{\verb|FIND_NODE|} This query is parametrized by the searched key. The
-      response should consists of up to $k$ keys closest the searched key in
-      queried node's routing table or itself.
-    \item{\verb|PING|} This query serves as a heart-beat and node's liveness
-      check. It should be answered with a \verb|PONG| message.
-    \item{\verb|PUT_KEY|} Orders the recipient to store given (key, value) pair
-      in its local storage. Usually the sender first searches for nodes close
-      to the pair's key.
-    \item{\verb|GET_KEY|} Just like \verb|FIND_NODE| this query contains
-      searched key. The recipient should return $k$ closest neighbors plus a
-      (key, value) pair if it's present in its storage.
+    \item{\texttt{FIND\_NODE}} This query is parametrized by a key that the sender
+      wants to find. The response should consists of up to $k$ keys closest to
+      the searched key in queried node's routing table including the recipient
+      node itself.
+    \item{\texttt{PING}} This query serves as a heart-beat and node's liveness
+      check. It should be answered with a \texttt{PONG} message.
+    \item{\texttt{PUT\_KEY}} Orders the recipient to store given (key, value) pair
+      in its local storage. This message should be sent to multiple nodes close
+      to the pair's key so as to replicate the data.
+    \item{\texttt{GET\_KEY}} Structurally the same as the \texttt{FIND\_NODE}
+      message. The recipient should return $k$ closest neighbors plus a (key,
+      value) pair if it's present in its storage.
   \end{description}
 
   The main protocol in Kademlia is the node search protocol shown in
-  figure~\ref{fig:node_search_alg}. Its distinctive feature is that it is
-  iterative and performs parallel queries. We will see that this form of
-  natural redundancy is well suited for preventing attacks.
+  algorithm~\ref{alg:node_search_alg}. Its distinctive feature is that it is
+  iterative and performs parallel queries. This form of natural redundancy is
+  well suited for preventing attacks \cite{sit02}.
 
-  \begin{figure}
+  [TODO no nie wiem czy ten algorytm teraz wygląda lepiej. Wydaje mi się mniej
+    czytelny (przede wszystkim ze względu na długie zdania) a nie chcę schodzić
+    na poziom ściśłego języka. Zapomniałem już co było nie tak w poprzednim
+  opr{\'o}cz mniejszej ścisłości.]
+
+  \begin{algorithm}
     \begin{algorithmic}[1]
-    \STATE Take $k$ closest nodes to key $y$ in the routing table.
-    \WHILE {There are unqueried nodes in top $k$ closest nodes}
-    \STATE Send \verb|FIND_NODE| queries to unqueried nodes in top $k$ 
-    nodes closest to $y$, such that there are up to $\alpha$ parallel queries.
+    \STATE \texttt{candidates} $\leftarrow$ empty priority queue for candidate
+    nodes ordered by closeness to key $y$
+    \STATE Add all nodes from the routing table and this node to
+    \texttt{candidates}
+    \STATE Set added nodes' state to \texttt{unqueried}
+    \WHILE {$|$nodes whose state isn't \texttt{responded} among top $k$
+    candidates$| > 0$}
+    \WHILE {$|$nodes with state \texttt{queried} among top $k$
+      candidates$| < \alpha$ \AND \\
+      $|$nodes with state \texttt{unqueried} among top $k$
+            candidates$| > 0$}
+        \STATE $n \leftarrow$ first \texttt{unqueried} node in
+          \texttt{candidates} 
+        \STATE Send \texttt{FIND\_NODE} to $n$
+        \STATE $n$'s state $\leftarrow$ \texttt{queried}
+    \ENDWHILE
+    \COMMENT{maintain up to $\alpha$ parallel queries}
+      
     \STATE $e \leftarrow$ response or timeout
     \IF{$e$ is a response}
-      \STATE Change state of the node to queried. Add its response to the list
-      of
-      nodes under consideration.
+      \STATE $n \leftarrow$ $e$'s sender
+      \STATE $n$'s state $\leftarrow$ \texttt{responded}
+      \STATE Add new candidates from response's neighbor list to
+      \texttt{candidates}
     \ELSE
-      \STATE Remove timed-out node from consideration
+      \STATE $n \leftarrow$ timed-out node
+      \STATE Remove $n$ from \texttt{candidates}
     \ENDIF
     \ENDWHILE
   \end{algorithmic}
     \caption{Node search protocol for key $y$}
-    \label{fig:node_search_alg}
-  \end{figure}
+    \label{alg:node_search_alg}
+  \end{algorithm}
 
   The protocol for finding stored data associated with a key is structurally the
-  same. Only, instead of \verb|FIND_NODE| \verb|GET_KEY| is sent and the reply
-  additionally contains stored data if any.
+  same. Only, instead of \texttt{FIND\_NODE}, \texttt{GET\_KEY} is sent and the
+  reply additionally contains stored data if any exists.
 
   Because the distance metric is symmetric Kademlia does not require specialized
-  routing table maintenance messages. Instead with every message receipt a node
-  adds the sender to its routing table if there is space. Otherwise it sends a
-  \verb|PING| message to least recently seen node in given bucket then it is
-  replaced by the new neighbor, if it times out.
+  routing table maintenance messages. With every message receipt the recipient
+  node adds the sender to its routing table if there is space in the appropriate
+  bucket. If there is no space then it sends a \texttt{PING} message to the
+  least recently seen node in the given bucket. If the intended recipient of the
+  \texttt{PING} message times out then it is replaced by the candidate.
 
 \subsection{Vulnerabilities}
   DHT's combination of Peer-to-Peer relationships and structural topology make
@@ -112,7 +147,7 @@
 
     \item Each node only maintains a local view over the network, which does not
       provide enough context to detect and prevent any malicious behavior. Often
-      malicious behaviour is indistinguishable from honest one unless we have
+      malicious behavior is indistinguishable from honest one unless we have
       knowledge about global state and history. Sometimes even that is not
       enough, for example verification of a specific key randomness is naturally
       unverifiable in a plain scheme.
@@ -224,7 +259,7 @@
   necessary information to distinguish between benign and malicious behavior.
   Additionally it's much easier to simply eclipse a node. Protocols that
   overcome this obstacle by sharing information globally do so at the cost of
-  performance and scalibility. Such cost usually makes a DHT unpractical for
+  performance and scalability. Such cost usually makes a DHT unpractical for
   larger networks. That's why most practical solutions make use of a central
   authority. This authority serves as a trusted entry point to the network, it
   generates signed random keys for newcomers and checks global constraints.
@@ -300,7 +335,7 @@
   Although such schemes show good performance, both in terms of application
   overhead and attack detectability, they are difficult to apply in real world
   applications. The biggest problem is to generate or acquire a social graph of
-  sufficient quality. This also deprives users of anonimity which for many
+  sufficient quality. This also deprives users of anonymity which for many
   Peer-to-Peer application users is an important factor.
 
   SybilGuard \cite{hai06} mitigates effects of a Sybil attack by limiting the
@@ -361,9 +396,9 @@ phases:
   \item In the preparation phase the attacker sets up N uniformly distributed
     virtual nodes which gather routing table information of their neighbors.
   \item In the attack phase each attacking node send to its neighbors bogus
-    updates of the form \verb|(ID_B, IP_A)\verb|, where \verb|ID_B| is the key
+    updates of the form \texttt{(ID\_B, IP\_A)}, where \texttt{ID\_B} is the key
     of existing victim node present in the recipient's routing table and
-    \verb|IP_A| is the attacker's IP address.
+    \texttt{IP\_A} is the attacker's IP address.
 \end{enumerate}
 
 Authors show that with just 100Mbps bandwidth they were able to successfully
@@ -396,7 +431,7 @@ resourceful attacker.
 \paragraph{Feasibility of Sybil attack}
 Although Sybil attack is more expensive than above mentioned Hijacking attack
 \cite{tim11} has shown that in Mainline DHT implementation of Kademlia used in
-Bittorrent it is still easy. In their experiment they were able to fill
+BitTorrent it is still easy. In their experiment they were able to fill
 neighbors routing table with 160 Sybil nodes within 5 minutes after the attack
 phase has begun. While similar attack would be impossible in newer versions of
 Kad the only limitation is the fact that only one IP address is used.
