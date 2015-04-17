@@ -132,25 +132,26 @@
   \texttt{PING} message times out then it is replaced by the candidate.
 
 \subsection{Vulnerabilities}
-  DHT's combination of Peer-to-Peer relationships and structural topology make
-  them very vulnerable to attacks which abuse topological dependencies and
-  structural constraints to facilitate them. The two main weaknesses of DHTs
-  which prevention schemes try to rectify are:
+  DHT's combination of Peer-to-Peer relationships and structural topology makes
+  them vulnerable to attacks which abuse topological dependencies and structural
+  constraints to facilitate these attacks. Two main weaknesses of DHTs which
+  prevention schemes try to rectify are:
 
   \begin{enumerate}
     \item Node identity is a virtual concept and lacks connection to the real
       world. DHTs as a distributed storage space rely on data, message
-      redundancy, and cohesiveness of the topology. Both are easily broken if an
-      attacker may either arbitrarily place itself in the topology and fill
-      routing tables with colluding nodes (Eclipse attack) or get as many nodes
-      as it wants (Sybil attack).
+      redundancy, and cohesiveness of the topology. Redundancy and cohesiveness
+      are easily broken if an attacker may either arbitrarily place itself in
+      the topology and fill routing tables with colluding nodes (Eclipse attack)
+      or get as many nodes as the attacker wants (Sybil attack).
 
     \item Each node only maintains a local view over the network, which does not
       provide enough context to detect and prevent any malicious behavior. Often
       malicious behavior is indistinguishable from honest one unless we have
-      knowledge about global state and history. Sometimes even that is not
-      enough, for example verification of a specific key randomness is naturally
-      unverifiable in a plain scheme.
+      knowledge about global state and history.  Sometimes even that is not
+      enough, for example verification whether a given key was chosen randomly
+      is unverifiable without specialized cryptographical techniques. 
+     \footnote{TODO tutaj Krzysiek napisal, ze za szybko, do czego to sie odnosi?}
   \end{enumerate}
 
 \section{Eclipse attack}
@@ -161,13 +162,13 @@
     \item{\textbf{spoofing}} The attacker wants to provide false data to other
       nodes or control them
     \item{\textbf{information}} The attacker wants to gather information about
-      participants activity.
+      participants' activity.
   \end{description}
 
   Those goals are greatly facilitated if an attacker controls the routing tables
   of other nodes. An attack which poisons routing tables of other nodes by
   disproportionately filling them with entries to colluding malicious nodes is
-  called an eclipse attack. The name comes from one of its effects, if a node's
+  called an eclipse attack. The name comes from one of its effects: if a node's
   routing table is filled with malicious nodes it is effectively partitioned
   from the rest of the network.
 
@@ -185,7 +186,7 @@
   points of single responsibility should be avoided for obvious reasons.
   
   \subsubsection{Constrained routing table}
-  Castro et al. \cite[p. 20]{urd11} have modified Pastry with additional
+  Castro et al. \cite{cas02} have modified Pastry with additional
   constrained routing table and back up routing mechanism to protect against
   eclipse attacks. If node key assignment is truly random and routing table
   entries are narrowly specified then it is difficult for an attacker to inject
@@ -195,7 +196,7 @@
   \subsubsection{Node scrambling}
   A different method to mitigate an eclipse attack is to constantly move node
   ids in unpredictable ways so that it is unfeasible to eclipse a local
-  keyspace. Such solution is proposed by Condie et al. \cite[p. 21]{urd11}.
+  keyspace. Such solution is proposed by Condie et al. \cite{con06},
   Condie shows that a periodical random, unpredictable node reassignment
   augmented by techniques which mitigate negative churn effects, that is
   grouping nodes into different timeout groups so that timeouts are not
@@ -208,7 +209,7 @@
   nodes makes the network resilient to join-leave attacks.
 
   \subsubsection{Topology graph analysis}
-  Singh et al. \cite[p. 23]{urd11} observe that if malicious nodes form only a
+  Singh et al. \cite{sin06} observe that if malicious nodes form only a
   fraction of the network then during an Eclipse attack their in-degree must be
   higher than average in-degree of honest nodes. Therefore they propose a
   protocol which limits in-degree of nodes. Each node $x$ maintains an
@@ -279,7 +280,7 @@
 
   The conclusion that only central authority solutions are practical for
   prevention of Sybil attacks was first deduced by \cite{dou02}, which also is
-  the first paper studying this class of attacks \cite[p. 5]{urd11}
+  the first paper studying this class of attacks \cite{urd11}.
 
   \subsubsection{Centralized gatekeeper}
   Castro et. al. \cite{cas02} agree with \cite{dou02} conclusion and propose
@@ -308,7 +309,7 @@
   not always the case.
 
   A simple ID calculation based on IP address and port number is proposed by
-  Dinger and Hartensteing \cite[p. 6]{dou02}. They propose that a node would
+  Dinger and Hartensteing \cite{din06}. They propose that a node would
   register at $r$ Chord registration nodes whose position is calculated from
   hash of node's ID. If majority of registration nodes accept the new node then
   it is said to be accepted. A node registration fails if the number of nodes
@@ -316,10 +317,10 @@
   to confirm validity of their neighbors.
 
   IP addresses may be spoofed and cause a problem for NAT users.
-  Wang~et.~al.~\cite[p. 7]{dou02} proposed adding router's IP and MAC address
+  Wang~et.~al.~\cite{wan05} proposed adding router's IP and MAC address
   and RTT measurements between the node a designated set of landmarks. A similar
-  idea may be found in Bazzi~and~Konjevod~\cite[p. 7]{dou02} where nodes are put
-  into $d$-dimensional space based on physical location of a node and a node are
+  idea may be found in Bazzi~and~Konjevod~\cite{baz05} where nodes are put
+  into $d$-dimensional space based on physical location of a node. Nodes are
   said to be distinct if their coordinates are far away enough.
 
   \subsubsection{Distinction based on social network}
@@ -438,7 +439,7 @@ Kad the only limitation is the fact that only one IP address is used.
 
 \paragraph{Measurements of present attacks}
 It is very easy to launch a Sybil attack in Mainline DHT and such attacks have
-distinctive footprint. Wang \cite{wan12} has set up honeypots in the Mainline
+distinctive footprint. Wang \cite{wan12a} has set up honeypots in the Mainline
 DHT to detect and analyze possible Sybil attackers. He discovered an attacker
 using a hijacking method described earlier running on Amazon's cloud who
 maintains over 300000 thousand Sybil nodes. This attacker didn't seem to do much
