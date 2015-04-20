@@ -186,22 +186,22 @@
   points of single responsibility should be avoided for obvious reasons.
   
   \subsubsection{Constrained routing table}
-  Castro et al. \cite{cas02} have modified Pastry with additional
-  constrained routing table and back up routing mechanism to protect against
-  eclipse attacks. If node key assignment is truly random and routing table
-  entries are narrowly specified then it is difficult for an attacker to inject
-  malicious entries. DHTs such as Kademlia and Pastry are therefore more
-  vulnerable than Chord in that regard.
+  Castro et al. \cite{cas02} have modified Pastry with additional constrained
+  routing table and back up routing mechanism to protect against eclipse
+  attacks. It is difficult for an attacker to inject malicious entries if node
+  key assignment is truly random and routing table entries are stricly
+  specified, that is there exists only one node in the system that may fill
+  given routing table entry.  DHTs such as Kademlia and Pastry are therefore
+  more vulnerable than Chord in that regard.
 
   \subsubsection{Node scrambling}
   A different method to mitigate an eclipse attack is to constantly move node
   ids in unpredictable ways so that it is unfeasible to eclipse a local
-  keyspace. Such solution is proposed by Condie et al. \cite{con06},
-  Condie shows that a periodical random, unpredictable node reassignment
-  augmented by techniques which mitigate negative churn effects, that is
-  grouping nodes into different timeout groups so that timeouts are not
-  synchronized and precalculation of future routing table, significantly
-  improves Castro's solution.
+  keyspace. Condie et al. \cite{con06} show that a periodical random,
+  unpredictable node reassignment significantly improves Castro's solution.
+  This reassignment should be augmented by techniques which mitigate negative
+  churn effects. For example: grouping nodes into different timeout groups so
+  that timeouts are not synchronized or precalculation of future routing table.
 
   Awerbach and Scheideler \cite{awe10}, while proposing a robust, distributed
   random number generator, propose a scheme of global node rearrangement on each
@@ -210,23 +210,22 @@
 
   \subsubsection{Topology graph analysis}
   Singh et al. \cite{sin06} observe that if malicious nodes form only a
-  fraction of the network then during an Eclipse attack their in-degree must be
-  higher than average in-degree of honest nodes. Therefore they propose a
-  protocol which limits in-degree of nodes. Each node $x$ maintains an
-  additional backpointer table, which contains nodes having $x$ in their routing
-  tables. Every node $y$ periodically checks backpointer tables of their
-  neighbors and if they are larger than a global constant or does not contain
-  $y$ then it removes $x$ from its routing table.
+  fraction of the network then during an Eclipse attack their in-degree in the
+  graph induced by the DHT's topology must be higher than average in-degree of
+  honest nodes. Therefore they propose a protocol which limits in-degree of
+  nodes. Each node $x$ maintains an additional backpointer table, which contains
+  nodes having $x$ in their routing tables. Every node $y$ periodically checks
+  backpointer tables of their neighbors and if they are larger than a global
+  constant or does not contain $y$ then it removes $x$ from its routing table.
 
   This scheme requires the backpointer check to be anonymous, therefore the
-  Scheme uses a common technique of onion routing using anonymizer network to
-  achieve that. Anonymizer are not assumed to be honest and therefore it
-  possible that a honest node will be labeled as malicious with small
-  probability.
+  scheme uses a common technique of onion routing using anonymizer network to
+  achieve that.
 
-  This scheme is effective at limiting eclipse attacks, but it requires the
-  global in-degree bound to be tight, especially for large networks, which may
-  decrease the efficiency of base protocol.
+  The scheme is effective at limiting eclipse attacks, but it requires the
+  global in-degree bound to be tight, especially for large networks. Authors of
+  the paper recommend in-degree of no more than 16 for networks larger than
+  20000. Such low bound may decrease the performance of the system.
 
 \section{Sybil attack}
   DHTs routing mechanisms rely on the assumption that nodes are placed uniformly
@@ -388,11 +387,11 @@ These are not just theoretical divagations, but discussed attacks are really
 used in practice and are effective.
 
 \paragraph{Hijacking attack}
-\cite{wan08} describes an attack on Kad network as implemented by eMule
-file-sharing application. This is a version of a routing table poisoning attack
-in which the attacker abuses lack of authentication and admission of control
-which allows any node to advertise as any other. The attack is split into two
-phases:
+\cite{wan08} describes an attack on Kad network implementation which was used
+in eMule file-sharing application before 2013. This attack is a version of a
+routing table poisoning attack in which the attacker abuses lack of
+authentication and admission of control which allows any node to advertise as
+any other. The attack is split into two phases:
 \begin{enumerate}
   \item In the preparation phase the attacker sets up N uniformly distributed
     virtual nodes which gather routing table information of their neighbors.
@@ -408,14 +407,14 @@ network with 16000 nodes. Unfortunately, for the attacker, this cost is ongoing
 since the attacking node needs to be responsive.
 
 Authors also provide a version of this attack where, instead of providing
-attacker's IP, the IP of the attacked node is used. Emule at the time did not
+attacker's IP, the IP of the attacked node is used. eMule at the time did not
 provide any check against this behavior so it would be effective in blocking
 any effective look up. They also calculate that in this version it would take
 around 200Mbps of network speed to attack the entire 1 million eMule network
 with the result of blocking up to 75\% queries.
 
-More recent versions of eMule contain basic protections against attacks, such
-as \cite{tim11}:
+More recent versions of eMule contain basic protections against attacks
+\cite{tim11}, such as:
 \begin{description}
   \item{\textbf{Flood protection}} The number of messages received from one IP
     in a given time-frame is limited.
