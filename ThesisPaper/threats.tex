@@ -189,7 +189,7 @@
   Castro et al. \cite{cas02} have modified Pastry with additional constrained
   routing table and back up routing mechanism to protect against eclipse
   attacks. It is difficult for an attacker to inject malicious entries if node
-  key assignment is truly random and routing table entries are stricly
+  key assignment is truly random and routing table entries are strictly
   specified, that is there exists only one node in the system that may fill
   given routing table entry.  DHTs such as Kademlia and Pastry are therefore
   more vulnerable than Chord in that regard.
@@ -430,8 +430,8 @@ resourceful attacker.
 
 \paragraph{Feasibility of Sybil attack}
 Although Sybil attack is more expensive than above mentioned Hijacking attack
-\cite{tim11} has shown that in Mainline DHT implementation of Kademlia used in
-BitTorrent it is still easy. In their experiment they were able to fill
+\cite{tim11} has shown that in Mainline DHT, implementation of Kademlia used in
+BitTorrent, it is still easy. In their experiment they were able to fill
 neighbors routing table with 160 Sybil nodes within 5 minutes after the attack
 phase has begun. While similar attack would be impossible in newer versions of
 Kad the only limitation is the fact that only one IP address is used.
