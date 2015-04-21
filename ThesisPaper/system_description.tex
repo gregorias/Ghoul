@@ -50,10 +50,9 @@ possible to design and build a DHT that satisfies following constraints:
     forced to perform an extensive set up, or prepare a large configuration file
     to just start the DHT.  The entire scheme should be simple to describe. User
     or developer should be able to understand how the protection schemes work
-    and be able to reason how it would behave in his applicationacquire this
-    certificate.
-  \item{\textbf{Extensibility}} The application develop should be able to extend
-    the system with his own security mechanism easily if so desired.
+    and be able to reason how it would behave in his application.
+  \item{\textbf{Extensibility}} Application developers should be able to extend
+    the system with their own security mechanism easily if so desired.
   \item{\textbf{Anonymity}} The security mechanism should not compromise user
     anonymity.
 \end{description}
@@ -63,35 +62,36 @@ I assume standard threats and network conditions that is:
 \begin{itemize}
   \item An attacker may introduce colluding nodes into the system, but has
     limited computing and communication power.
-  \item For network communication there is point-to-point message passing
-    primitive which may fail to deliver and does not give any bound on delivery
-    time.
-  \item Nodes may fail arbitrarily.
+  \item There is only a point-to-point message passing primitive for network
+    communication. The message passing operation may fail to deliver and does
+    not give any bound on delivery time.
+  \item Nodes may exhibit byzantine failure.
 \end{itemize}
 
 In this chapter I present protocols that create Ghoul.
 
 \section{Overview}
-Ghoul system is built on top of Kademlia DHT protocol. Each node in the system
-is an independent agent which acts as a Ghoul node and communicates with other
-nodes using messages sent over network transmission.
+Ghoul is built on top of Kademlia DHT protocol. Each node in the system is an
+independent agent which acts as a Ghoul node and communicates with other nodes
+using messages sent over network.
 
-There two kinds of nodes in the system: a DHT node and a registration authority.
-The DHT node is the Kademlia node extended with security measures. It initiates
-and maintain its routing table and answers queries. Additionally each node is
-responsible for maintaining the security of the entire network by participation
-in P2P certificate revocation propagation, maintenance of its security
-certificate, and answer in security queries.
+There are two kinds of nodes in the system: a DHT node and a registration
+authority. The DHT node is the Kademlia node extended with security measures.
+It initiates and maintains its routing table and answers queries. Additionally
+each node is responsible for maintaining the security of the entire network by
+participation in P2P certificate revocation propagation, maintenance of its
+security certificate, and response to security queries.
 
 A small set of nodes, called registration nodes, is responsible for facilitating
 node’s join into network by using distributed random key generation and
-certificate issuance. Registration nodes are distributed version of central
-authority, with a twist that they a few of them might be malicious. Their
-existence is motivated by the fact that it is very hard to guarantee random key
-generation and verification in distributed setting, on the other hand I want to
-provide administrative scalability where application's owner may allow other
+certificate issuance. Registration nodes are a distributed version of central
+authority, with a twist that a few of them might be malicious. Their existence
+is motivated by the fact that it is very hard to guarantee random key generation
+and verification in a distributed setting. On the other hand I want to provide
+administrative scalability. Application's owner should be able to allow other
 parties to provide their registration nodes for the protocol and not worry
-whether they have pure intentions as long as a single node is honest.
+whether they have non-malicious intentions. The registration protocol works
+correctly as long as a single node is honest.
 
 \section{Data structures}
 
@@ -122,7 +122,7 @@ store may be limited in size. In such a case a node may remove certificates last
 seen node's or certificates close to expiration. Additionally every node in the
 routing table must have a valid certificate in the store, otherwise it should be
 removed. If a neighbors certificate is close to expiration than a \texttt{PING}
-should be sent to get an unpdated certificate.
+should be sent to get an updated certificate.
 
 \subsection{Messages}
 Ghoul extends each DHT message with following fields:
@@ -383,13 +383,13 @@ registrars and a collection of certifcates tying that DHT key to his public key.
 The system's threat model allows some registration authorities to be malicious
 and potentially generate biased keys. The node join protocol prevents such nodes
 from performing a successful attack. Ghoul takes a constant $m$ as a parameter 
-inidicating maximal number of malicious registrars. The node join protocol then
+indicating maximal number of malicious registrars. The node join protocol then
 requires that at least $m+1$ certificates are present for the node to be
 considered valid.
 
 The protocol is a combination of the challenge protocol and distributed random
 number generation. Client node contacts any registrar requesting a challenge and
-combines its solution with a join request. Then the registrar chosses $m$ other
+combines its solution with a join request. Then the registrar chooses $m$ other
 registrars and generates random number with them. At the end all participating
 registrars send their certificates.
 
@@ -447,7 +447,7 @@ Certificate refresh is a necessary part of the protocol, since without it each
 node would have to join the network again upon its expiration. It unnecessarily
 induces churn and provides a vulnerability for an eclipse attack. The eclipse
 attack vulnerability stems from the fact that in Kademlia it is hard to flush
-out an old, active node from the routing table. This behaviour is used in KAD to
+out an old, active node from the routing table. This behavior is used in KAD to
 prevent an attacker, who might even have large number of IDs, to overwrite data
 that sits in the table by spamming the node in question hoping to replaced the
 older honest. If we force every node to reentry upon expiration date then the
@@ -457,7 +457,7 @@ natural Kademlia defense is rendered void.
 
 One of the advantages of a centralized certificate issuers is that they can
 revoke certificates. Typical distributed scheme only offers a local protection:
-a node that detects malicious behaviour simply discards the offender from its
+a node that detects malicious behavior simply discards the offender from its
 routing table, the malicious node may still contact other oblivious nodes. With
 revocation it is possible to eliminate offenders globally, drastically
 increasing a cost of an attack.
@@ -482,7 +482,7 @@ puzzles}
 \subsubsection{Goals}
   Verifiable random key generation in Kademlia is a defense against eclipse
   style attacks, which in Kademlia are much harder to launch than in other
-  DHTs, such as Chord, due to nonstrict routing tables and redundant, iterative
+  DHTs, such as Chord, due to non-strict routing tables and redundant, iterative
   routing algorithm. Unless attacker has access to a large number of nodes it is
   difficult to launch an successful eclipse attack \cite{mac09}. Therefore for
   Ghoul to be secure a protection scheme against a Sybil attack is necessary.
@@ -501,7 +501,7 @@ puzzles}
   mechanism as it is used in Ghoul. 
 
   To limit the number of Sybil nodes SybilControl requires that nodes
-  perdiodically generate a cryptographic puzzle and solve it. To verify that
+  periodically generate a cryptographic puzzle and solve it. To verify that
   this puzzle is generated honestly it includes similarly generated puzzles
   propagated from its neighbors. Let's call the puzzle string for node $A$ as
   $C_{A-new}$. Assuming $A$ has received puzzles $C_{B_i}$ from its neighbors
@@ -564,7 +564,7 @@ puzzles}
   correctly participate in the DHT, but when it is an intermediate node in
   SybilControl check it might drop the query. Although Kademlia uses redundant
   routing, such an attack may cause a snowballing effect over time. To prevent
-  that behaviour the direct and non-direct check need to be indistinguishable.
+  that behavior the direct and non-direct check need to be indistinguishable.
   If those checks are indistinguishable an attacker who drops SybilControl
   queries causes other nodes to consider him malicious and remove him from
   routing tables.
@@ -598,7 +598,7 @@ puzzles}
   Kademlia key and challenge ($B_i || C_{B_i}$) are of size $160 + 16$ or $160
   + 32$ bytes, that is around 200 bytes. Which forces us to consider only 32
   neighbor challenges when building a our puzzle. Perhaps even a little bit
-  less to accomodate other metadata. The \texttt{SC\_QUERY} is the only message
+  less to accommodate other metadata. The \texttt{SC\_QUERY} is the only message
   that has potential to be too large if unconsidered.
 
 \section{Evaluation}
@@ -632,18 +632,18 @@ puzzles}
 
   \begin{description}
     \item{\textbf{anonymization}} Lack of anonymization gives a snooping
-      attacker a possibility to acquire information about node's behaviour and
+      attacker a possibility to acquire information about node's behavior and
       use it to augment his attack. For example if an attacker can predict
       whether node verification in the SybilControl scheme is direct or not then
       this whole scheme is rendered void.
     \item{\textbf{denial of service}} Additional security mechanisms increase
       amount of work a node can and needs to perform. If nodes do not limit this
-      a crafty attacker may congest a node with specially defined behaviour. One
+      a crafty attacker may congest a node with specially defined behavior. One
       pernicious example of this class of attack is attack on the certificate
       revocation scheme. An attacker might introduce a large number of correctly
       behaving nodes in the system, who after some time start behaving
       maliciously, which is detected by Ghoul and their certificate's are
-      revoked. On first sight this is a desired behaviour, but if the number of
+      revoked. On first sight this is a desired behavior, but if the number of
       such nodes is very large then the revocation list become large as well.
       Since each DHT node will try to synchronize this list it may generate
       traffic large enough to congest it.
@@ -651,7 +651,7 @@ puzzles}
 
   \subsection{Performance}
 
-  Ghoul focuses on changing node join and neighbour addition protocol and as
+  Ghoul focuses on changing node join and neighbor addition protocol and as
   such does not change anything else. Especially a typical use of Kademlia for
   finding nodes or data does incur any performance penalty.
 
@@ -660,15 +660,15 @@ puzzles}
   negligible. From the point of view the central authority the node join
   protocol requires it to only be able to generate and save nonces and perform
   the distributed key generation algorithm. Since node's join happens only once
-  in the existance and those operations are lightweight then it means that the
+  in the existence and those operations are lightweight then it means that the
   central authority can be a simple machine and should not be a performance
   bottleneck.
 
-  The biggest performance overhead happens during neighbour addition when
+  The biggest performance overhead happens during neighbor addition when
   verification is performed. The verification message complexity is on the order
   of $O(\log n)$ and requires sending larger messages. This exacerbates effects
   of churn and the network will take longer time to adapt to topology changes.
-  A more detailed analysis of SybilControl's impact on DHT behaviour can be
+  A more detailed analysis of SybilControl's impact on DHT behavior can be
   found in \cite{li12}..
 
   Since Ghoul uses computational resources for proof-of-work verification
