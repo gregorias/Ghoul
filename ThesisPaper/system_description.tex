@@ -1,38 +1,45 @@
 \chapter{Ghoul system description}
 \section{Goals}
 I decided to build Ghoul to fill a niche of secure open-source DHT network
-implementation. In my experience it is difficult to find a good open-source
-implementation of Kademlia. By good I mean one that satisfies all of the
-following criterias:
+implementation. In my experience it is difficult to find a satisfactory
+open-source implementation of Kademlia. By satisfactory I mean one that
+satisfies all of the following criterias:
 
 \begin{description}
-  \item{\textbf{Simplicty}} Implementation of Kademlia should do only one thing:
-    operate according to the Kademlia protocol.
+  \item{\textbf{Single responsibility}} Implementation of Kademlia should do
+    only one thing: operate according to the Kademlia protocol.
   \item{\textbf{Extensibility}} If I want to extend the network protocol with a
     NAT traversal mechanism I should not be required to modify large portion of
     the library network communication stack.
   \item{\textbf{Documentation}} An open-source project should have maintained
     documentation to help others contribute or use it.
-  \item{\textbf{Robustness}} Implementation should not break after it is used
-    for 1 hour on small sized network in Planetlab.
+  \item{\textbf{Robustness}} Implementation should not fail after it is used
+    for 1 hour on a small sized network consisting of a hundred nodes.
 \end{description}
 
 I couldn't find an implementation that satisfies all of the above in Java and
-none that would satisfiably claim to be secure in any language.
+none that would satisfiably claim to be secure in any language. Some examples
+that I have considered are:
+openkad\footnote{\texttt{https://code.google.com/p/openkad/}}, which does not
+implement DHT storage operations, TomP2P\footnote{\texttt{http://tomp2p.net/}},
+which never worked without a failure, even after a few bug patches, and
+JoshuaKissoon/Kademlia
+\footnote{\texttt{https://github.com/JoshuaKissoon/Kademlia}}, which is not
+extensible.
 
-Solutions used in KAD network and designed for Mainline DHT use IP address to
+Solutions used in KAD network and designed for Mainline DHT use IP addresses to
 prevent Sybil attack and arbitrary ID choice, this works against unsophisticated
-attacker, but has serious problems stemming from the fact that IP was not
-designed for that use case. IP spoofing, IPv6 privacy extensions and lack of
-anonymity are serious concerns that either disarm such solution or introduce a
-serious flaw. I feel that lack of adoption of security measures that are present
-in the research literature stems from the stereotype that such measures are
-either hard to implement, slow, hard to satisfy their dependencies, or
+attacker, but has problems stemming from the fact that IP was not designed for
+that use case. IP spoofing, IPv6 privacy extensions and lack of anonymity are
+serious concerns that either neutralize such solution or introduce a serious
+flaw. I feel that lack of adoption of security measures that are present in the
+research literature stems from the stereotype that such measures are either hard
+to implement, slow, hard to satisfy their dependencies, or
 needlessly complicate use of the application. With Ghoul I show that it is
 possible to design and build a DHT that satisfies following constraints:
 
 \begin{description}
-  \item{\textbf{Security}} The DHT should be resistant to common Sybil and
+  \item{\textbf{Security}} The DHT should be resistant to Sybil and
     eclipse attacks.
   \item{\textbf{Performance}} The DHT should be as performant as the original
     protocol where possible, especially in common use cases of finding a node
