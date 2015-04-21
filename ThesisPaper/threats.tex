@@ -16,8 +16,8 @@
   Pastry \cite{row01}, Kademlia \cite{may02}.
 
   A structure of a typical DHT consists of a three main components. First is a
-  keyspace, a collection of identifiers such as 160-bit bitstrings. Those keys
-  are an abstract identification of a node and serve to partition the keyspace
+  key space, a collection of identifiers such as 160-bit bitstrings. Those keys
+  are an abstract identification of a node and serve to partition the key space
   into ownership ranges over the network. Second is an overlay network - a
   topology induced by routing tables. Routing tables contain pairings between
   abstract keys and network addresses. Neighborhood tables are kept and
@@ -43,7 +43,7 @@
 
   A node in Kademlia network is represented by an n-bit binary key (most popular
   choices are $n = 128$ or $n = 160$). Kademlia defines a distance in the
-  keyspace as the xor function. That is distance between two keys $x, y$ is
+  key space as the xor function. That is distance between two keys $x, y$ is
 
   \[ d(x, y) = x \oplus y\]
 
@@ -115,6 +115,7 @@
       \STATE Remove $n$ from \texttt{candidates}
     \ENDIF
     \ENDWHILE
+    \STATE Return first $k$ nodes in \texttt{candidates}.
   \end{algorithmic}
     \caption{Node search protocol for key $y$}
     \label{alg:node_search_alg}
@@ -131,11 +132,39 @@
   least recently seen node in the given bucket. If the intended recipient of the
   \texttt{PING} message times out then it is replaced by the candidate.
 
-\subsection{Vulnerabilities}
-  DHT's combination of Peer-to-Peer relationships and structural topology makes
+\section{Attacks}
+
+  Attacks on DHT can have 3 different goals:
+  \begin{description}
+    \item{\textbf{denial of service}} The attacker aims to either stop the
+      entire system from functioning or deny access to a part of it,
+    \item{\textbf{spoofing}} The attacker wants to provide false data to other
+      nodes or control them
+    \item{\textbf{information}} The attacker wants to gather information about
+      participants' activity.
+  \end{description}
+
+  DHTs' combination of Peer-to-Peer relationships and structural topology makes
   them vulnerable to attacks which abuse topological dependencies and structural
-  constraints to facilitate these attacks. Two main weaknesses of DHTs which
-  prevention schemes try to rectify are:
+  constraints to facilitate these attacks. There are two major classes of
+  methods which use DHTs' structure to help attackers achieve their goal.
+
+  Firstly, if an attacker controls routing tables of other nodes then it is easy
+  to control information flow and therefore the system. An attack which poisons
+  routing tables of other nodes by disproportionately filling them with entries
+  to colluding malicious nodes is called an \textbf{eclipse attack}. The name
+  comes from one of its effects: if a node's routing table is filled with
+  malicious nodes it is effectively partitioned from the rest of the network.
+
+  Secondly, DHTs operate on an ephemeral sense of identity represented by a key.
+  A \textbf{Sybil attack} happens when an attacker uses a single physical
+  computer to represent multiple DHT nodes increasing his power without
+  incurring additional cost \cite{dou02}. Since most protocols rely on honest
+  nodes having a majority (especially eclipse protection mechanisms), a Sybil
+  attack can shut down the system by even a modest attacker.
+
+  One can recognize three main vulnerabilities which are responsible for the
+  easiness with witch those methods can be used:
 
   \begin{enumerate}
     \item Node identity is a virtual concept and lacks connection to the real
@@ -152,27 +181,36 @@
       enough, for example verification whether a given key was chosen randomly
       is unverifiable without specialized cryptographical techniques. 
      \footnote{TODO tutaj Krzysiek napisal, ze za szybko, do czego to sie odnosi?}
+
+   \item  Key generation is not verifiable. There is no way for a node to verify
+     whether given key has been generated randomly. It is possible to use a
+     statistical test to verify uniformity constraints, but they are often not
+     enough to accuse specific node of malicious behavior.
   \end{enumerate}
 
-\section{Eclipse attack}
-  Attacks on DHT can have 3 different goals:
-  \begin{description}
-    \item{\textbf{denial of service}} The attacker aims to either stop the
-      entire system from functioning or deny access to a part of it,
-    \item{\textbf{spoofing}} The attacker wants to provide false data to other
-      nodes or control them
-    \item{\textbf{information}} The attacker wants to gather information about
-      participants' activity.
-  \end{description}
+\subsection{Other forms of attack}
+  Eclipse and Sybil attacks do not constitute the goal of an attack, but are
+  used to facilitate it. Such goal are usually to deny access to a resource or
+  to fabricate it.
 
-  Those goals are greatly facilitated if an attacker controls the routing tables
-  of other nodes. An attack which poisons routing tables of other nodes by
-  disproportionately filling them with entries to colluding malicious nodes is
-  called an eclipse attack. The name comes from one of its effects: if a node's
-  routing table is filled with malicious nodes it is effectively partitioned
-  from the rest of the network.
+  Attacks that aim to fake possession of requested resource are best countered
+  with cryptographic primitives. Using signatures, self-certifying data, or
+  Merkle hash trees, like in BitTorrent, is an effective and efficient
+  deterrent. To protect against malicious nodes dropping data or routing
+  information the system needs to use replication and redundant routing
+  \cite{dou02}. 
 
-  \subsection{Prevention mechanisms}
+  Replication against malicious opponents is trickier than without them. There
+  are two main strategies for replication: Place given resource at nodes with
+  key close to the key of the resource or spread it over the network \cite[p.
+  38]{urd11}. The first strategy allows for more efficient retrieval in DHTs
+  such as Kademlia or Pastry, but is also more vulnerable to localized eclipse
+  attack. Both strategies are easy to attack if an attacker has ability to
+  choose her identifier arbitrarily and therefore a secure DHT requires secure
+  node id assignment.
+
+\section{Prevention mechanisms}
+\subsection{Eclipse attack prevention mechanisms}
 
   Sit and Morris \cite{sit02} have been among the first to discuss general
   guidelines against preventing attacks in DHT networks. They advise designing
@@ -197,7 +235,7 @@
   \subsubsection{Node scrambling}
   A different method to mitigate an eclipse attack is to constantly move node
   ids in unpredictable ways so that it is unfeasible to eclipse a local
-  keyspace. Condie et al. \cite{con06} show that a periodical random,
+  key space. Condie et al. \cite{con06} show that a periodical random,
   unpredictable node reassignment significantly improves Castro's solution.
   This reassignment should be augmented by techniques which mitigate negative
   churn effects. For example: grouping nodes into different timeout groups so
@@ -227,29 +265,7 @@
   the paper recommend in-degree of no more than 16 for networks larger than
   20000. Such low bound may decrease the performance of the system.
 
-\section{Sybil attack}
-  DHTs routing mechanisms rely on the assumption that nodes are placed uniformly
-  inside its key space and only a fraction of the network may fail, either due
-  to churn or node failure. Eclipse attack prevention attack prevention
-  mechanism additionally assume that only a given portion of the network may be
-  malicious. Those assumptions can be easily violated in an open DHT.
-
-  Firstly, key generation is not verifiable. There is no way for a node to
-  verify whether given key has been generated randomly. It is possible to use a
-  statistical test to verify uniformity constraints, but they are often not
-  enough to accuse specific node of malicious behavior.
-
-  Secondly, DHTs operate on an ephemeral sense of identity represented by a key.
-  A Sybil attack happens when an attacker uses a single physical computer to
-  represent multiple DHT nodes increasing his power without incurring additional
-  cost \cite{dou02}. Since most protocols rely on honest nodes having a
-  majority, a Sybil attack can shut down the system by even a modest attacker.
-
-  Thirdly, DHTs agents use, like in any distributed system, only locally
-  available information to determine their course of actions. However malicious
-  behavior is often indistinguishable from correct one unless we have
-  information about global state or history.
-
+\subsection{Sybil attack prevention mechanisms}
   Preventing a Sybil attack requires a gatekeeper or, more accurately, a
   bouncer. A protocol which prevents a single physical node to enter more than
   once and a way to throw out offenders. Achieving that in a fully distributed
@@ -274,8 +290,6 @@
   a service. This is done reluctantly since it makes the agent responsible for
   maintaining the service and Peer-to-Peer user community may be distrustful
   over centralized solution.
-
-\subsection{Prevention mechanisms}
 
   The conclusion that only central authority solutions are practical for
   prevention of Sybil attacks was first deduced by \cite{dou02}, which also is
@@ -372,27 +386,6 @@
   puzzles' difficulty. It is also much harder for an attacker to fake
   solving them or use social engineering like in social network solutions.
 
-\section{Other forms of attack}
-  Eclipse and Sybil attacks do not usually constitute the goal of an attack, but
-  are used to facilitate it. Such goal are usually to deny access to a resource
-  or to fabricate it.
-
-  Attacks that aim to fake possession of requested resource are best countered
-  with cryptographic primitives. Using signatures, self-certifying data, or
-  Merkle hash trees, like in BitTorrent, is an effective and efficient
-  deterrent. To protect against malicious nodes dropping data or routing
-  information the system needs to use replication and redundant routing
-  \cite{dou02}. 
-
-  Replication against malicious opponents is trickier than without them. There
-  are two main strategies for replication: Place given resource at nodes with
-  key close to the key of the resource or spread it over the network \cite[p.
-  38]{urd11}. The first strategy allows for more efficient retrieval in DHTs
-  such as Kademlia or Pastry, but is also more vulnerable to localized eclipse
-  attack. Both strategies are easy to attack if an attacker has ability to
-  choose her identifier arbitrarily and therefore a secure DHT requires secure
-  node id assignment.
-
 \section{Examples of real attacks}
 These are not just theoretical divagations, but discussed attacks are really
 used in practice and are effective.
@@ -454,7 +447,7 @@ DHT to detect and analyze possible Sybil attackers. He discovered an attacker
 using a hijacking method described earlier running on Amazon's cloud who
 maintains over 300000 thousand Sybil nodes. This attacker didn't seem to do much
 and might have been just monitoring the network. A different attacker was
-impersonating specific keyspace ranges and had distinctive IP address belonging
+impersonating specific key space ranges and had distinctive IP address belonging
 to international ISP service. He was redirecting queries from inside its domain
 to other nodes inside it, localizing the traffic.
 
