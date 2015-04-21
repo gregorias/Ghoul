@@ -230,10 +230,9 @@
 \section{Sybil attack}
   DHTs routing mechanisms rely on the assumption that nodes are placed uniformly
   inside its key space and only a fraction of the network may fail, either due
-  to churn or node failure. In case of eclipse attack or routing attack
-  prevention mechanism they additionally assume that only a given portion of the
-  network may be malicious. Those assumptions can be easily violated in an open
-  DHT.
+  to churn or node failure. Eclipse attack prevention attack prevention
+  mechanism additionally assume that only a given portion of the network may be
+  malicious. Those assumptions can be easily violated in an open DHT.
 
   Firstly, key generation is not verifiable. There is no way for a node to
   verify whether given key has been generated randomly. It is possible to use a
@@ -243,8 +242,8 @@
   Secondly, DHTs operate on an ephemeral sense of identity represented by a key.
   A Sybil attack happens when an attacker uses a single physical computer to
   represent multiple DHT nodes increasing his power without incurring additional
-  cost. Since most protocols rely on honest nodes having a majority, a Sybil
-  attack can shut down the system by even a modest attacker.
+  cost \cite{dou02}. Since most protocols rely on honest nodes having a
+  majority, a Sybil attack can shut down the system by even a modest attacker.
 
   Thirdly, DHTs agents use, like in any distributed system, only locally
   available information to determine their course of actions. However malicious
@@ -254,15 +253,16 @@
   Preventing a Sybil attack requires a gatekeeper or, more accurately, a
   bouncer. A protocol which prevents a single physical node to enter more than
   once and a way to throw out offenders. Achieving that in a fully distributed
-  way is difficult. It is not possible to achieve adequate security if nodes
-  only have access to their immediate surroundings. Such a limited view lacks
-  necessary information to distinguish between benign and malicious behavior.
+  way is difficult. It is hard to achieve adequate security if nodes only have
+  access to their immediate surroundings.  Such a limited view lacks necessary
+  information to distinguish between benign and malicious behavior.
   Additionally it's much easier to simply eclipse a node. Protocols that
-  overcome this obstacle by sharing information globally do so at the cost of
-  performance and scalability. Such cost usually makes a DHT unpractical for
-  larger networks. That's why most practical solutions make use of a central
-  authority. This authority serves as a trusted entry point to the network, it
-  generates signed random keys for newcomers and checks global constraints.
+  overcome this obstacle by sharing information globally (\cite{cas02},
+  \cite{wan05}) do so at the cost of performance and scalability. Such cost
+  may make a DHT unpractical for larger networks. That's why a central authority
+  is preferred if it is adequate. This authority serves as a trusted entry point
+  to the network. The authority generates signed random keys for newcomers and
+  checks global constraints.
 
   Central authority has well-known drawbacks. Most of them stem from the fact
   that such authority represents a single point of failure. A failure of this
@@ -286,10 +286,17 @@
   using a set of central trusted authorities which certify random key and public
   key pair. They suggest adding an IP address to the certificate, so that the
   certificate would be binded to physical host. Unfortunately this solution is
-  known to be problematic. First of all IP address can be spoofed and with IPv6
-  privacy extensions changed all together, rendering this solution completely
-  insecure in the future. Second of all it would cause a problem for users
-  behind NAT or with moving IP address. Third of all it hinders privacy
+  known to be problematic. Firstly, IP address can be spoofed and with IPv6
+  privacy extensions 
+  \footnote{IPv6 privacy extensions allow the host to combine the assigned
+    network prefix with random identifier. This increases available pool of
+    addresses and make it more difficult to track the device.
+  \cite{nar01}}
+  changed all together, rendering this solution completely
+  insecure in the future.
+  
+  Secondly, using IP for identification causes a problem
+  for users behind NAT or with moving IP address. Thirdly, it hinders privacy
   protection mechanisms. Nevertheless using IP address is very easy to implement
   and practical for many current DHT networks.
 
@@ -301,8 +308,8 @@
   \subsubsection{Distinction based on network footprint}
 
   Without centralized authority network peers would have to register new nodes
-  in a distributed way. To distinguish distinct identities from same ones they
-  may use network characteristics. Such characteristics are usually easy to
+  in a distributed way. To distinguish distinct identities from Sybil copies
+  they may use network characteristics. Such characteristics are usually easy to
   check in the sense that any node may do it, giving low barrier of entry to the
   network, but it carries an assumption that they are unfalsifiable, which is
   not always the case.
@@ -335,8 +342,11 @@
   Although such schemes show good performance, both in terms of application
   overhead and attack detectability, they are difficult to apply in real world
   applications. The biggest problem is to generate or acquire a social graph of
-  sufficient quality. This also deprives users of anonymity which for many
-  Peer-to-Peer application users is an important factor.
+  sufficient quality. The core idea in these schemes is that social graph
+  represents high-quality human trust relationships. Creation of such a graph
+  takes time and motivation. Many users may object to this, because using this
+  scheme deprives them of anonymity which for many Peer-to-Peer application
+  users is an important factor.
 
   SybilGuard \cite{hai06} mitigates effects of a Sybil attack by limiting the
   number of Sybil nodes and recognized Sybil groups. It defines the edges
@@ -358,24 +368,25 @@
   effectively bounds a number of Sybil identities an attacker can create.
 
   Computation puzzles have the advantage of being flexible. They can be done by
-  any node, provided it has enough resources and can also scale their
-  difficulty. It is also much harder for an attacker to fake solving them or use
-  social engineering like in social network solutions.
+  any node, provided it has enough resources. Challenging hosts can also scale
+  puzzles' difficulty. It is also much harder for an attacker to fake
+  solving them or use social engineering like in social network solutions.
 
 \section{Other forms of attack}
   Eclipse and Sybil attacks do not usually constitute the goal of an attack, but
   are used to facilitate it. Such goal are usually to deny access to a resource
-  or to fake it.
+  or to fabricate it.
 
   Attacks that aim to fake possession of requested resource are best countered
   with cryptographic primitives. Using signatures, self-certifying data, or
   Merkle hash trees, like in BitTorrent, is an effective and efficient
   deterrent. To protect against malicious nodes dropping data or routing
-  information the system needs to use replication and redundant routing. 
+  information the system needs to use replication and redundant routing
+  \cite{dou02}. 
 
-  Replication against malicious opponent is trickier than without her. There are
-  two main strategies for replication: Place given resource at nodes with key
-  close to the key of the resource or spread it over the network \cite[p.
+  Replication against malicious opponents is trickier than without them. There
+  are two main strategies for replication: Place given resource at nodes with
+  key close to the key of the resource or spread it over the network \cite[p.
   38]{urd11}. The first strategy allows for more efficient retrieval in DHTs
   such as Kademlia or Pastry, but is also more vulnerable to localized eclipse
   attack. Both strategies are easy to attack if an attacker has ability to
