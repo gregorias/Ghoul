@@ -1,7 +1,16 @@
 package me.gregorias.ghoul.kademlia;
 
+import me.gregorias.ghoul.kademlia.data.Key;
+
+import java.util.Optional;
+
 /**
- * Created by grzesiek on 22.04.15.
+ * Storage for key-value pairs.
  */
-public class Store {
+public interface Store {
+  boolean contains(Key key);
+
+  Optional<byte[]> get(Key key);
+
+  void put(Key key, byte[] value);
 }
