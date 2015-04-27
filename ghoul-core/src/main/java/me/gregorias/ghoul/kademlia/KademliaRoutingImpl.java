@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import me.gregorias.ghoul.kademlia.data.FindNodeMessage;
 import me.gregorias.ghoul.kademlia.data.FindNodeReplyMessage;
 import me.gregorias.ghoul.kademlia.data.KademliaException;
+import me.gregorias.ghoul.kademlia.data.KademliaMessage;
 import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.KeyComparator;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
@@ -63,6 +64,7 @@ import org.slf4j.LoggerFactory;
 public class KademliaRoutingImpl implements KademliaRouting {
   private static final Logger LOGGER = LoggerFactory.getLogger(KademliaRoutingImpl.class);
   private static final int MINIMAL_HEART_BEAT_REQUEST_SIZE = 3;
+  private static final MessageMatcher ROUTING_MATCHER = new KademliaRoutingMessageMatcher();
 
   private final Collection<NodeInfo> mInitialKnownPeers;
   private final KademliaRoutingTable mRoutingTable;
@@ -236,7 +238,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
       initializeRoutingTable();
 
       LOGGER.trace("start(): registerListener");
-      mListeningService.registerListener(mMessageListener);
+      mListeningService.registerListener(ROUTING_MATCHER, mMessageListener);
 
       NodeDiscoveryTask nodeDiscoveryTask = new NodeDiscoveryTask();
       mNodeDiscoveryFuture = mScheduledExecutor.submit(nodeDiscoveryTask);
@@ -858,42 +860,20 @@ public class KademliaRoutingImpl implements KademliaRouting {
    * Handler for incoming kademlia messages.
    */
   private class MessageListenerImpl implements MessageListener {
-    @Override
-    public void receiveFindNodeMessage(FindNodeMessage msg) {
-      LOGGER.trace("receiveFindNodeMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
-      Collection<NodeInfo> foundNodes = mRoutingTable.getClosestNodes(msg.getSearchedKey(),
-          mBucketSize);
-      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(),
-          new FindNodeReplyMessage(getLocalNodeInfo(),
-              msg.getSourceNodeInfo(),
-              msg.getId(),
-              foundNodes));
-    }
 
     @Override
-    public void receiveFindNodeReplyMessage(FindNodeReplyMessage msg) {
-      LOGGER.trace("receiveFindNodeReplyMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
-      notifyFindNodeTaskEventListeners(msg);
-    }
-
-    @Override
-    public void receivePingMessage(PingMessage msg) {
-      LOGGER.trace("receivePingMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
-      PongMessage pongMessage = new PongMessage(getLocalNodeInfo(),
-          msg.getSourceNodeInfo(),
-          msg.getId());
-      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
-    }
-
-    @Override
-    public void receivePongMessage(PongMessage msg) {
-      LOGGER.trace("receivePongMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
-      NodeDiscoveryTaskEvent event = new NodeDiscoveryTaskPongEvent(msg);
-      mNodeDiscoveryListener.add(event);
+    public void receive(KademliaMessage msg) {
+      if (msg instanceof FindNodeMessage) {
+        receiveFindNodeMessage((FindNodeMessage) msg);
+      } else if (msg instanceof FindNodeReplyMessage) {
+        receiveFindNodeReplyMessage((FindNodeReplyMessage) msg);
+      } else if (msg instanceof PingMessage) {
+        receivePingMessage((PingMessage) msg);
+      } else if (msg instanceof PongMessage) {
+        receivePongMessage((PongMessage) msg);
+      } else {
+        LOGGER.error("Received unknown message.");
+      }
     }
 
     @Override
@@ -910,6 +890,40 @@ public class KademliaRoutingImpl implements KademliaRouting {
         LOGGER.error("addCandidate(): Unexpected interruptedException.", e);
       }
     }
+
+    private void receiveFindNodeMessage(FindNodeMessage msg) {
+      LOGGER.trace("receiveFindNodeMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      Collection<NodeInfo> foundNodes = mRoutingTable.getClosestNodes(msg.getSearchedKey(),
+          mBucketSize);
+      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(),
+          new FindNodeReplyMessage(getLocalNodeInfo(),
+              msg.getSourceNodeInfo(),
+              msg.getId(),
+              foundNodes));
+    }
+
+    private void receiveFindNodeReplyMessage(FindNodeReplyMessage msg) {
+      LOGGER.trace("receiveFindNodeReplyMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      notifyFindNodeTaskEventListeners(msg);
+    }
+
+    private void receivePingMessage(PingMessage msg) {
+      LOGGER.trace("receivePingMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      PongMessage pongMessage = new PongMessage(getLocalNodeInfo(),
+          msg.getSourceNodeInfo(),
+          msg.getId());
+      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
+    }
+
+    private void receivePongMessage(PongMessage msg) {
+      LOGGER.trace("receivePongMessage({})", msg);
+      addCandidate(msg.getSourceNodeInfo());
+      NodeDiscoveryTaskEvent event = new NodeDiscoveryTaskPongEvent(msg);
+      mNodeDiscoveryListener.add(event);
+    }
   }
 
   private class NewNetworkAddressObserver implements Observer {
@@ -917,6 +931,16 @@ public class KademliaRoutingImpl implements KademliaRouting {
     public void update(Observable observable, Object arg) {
       InetSocketAddress newAddress = (InetSocketAddress) arg;
       setLocalAddress(newAddress);
+    }
+  }
+
+  private static class KademliaRoutingMessageMatcher implements MessageMatcher {
+    @Override
+    public boolean match(KademliaMessage msg) {
+      return msg instanceof PingMessage
+          || msg instanceof PongMessage
+          || msg instanceof FindNodeMessage
+          || msg instanceof FindNodeReplyMessage;
     }
   }
 

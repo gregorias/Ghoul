@@ -2,24 +2,14 @@ package me.gregorias.ghoul.kademlia;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-import me.gregorias.ghoul.kademlia.data.FindNodeMessage;
-import me.gregorias.ghoul.kademlia.data.FindNodeReplyMessage;
 import me.gregorias.ghoul.kademlia.data.KademliaMessage;
 import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
-import me.gregorias.ghoul.kademlia.data.PingMessage;
-import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.ByteListeningService;
 import me.gregorias.ghoul.network.ByteSender;
 import me.gregorias.ghoul.network.NetworkAddressDiscovery;
@@ -53,7 +43,6 @@ public class KademliaRoutingBuilder {
   private TimeUnit mHeartBeatDelayUnit = TimeUnit.MINUTES;
 
   private ListeningService mListeningAdapter;
-  private DemultiplexingMessageListener mDemultiplexingListener;
 
   private MessageSenderAdapter mMessageSender;
   private ScheduledExecutorService mExecutor;
@@ -82,8 +71,8 @@ public class KademliaRoutingBuilder {
 
     Key usedKey = getSetKeyOrCreateNew();
 
-    ListeningService listeningService = new MessageListeningServiceImpl(usedKey,
-        mDemultiplexingListener);
+    ListeningService listeningService = new DemultiplexingMessageListeningService(usedKey,
+        mListeningAdapter);
 
     LOGGER.debug("createPeer() -> Key: {}", usedKey);
     return new KademliaRoutingImpl(
@@ -137,7 +126,6 @@ public class KademliaRoutingBuilder {
    */
   public KademliaRoutingBuilder setByteListeningService(ByteListeningService byteListeningService) {
     mListeningAdapter = new MessageListeningServiceAdapter(byteListeningService);
-    mDemultiplexingListener = new DemultiplexingMessageListener(mListeningAdapter);
     return this;
   }
 
@@ -202,123 +190,30 @@ public class KademliaRoutingBuilder {
    * A wrapper on top of {@link me.gregorias.ghoul.kademlia.ListeningService} which may
    * have multiple kademlia peers as its listeners.
    */
-  private static class DemultiplexingMessageListener implements MessageListener {
-
+  private static class DemultiplexingMessageListeningService implements ListeningService {
     private final ListeningService mBaseListeningService;
-    private final Map<Key, MessageListener> mListenerMap;
-    private final ReadWriteLock mRWLock;
-    private final Lock mReadLock;
-    private final Lock mWriteLock;
-
-    public DemultiplexingMessageListener(ListeningService baseListeningService) {
-      mBaseListeningService = baseListeningService;
-      mListenerMap = new HashMap<>();
-      mRWLock = new ReentrantReadWriteLock();
-      mReadLock = mRWLock.readLock();
-      mWriteLock = mRWLock.writeLock();
-    }
-
-    public void registerListener(Key key, MessageListener listener) {
-      LOGGER.debug("DemultiplexingMessageListener.registerListener({}, {})", key, listener);
-      mWriteLock.lock();
-      try {
-        if (mListenerMap.isEmpty()) {
-          mBaseListeningService.registerListener(this);
-        }
-        if (mListenerMap.containsKey(key)) {
-          throw new IllegalStateException(String.format("Kademlia peer at key: %s"
-              + " has already registered its listener.", key));
-        }
-        mListenerMap.put(key, listener);
-      } finally {
-        mWriteLock.unlock();
-      }
-    }
-
-    public void unregisterListener(Key key) {
-      LOGGER.debug("DemultiplexingMessageListener.unregisterListener({}, {})");
-      mWriteLock.lock();
-      try {
-        if (!mListenerMap.containsKey(key)) {
-          throw new IllegalStateException(String.format("Kademlia peer at key: %s"
-              + " has no registered listener.", key));
-        }
-        mListenerMap.remove(key);
-        if (mListenerMap.isEmpty()) {
-          mBaseListeningService.unregisterListener(this);
-        }
-      } finally {
-        mWriteLock.unlock();
-      }
-    }
-
-    @Override
-    public void receiveFindNodeMessage(FindNodeMessage msg) {
-      forwardMessageToAppropriateListener(msg);
-    }
-
-    @Override
-    public void receiveFindNodeReplyMessage(FindNodeReplyMessage msg) {
-      forwardMessageToAppropriateListener(msg);
-    }
-
-    @Override
-    public void receivePingMessage(PingMessage msg) {
-      forwardMessageToAppropriateListener(msg);
-    }
-
-    @Override
-    public void receivePongMessage(PongMessage msg) {
-      forwardMessageToAppropriateListener(msg);
-    }
-
-    private void forwardMessageToAppropriateListener(KademliaMessage msg) {
-      mReadLock.lock();
-      try {
-        Optional<MessageListener> listener = getRecipient(msg);
-        if (listener.isPresent()) {
-          listener.get().receive(msg);
-        }
-      } finally {
-        mReadLock.unlock();
-      }
-    }
-
-    private Optional<MessageListener> getRecipient(KademliaMessage msg) {
-      Key destKey = msg.getDestinationNodeInfo().getKey();
-      MessageListener listener = mListenerMap.get(destKey);
-      if (listener == null) {
-        LOGGER.debug("getRecipient({}) -> Received message to unknown kademlia peer.", msg);
-        return Optional.empty();
-      }
-      return Optional.of(listener);
-    }
-
-  }
-
-  /**
-   * ListeningService which uses acts as a proxy to {@link DemultiplexingMessageListener} for
-   * specific key.
-   */
-  private static class MessageListeningServiceImpl implements ListeningService {
-    private final DemultiplexingMessageListener mDemux;
     private final Key mKey;
 
-    public MessageListeningServiceImpl(Key key, DemultiplexingMessageListener demux) {
-      mDemux = demux;
+    public DemultiplexingMessageListeningService(Key key, ListeningService baseListeningService) {
       mKey = key;
+      mBaseListeningService = baseListeningService;
     }
 
     @Override
-    public void registerListener(MessageListener listener) {
-      LOGGER.trace("MessageListeningServiceImpl.registerListener({})", listener);
-      mDemux.registerListener(mKey, listener);
+    public void registerListener(MessageMatcher matcher, MessageListener listener) {
+      LOGGER.debug("DemultiplexingMessageListeningService.registerListener({}, {})",
+          matcher,
+          listener);
+      mBaseListeningService.registerListener((KademliaMessage msg) -> {
+          return matcher.match(msg) && msg.getDestinationNodeInfo().getKey().equals(mKey);
+        },
+          listener);
     }
 
     @Override
     public void unregisterListener(MessageListener listener) {
-      LOGGER.trace("MessageListeningServiceImpl.unregisterListener({})", listener);
-      mDemux.unregisterListener(mKey);
+      LOGGER.debug("DemultiplexingMessageListeningService.unregisterListener({}, {})");
+      mBaseListeningService.unregisterListener(listener);
     }
   }
 

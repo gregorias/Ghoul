@@ -20,6 +20,7 @@ import me.gregorias.ghoul.kademlia.KademliaRouting;
 import me.gregorias.ghoul.kademlia.KademliaRoutingBuilder;
 import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
+import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.udp.UDPByteListeningService;
 import me.gregorias.ghoul.network.udp.UDPByteSender;
@@ -95,7 +96,8 @@ public class Main {
     final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(3);
     final ExecutorService executor = Executors.newFixedThreadPool(2);
 
-    KademliaRoutingBuilder builder = new KademliaRoutingBuilder(new Random());
+    Random random = new Random();
+    KademliaRoutingBuilder builder = new KademliaRoutingBuilder(random);
     DatagramChannel datagramChannel = DatagramChannel.open();
     UDPByteListeningService ubls = new UDPByteListeningService(datagramChannel,
         localPort,
@@ -132,10 +134,19 @@ public class Main {
       builder.setHeartBeatDelay(heartBeatDelay, TimeUnit.MILLISECONDS);
     }
 
-    builder.setNetworkAddressDiscovery(new UserGivenNetworkAddressDiscovery(
-        new InetSocketAddress(localInetAddress, localPort)));
+    NetworkAddressDiscovery networkAddressDiscovery = new UserGivenNetworkAddressDiscovery(
+            new InetSocketAddress(localInetAddress, localPort));
+    builder.setNetworkAddressDiscovery(networkAddressDiscovery);
 
     KademliaRouting kademlia = builder.createPeer();
+    /* MemoryStore store = new MemoryStore();
+    KademliaStore kademliaStore = new KademliaStore(
+        networkAddressDiscovery,
+        kademlia,
+        null //TODO,
+        null // TODO,
+        store,
+        random);*/
 
     RESTApp app = new RESTApp(kademlia, baseURI);
 

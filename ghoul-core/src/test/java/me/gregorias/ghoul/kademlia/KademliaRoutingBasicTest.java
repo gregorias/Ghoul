@@ -43,7 +43,7 @@ public final class KademliaRoutingBasicTest {
   private InetSocketAddress mLocalAddress;
 
   @Rule
-  public Timeout mGlobalTimeout = new Timeout(5, TimeUnit.SECONDS);
+  public Timeout mGlobalTimeout = new Timeout(2000000, TimeUnit.SECONDS);
 
   @Before
   public void setUp() throws KademliaException {
@@ -462,6 +462,18 @@ public final class KademliaRoutingBasicTest {
     }
 
     @Override
+    public void receive(KademliaMessage msg) {
+      if (msg instanceof FindNodeMessage) {
+        receiveFindNodeMessage((FindNodeMessage) msg);
+      } else if (msg instanceof FindNodeReplyMessage) {
+        receiveFindNodeReplyMessage((FindNodeReplyMessage) msg);
+      } else if (msg instanceof PingMessage) {
+        receivePingMessage((PingMessage) msg);
+      } else if (msg instanceof PongMessage) {
+        receivePongMessage((PongMessage) msg);
+      }
+    }
+
     public void receiveFindNodeMessage(FindNodeMessage msg) {
       try {
         mQueue.put(msg);
@@ -470,7 +482,6 @@ public final class KademliaRoutingBasicTest {
       }
     }
 
-    @Override
     public void receiveFindNodeReplyMessage(FindNodeReplyMessage msg) {
       try {
         mQueue.put(msg);
@@ -479,7 +490,6 @@ public final class KademliaRoutingBasicTest {
       }
     }
 
-    @Override
     public void receivePingMessage(PingMessage msg) {
       try {
         mQueue.put(msg);
@@ -488,7 +498,6 @@ public final class KademliaRoutingBasicTest {
       }
     }
 
-    @Override
     public void receivePongMessage(PongMessage msg) {
       try {
         mQueue.put(msg);

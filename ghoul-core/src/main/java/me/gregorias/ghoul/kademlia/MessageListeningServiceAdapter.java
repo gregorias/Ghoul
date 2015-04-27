@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -21,35 +23,47 @@ class MessageListeningServiceAdapter implements ListeningService {
       MessageListeningServiceAdapter.class);
   private final ByteListeningService mByteListeningService;
   private final ByteToMessageDeserializingListener mByteToMsgListener;
-  private MessageListener mListener;
+  private Map<MessageListener, MessageMatcher> mListeners;
 
   public MessageListeningServiceAdapter(ByteListeningService byteListeningService) {
     mByteListeningService = byteListeningService;
     mByteToMsgListener = new ByteToMessageDeserializingListener();
+    mListeners = new HashMap<>();
   }
 
   @Override
-  public synchronized void registerListener(MessageListener listener) {
-    assert mListener == null;
-    mListener = listener;
-    mByteListeningService.registerListener(mByteToMsgListener);
-
+  public synchronized void registerListener(MessageMatcher matcher, MessageListener listener) {
+    if (mListeners.size() == 0) {
+      mByteListeningService.registerListener(mByteToMsgListener);
+    }
+    mListeners.put(listener, matcher);
   }
 
   @Override
   public synchronized void unregisterListener(MessageListener listener) {
-    assert mListener != null && mListener.equals(listener);
-    mByteListeningService.unregisterListener(mByteToMsgListener);
-    mListener = null;
+    mListeners.remove(listener);
+    if (mListeners.size() == 0) {
+      mByteListeningService.unregisterListener(mByteToMsgListener);
+    }
   }
 
   private class ByteToMessageDeserializingListener implements ByteListener {
     @Override
     public void receiveMessage(InetSocketAddress sender, byte[] byteMsg) {
       Optional<KademliaMessage> msg = MessageSerializer.deserializeByteMessage(byteMsg);
+      boolean hasMatched = false;
       if (msg.isPresent()) {
         synchronized (MessageListeningServiceAdapter.this) {
-          mListener.receive(msg.get());
+          for (Map.Entry<MessageListener, MessageMatcher> entry : mListeners.entrySet()) {
+            if (entry.getValue().match(msg.get())) {
+              entry.getKey().receive(msg.get());
+              hasMatched = true;
+              break;
+            }
+          }
+        }
+        if (!hasMatched) {
+          LOGGER.trace("Could not match message: {}", msg);
         }
       } else {
         LOGGER.trace("Received undeserializable message of length: {}.", byteMsg.length);

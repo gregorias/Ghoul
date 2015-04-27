@@ -129,7 +129,10 @@ final class StaticKademliaRouting implements KademliaRouting {
       }
 
       LOGGER.trace("startUp() -> registerListener");
-      mListeningService.registerListener(mMessageListener);
+      mListeningService.registerListener((KademliaMessage msg) -> {
+          return true;
+        },
+          mMessageListener);
       mIsRunning = true;
     } finally {
       mWriteRunningLock.unlock();
@@ -155,6 +158,18 @@ final class StaticKademliaRouting implements KademliaRouting {
   private class MessageListenerImpl implements MessageListener {
 
     @Override
+    public void receive(KademliaMessage msg) {
+      if (msg instanceof FindNodeMessage) {
+        receiveFindNodeMessage((FindNodeMessage) msg);
+      } else if (msg instanceof FindNodeReplyMessage) {
+        receiveFindNodeReplyMessage((FindNodeReplyMessage) msg);
+      } else if (msg instanceof PingMessage) {
+        receivePingMessage((PingMessage) msg);
+      } else if (msg instanceof PongMessage) {
+        receivePongMessage((PongMessage) msg);
+      }
+    }
+
     public void receiveFindNodeMessage(FindNodeMessage msg) {
       notifyAuxListener(msg);
       mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(),
@@ -164,12 +179,10 @@ final class StaticKademliaRouting implements KademliaRouting {
               mRoutingTable.getClosestNodes(msg.getSearchedKey())));
     }
 
-    @Override
     public void receiveFindNodeReplyMessage(FindNodeReplyMessage msg) {
       notifyAuxListener(msg);
     }
 
-    @Override
     public void receivePingMessage(PingMessage msg) {
       notifyAuxListener(msg);
       mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(),
@@ -178,7 +191,6 @@ final class StaticKademliaRouting implements KademliaRouting {
               msg.getId()));
     }
 
-    @Override
     public void receivePongMessage(PongMessage msg) {
       notifyAuxListener(msg);
     }
