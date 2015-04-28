@@ -44,6 +44,9 @@
     <initialRestPort>
       10000
     </initialRestPort>
+    <heartBeatDelay>
+      2000
+    </heartBeatDelay>
     <useDifferentPorts>
       true
     </useDifferentPorts>
