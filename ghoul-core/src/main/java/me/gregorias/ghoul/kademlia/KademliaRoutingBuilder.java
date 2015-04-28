@@ -17,7 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Builder of Kademlia routing peers.
+ * Builder of Kademlia routing peers and stores.
  *
  * If you want multiple kademlia peers on the same listening connection you have
  * to:
@@ -57,9 +57,39 @@ public class KademliaRoutingBuilder {
   }
 
   /**
+   * Create inactive Kademlia store.
+   *
+   * @param routing KademliaRouting on which this store is based
+   * @return Kademlia store with parameters set before.
+   */
+  public KademliaStore createStore(KademliaRouting routing) {
+    LOGGER.info("createStore()");
+
+    checkIfByteListeningServiceIsSet();
+    checkIfByteSenderIsSet();
+    checkIfExecutorIsSet();
+    checkIfNetworkAddressDiscoveryIsSet();
+
+    Key usedKey = getSetKeyOrCreateNew();
+
+    ListeningService listeningService = new DemultiplexingMessageListeningService(usedKey,
+        mListeningAdapter);
+
+    LOGGER.debug("createStore() -> Key: {}", usedKey);
+    Store store = new MemoryStore();
+    return new KademliaStore(
+        mNetworkAddressDiscovery,
+        routing,
+        mMessageSender,
+        listeningService,
+        store,
+        mRandom);
+  }
+
+  /**
    * Create inactive Kademlia peer.
    *
-   * @return Kademlia peer with parameters set before.
+   * @return Kademlia store with parameters set before.
    */
   public KademliaRouting createPeer() {
     LOGGER.info("createPeer()");
