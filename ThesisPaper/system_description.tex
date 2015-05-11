@@ -78,27 +78,28 @@ I assume standard threats and network conditions that is:
 
 \section{Overview}
 \label{sec:ghoul_overview}
-Ghoul is built on top of Kademlia DHT protocol. Each node in the system is an
-independent agent which acts as a Ghoul node and communicates with other nodes
-using messages sent over network.
+Ghoul is built on top of the Kademlia DHT protocol. Each node in the system is
+an independent agent which acts as a Ghoul node and communicates with other
+nodes using messages sent over a network.
 
 There are two kinds of nodes in the system: a DHT node and a registration
-authority. The DHT node is the Kademlia node extended with security measures.
-It initiates and maintains its routing table and answers queries. Additionally
-each node is responsible for maintaining the security of the entire network by
-participation in P2P certificate revocation propagation, maintenance of its
-security certificate, and response to security queries.
+authority. A DHT node is a Kademlia node extended with security measures.
+It initiates and maintains its routing table and answers queries. Additionally,
+each DHT node is responsible for maintaining the security of the entire network
+by participating in P2P certificate revocation propagation, maintaining its
+security certificate, and responding to security queries.
 
 A small set of nodes, called registration nodes, is responsible for facilitating
-node’s join into network by using distributed random key generation and
+node’s join into the network by using distributed random key generation and
 certificate issuance. Registration nodes are a distributed version of central
 authority, with a twist that a few of them might be malicious. Their existence
 is motivated by the fact that it is very hard to guarantee random key generation
-and verification in a distributed setting. On the other hand I want to provide
-administrative scalability. Application's owner should be able to allow other
-parties to provide their registration nodes for the protocol and not worry
-whether they have non-malicious intentions. The registration protocol works
-correctly as long as a single node is honest.
+and verification in a fully distributed setting. On the other, it is desirable
+for the system to have at least administrative scalability. Application's owner
+should be able to allow other parties to provide their registration nodes for
+the protocol. Users should not worry whether registration nodes have
+non-malicious intentions. The registration protocol works correctly as long as a
+single node is honest.
 
 \section{Data structures}
 \label{sec:ghoul_data}
