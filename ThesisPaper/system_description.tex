@@ -182,13 +182,13 @@ a valid list of certificates then it is discarded.
 \subsection{Challenge protocol}
 In some neuralgical and vulnerable points in the protocol we may intent to limit
 the number of requests a node can make using cryptographic challenges. This
-achieves 2 goals: It significantly increases a cost of an attack which relies on
-number of queries, such as a Sybil attack, and provides a throttle mechanism to
-prevent a node overload.
+limit achieves two goals: It significantly increases the cost of an attack which
+relies on number of queries, such as a Sybil attack; it provides a throttle
+mechanism to prevent a node overload.
 
 Whenever the protocol requires the node sending a query or a request to provide
 a proof-of-work for this request the challenge protocol is used
-(\ref{fig:chal_prot}).
+(Fig. \ref{fig:chal_prot}).
 
 \begin{figure}
 \begin{msc}{Challenge protocol}
@@ -196,45 +196,54 @@ a proof-of-work for this request the challenge protocol is used
 \setlength{\envinstdist}{3cm}
 \declinst{client}{C}{Client}
 \declinst{server}{S}{Server}
-\mess{Send challenge request}{client}{server}
+\mess{Send a challenge request}{client}{server}
 \nextlevel
 \action*{
 \begin{minipage}{4cm}\centering
 Choose a random nonce\\
-$r\in\{0,1\}^*$, difficulty $p \in \N$, $t := \text{current time}$.
+$r\in\{0,1\}^*$,\\ difficulty $p \in \N$,\\ $t := \text{current time}$.
 \end{minipage}}{server}
-\nextlevel[11]
+\nextlevel[6]
 \mess{Send challenge $m_2 := (t, r, p)_{s_{pr}}$}{server}{client}
 \nextlevel[1]
 \action*{
 \begin{minipage}{4cm}\centering
   Find $s$ such that $H(r || s)$ has $p$ last bits equal to zero.
 \end{minipage}}{client}
-\nextlevel[4]
-\mess{Send solution $m_3 := (m_2, s, c_{pub})_{c_{pr}}$}{client}{server}
+\nextlevel[5]
+\mess{Send solution $m_3 := (m_2, s)$}{client}{server}
 \nextlevel
 \action*{
 \begin{minipage}{4cm}\centering
-Check the validity of the solution. Save the nonce into active puzzles list
+Check the validity of the solution. Save $r$ into the active puzzles list
 until the validity of the puzzle has ended.
 \end{minipage}}{server}
-\nextlevel[4]
+\nextlevel[5]
 \end{msc}
   \caption{Challenge protocol}
   \label{fig:chal_prot}
 \end{figure}
 
+The client initiates the protocol by sending a challenge request to the server. 
+Upon receiving a request the server chooses the difficulty $p$ of the challenge
+and a random nonce $r$. The server send the challenge $m_2$ consisting of $r$,
+$p$, and current time on the server: $t$. $m_2$ is signed with server's private
+key.  The client now has to find such a number $s$ that its concatenation with
+$p$ ($p || s$) has a hash with $p$ last bits equal to zero. When such $s$ is
+found then the client sends a message $m_3$ with the challenge $m_2$ and the
+solution $s$. The server then checks the validity of the solution.
+
 The validity check consists of: verifying signature of $m_2$, checking whether
-nonce is in not in the active puzzles list, checking time, verifying the
-solution.
+nonce is not in the active puzzles list, checking time, verifying the hash of
+the solution.
 
 $m_3$ serves as a proof-of-work and may be accompanied by an additional request
 to the server.
 
-There is a variant to this scheme in which we save distributed nonces and later
-check that they exist in the list during verification. Depending on the duration
-of the timeout and number of possible queries per second this may provide a
-denial-of-service vulnerability.
+There is a variant to this scheme in which the server saves distributed nonces
+and later checks that they exist in the distributed nonces list during
+verification. Depending on the duration of the timeout and number of possible
+queries per second this variant may provide a denial-of-service vulnerability.
 
 \subsection{Robust distributed random key generation}
 
