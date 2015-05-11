@@ -1,20 +1,29 @@
 \chapter{Ghoul system description}
+
+In this chapter I present Ghoul's design. Section \ref{sec:ghoul_goals}
+describes the problem that Ghoul solves and its assumptions. Section
+\ref{sec:ghoul_overview} provides an overview of the protocols used in Ghoul.
+Sections \ref{sec:ghoul_data} and \ref{sec:ghoul_protocols} describe in detail
+Ghoul's mechanisms - its data structures and protocols. The final section
+\ref{sec:ghoul_summary} describes Ghoul's strengths and weaknesses..
+
 \section{Goals}
+\label{sec:ghoul_goals}
 I decided to build Ghoul to fill a niche of secure open-source DHT network
 implementation. In my experience it is difficult to find a satisfactory
-open-source implementation of Kademlia. By satisfactory I mean one that
+open-source implementation of Kademlia DHT. By satisfactory I mean one that
 satisfies all of the following criterias:
 
 \begin{description}
   \item{\textbf{Single responsibility}} Implementation of Kademlia should do
     only one thing: operate according to the Kademlia protocol.
-  \item{\textbf{Extensibility}} If I want to extend the network protocol with a
-    NAT traversal mechanism I should not be required to modify large portion of
-    the library network communication stack.
+  \item{\textbf{Extensibility}} Extension of the network protocol with a
+    NAT traversal mechanism should not require modification of a large portion
+    of the library's network communication stack.
   \item{\textbf{Documentation}} An open-source project should have maintained
     documentation to help others contribute or use it.
   \item{\textbf{Robustness}} Implementation should not fail after it is used
-    for 1 hour on a small sized network consisting of a hundred nodes.
+    for 1 hour on a small network consisting of a hundred nodes.
 \end{description}
 
 I couldn't find an implementation that satisfies all of the above in Java and
@@ -28,13 +37,13 @@ JoshuaKissoon/Kademlia
 extensible.
 
 Solutions used in KAD network and designed for Mainline DHT use IP addresses to
-prevent Sybil attack and arbitrary ID choice, this works against unsophisticated
-attacker, but has problems stemming from the fact that IP was not designed for
-that use case. IP spoofing, IPv6 privacy extensions and lack of anonymity are
-serious concerns that either neutralize such solution or introduce a serious
-flaw. I feel that lack of adoption of security measures that are present in the
-research literature stems from the stereotype that such measures are either hard
-to implement, slow, hard to satisfy their dependencies, or
+prevent Sybil attack and arbitrary ID choice. This approach works against
+unsophisticated attacker, but has problems stemming from the fact that IP was
+not designed for that use case. IP spoofing, IPv6 privacy extensions and lack of
+anonymity are serious concerns that either neutralize such solution or introduce
+a serious flaw. I feel that lack of adoption of security measures that are
+present in the research literature stems from the stereotype that such measures
+are either hard to implement, slow, hard to satisfy their dependencies, or
 needlessly complicate use of the application. With Ghoul I show that it is
 possible to design and build a DHT that satisfies following constraints:
 
@@ -42,17 +51,17 @@ possible to design and build a DHT that satisfies following constraints:
   \item{\textbf{Security}} The DHT should be resistant to Sybil and
     eclipse attacks.
   \item{\textbf{Performance}} The DHT should be as performant as the original
-    protocol where possible, especially in common use cases of finding a node
-    and data storage. In other cases the time of operation should be practical,
-    meaning that time or message complexity should not be greater than $O(\log
-    n)$ for network of size $n$.
-  \item{\textbf{Simplicity}} It should be simple to use. User should not be
+    protocol where possible, especially in common use cases of finding a node,
+    storing and getting. In other cases the time of operation should be
+    practical, meaning that time or message complexity should not be greater
+    than $O(\log n)$ for network of size $n$.
+  \item{\textbf{Simplicity}} The DHT should be simple to use. User should not be
     forced to perform an extensive set up, or prepare a large configuration file
     to just start the DHT.  The entire scheme should be simple to describe. User
     or developer should be able to understand how the protection schemes work
     and be able to reason how it would behave in his application.
   \item{\textbf{Extensibility}} Application developers should be able to extend
-    the system with their own security mechanism easily if so desired.
+    the system with their own security mechanism easily.
   \item{\textbf{Anonymity}} The security mechanism should not compromise user
     anonymity.
 \end{description}
@@ -63,14 +72,12 @@ I assume standard threats and network conditions that is:
   \item An attacker may introduce colluding nodes into the system, but has
     limited computing and communication power.
   \item There is only a point-to-point message passing primitive for network
-    communication. The message passing operation may fail to deliver and does
-    not give any bound on delivery time.
+    communication. Delivery time is not bounded and mail fail altogether.
   \item Nodes may exhibit byzantine failure.
 \end{itemize}
 
-In this chapter I present protocols that create Ghoul.
-
 \section{Overview}
+\label{sec:ghoul_overview}
 Ghoul is built on top of Kademlia DHT protocol. Each node in the system is an
 independent agent which acts as a Ghoul node and communicates with other nodes
 using messages sent over network.
@@ -94,6 +101,7 @@ whether they have non-malicious intentions. The registration protocol works
 correctly as long as a single node is honest.
 
 \section{Data structures}
+\label{sec:ghoul_data}
 
 \subsection{Public key cryptography}
 Ghoul uses public key cryptography for node authentication and certification.
@@ -166,6 +174,7 @@ If a response to the message with the \texttt{certificateRequest} does not have
 a valid list of certificates then it is discarded.
 
 \section{Protocols}
+\label{sec:ghoul_protocols}
 \subsection{Challenge protocol}
 In some neuralgical and vulnerable points in the protocol we may intent to limit
 the number of requests a node can make using cryptographic challenges. This
@@ -603,6 +612,7 @@ puzzles}
   that has potential to be too large if unconsidered.
 
 \section{Summary}
+\label{sec:ghoul_summary}
   This section concludes the specification of Ghoul. Here I will evaluate its
   strengths and weaknesses.
   
