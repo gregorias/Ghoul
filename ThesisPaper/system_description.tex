@@ -78,9 +78,9 @@ I assume standard threats and network conditions that is:
 
 \section{Overview}
 \label{sec:ghoul_overview}
-Ghoul is built on top of the Kademlia DHT protocol. Each node in the system is
-an independent agent which acts as a Ghoul node and communicates with other
-nodes using messages sent over a network.
+Ghoul is extends the Kademlia DHT protocol. Each node in the system is an
+independent agent which acts as a Ghoul node and communicates with other nodes
+using messages sent over a network.
 
 There are two kinds of nodes in the system: a DHT node and a registration
 authority. A DHT node is a Kademlia node extended with security measures.
@@ -255,28 +255,31 @@ distributed scheme of key generation.
 Here I will present a distributed protocol which generates a random key that is
 unbiased if at least one node is honest. More formally:
 
-\begin{theorem*}
-  Given a list $R = \langle r_1, \ldots, r_n \rangle$ of $n \geq 2$ nodes known
-  to all nodes in $R$ the random key generation protocol generates an unbiased
-  random key known to all participants if at least one node is honest and all
-  nodes respond according to the protocol in a timely manner. Even in the case
-  of a byzantine failure then all nodes that generate a key generate the same
-  key that is unbiased if at least one non-failing node is honest.
+\begin{theorem}
+  Let $R = \langle r_1, \ldots, r_n \rangle$ of $n \geq 2$ be a list of nodes
+  participating in the random key generation protocol. All nodes in $R$ know
+  $R$. 
+  If all nodes respond according to the protocol in a timely manner and at least
+  one node is honest, then the protocol generates one, unbiased, random key known
+  to all participants.
+  If some nodes exhibit byzantine failure, but at least one non-failing node is
+  honest, then all nodes that generate a key generate the same, unbiased key.
 
-  The chance that the malicious participant may manipulate the protocol so that
-  this theorem does not hold is cryptographically negligible.
-\end{theorem*}
+  The chance that a malicious participant manipulates the protocol so that this
+  theorem does not hold is cryptographically negligible.
+  \label{th:robust_distributed_key_generation}
+\end{theorem}
 
 The protocol that satisfies those properties is defined in
 \ref{alg:key_gen_alg}.  It uses bit-commitment scheme which is defined as
 follows:
 
 \begin{defin*}[Bit-commitment]
-  Bit-commitment is a cryptographic protocol that allows one to commit a value
-  such that it is hidden and may be shared with others. Later the commiter may
-  reveal the commited value to participants in such a way that they can check
-  that it is indeed hidden in the earlier shared commitment. If the commiter
-  tries to reveal a different value then this fact is detectable.
+  Bit-commitment \cite[p.220]{gol08} is a cryptographic protocol that allows one
+  to commit a value such that it is hidden and the commitment may be shared with
+  each participant. Later the commiter may reveal the commited value to
+  participants in such a way that they can verify that it is indeed hidden in
+  the commitment shared earlier .
 
   Typical bit-commitment use is split into two phases:
   \begin{description}
@@ -288,29 +291,34 @@ follows:
       consistent with earlier commitments.
   \end{description}
 
-  Bit-commitment protocols may be either unconditionally binding, meaning even
-  computationally unbounded commiter may not reveal a different value than the
-  one commited, or unconditionally hiding, meaning no participant may find out
-  the commited value. It can't be both.
+  Bit-commitment protocols belong to two disjoint sets: unconditionally binding
+  commitments and unconditionally hiding commitments.
+  Unconditionally binding means that even computationally unbounded commiter may
+  not reveal a different value than the one commited. 
+  Unconditionally hiding means that any value is equally likely to be hidden in
+  the commitment, i. e. no participant may find out the commited value based
+  only on the commitment.
 \end{defin*}
 
 The random number generation protocol consists of 3 phases:
 \begin{enumerate}
-  \item Commit and broadcast random number used to generate the key. This phase
-    is used so that every node commits to its random number and can not change
-    it later.
-  \item Broadcast all received messages to others. This step ensures that every
-    honest node has received the same set of messages and will generate the same
-    key. If any node has sent inconsistent messages to honest nodes
-    than this will be detected here.
-  \item Broadcast key to unlock commitment.
+  \item (Lines 1-5) Commit and broadcast a random number used to generate the
+    key. This phase is used so that every node commits to its random number and
+    cannot change it later.
+  \item (Lines 6-9) Broadcast all received messages to others with the
+    commitment key. This step ensures that every honest node has received the
+    same set of messages and will generate the same key. If any node has sent
+    inconsistent messages to honest
+    nodes, then this will be detected in this stage.
+  \item (Lines 10-16) Verify correctness of messages and output the generated
+    key.
 \end{enumerate}
 
 One may recognize that this protocol consist of the first two phases of a
 3-phase byzantine failure protection protocol. Which is the reason why it has
 its non-malleability properties.
 
-\begin{algorithm}
+\begin{algorithm}[tb]
   \begin{algorithmic}[1]
   \STATE $k_i \leftarrow $ random key
   \STATE $(h_i, s_i) \leftarrow $ bit commitment string and solution commiting
@@ -337,7 +345,7 @@ its non-malleability properties.
   \label{alg:key_gen_alg}
 \end{algorithm}
 
-An example of this protocol for 3 registrars is shown in
+An example of this protocol for 3 registrars is shown in figure
 \ref{fig:key_gen_example}.
 
 \begin{figure}
@@ -368,11 +376,11 @@ An example of this protocol for 3 registrars is shown in
 \mess{$((h_A)_A, (h_B)_B, (h_C)_C)_C$}{rc}{ra}
 \nextlevel[2]
 \mess{}{ra}{rb}
-\mess{$(r_A)_A$}{ra}{rc}
+\mess{$(s_A)_A$}{ra}{rc}
 \nextlevel[2]
-\mess{$(r_B)_B$}{rb}{ra}
+\mess{$(s_B)_B$}{rb}{ra}
 \nextlevel[2]
-\mess{$(r_C)_C$}{rc}{ra}
+\mess{$(s_C)_C$}{rc}{ra}
 \nextlevel[2]
 \action*{
 \begin{minipage}{4cm}\centering
@@ -385,11 +393,52 @@ An example of this protocol for 3 registrars is shown in
 \end{figure}
 
 The protocol uses $O\left(n^2\right)$ messages and is vulnerable to an attack in
-which an attacker simply does not participate in it. However in the large scope
+which an adversary simply does not participate in it. However in the large scope
 of the system it's not an issue, because we assume that introducing a registrar
 requires an organizational approval which is a nontrivial barrier of entry and
 later any malicious nodes may be easily detected and removed from the
 centralized lists should it become compromised.
+
+\subsubsection{Proof of theorem \ref{th:robust_distributed_key_generation}}
+
+If node $A$ has reached stage 3 that means that every node had completed stage 1
+and all messages from stage 1 had been received. Indeed, in line 10 the node $A$
+had waited for all stage 2 broadcast messages, which can only be received if
+the sender has received all messages from stage 1.
+Therefore, if any node generates a key, then all nodes have successfully passed
+stage 1.
+
+Careful reader will notice that we need to prove that the protocol is resistant
+to a replay attack. An adversary $A$ may remember messages sent by an honest
+node $B$ in earlier runs of the protocol. $A$ may try to replace the message
+sent by $B$, $\left(h_B\right)_B$, with an older message: $\left(h_B'\right)_B$.
+However if that happens then the adversary will also have to generate a valid
+stage 2 message signed with $B$'s private key: 
+$\left(\left(h_1\right)_1, \ldots, \left(h_B'\right)_B, \ldots,
+\left(h_n\right)_n\right)_B$
+Since the adversary tries to fool an honest node and $h_i$ values are
+effectively random (if $i$ is honest), therefore the adversary won't be able to
+do so.
+Notice that if we would try to save bandwith and not include
+$\left(h_i\right)_i$ in the stage 2 message sent to $i$, then the replay attack
+would work.
+
+If a key is generated from values $\left(k_i\right)_{1 \leq i \leq n}$, then the
+key is unbiased. Indeed, if $r$ is uniformly random variable and $s$ is any
+random variable, then the function: $r \oplus s$ is also a uniformly random
+variable. So ,if at least one value $k_j$ has been chosen randomly, then $k$ is
+an unbiased random key.
+
+Finally, we have to prove that all keys produced by honest nodes are the same.
+This means that the view $k_1, \ldots, k_n$ of each of those honest nodes is the
+same. The view might be different only if an adversary manages to send different
+(but consistent) messages to different nodes.Since we have already proven that the
+adversary may not replace a message from an honest node, therefore the adversary
+may only manipulate its own messages. So assume that honest nodes $B$
+and $C$ have received respectively: $\left(h_A\right)_A, \left(h_A'\right)_A,
+h_A \neq h_A'$ from the adversary $A$.
+This situation will be discovered in stage $2$ when $B$ and $C$ share their view
+of commitments and they will abort their execution of the protocol.
 
 \subsection{Node join protocol}
 
