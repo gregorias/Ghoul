@@ -247,10 +247,10 @@ queries per second this variant may provide a denial-of-service vulnerability.
 
 \subsection{Robust distributed random key generation}
 
-In Ghoul honesty of registrars is not assumed. In case of a single centralized
-registrar such a node would greatly facilitate an eclipse attack by assigning to
-colluding nodes keys close to a target. Therefore a verifiable distributed
-scheme for key generation is needed.
+In Ghoul honesty of registrars is not assumed. A single centralized
+registrar would greatly facilitate an eclipse attack by assigning to colluding
+nodes keys close to a target. This vulnerability  calls for a verifiable
+distributed scheme of key generation.
 
 Here I will present a distributed protocol which generates a random key that is
 unbiased if at least one node is honest. More formally:
