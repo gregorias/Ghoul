@@ -659,37 +659,41 @@ puzzles}
 
   To make queries indistinguishable we define only one SybilControl query
   message: \texttt{SC\_QUERY}, which is parametrized by a searched key. Its
-  response should be a collection of nodes closest to given key and the history
-  of puzzle states of the recipient. Direct verification simply looks at the
-  latest puzzle in the history and discards all the other information.
-  Non-direct check uses the found key for typical find node operation and also
-  the history for SybilControl verification. In fact in this scheme there's no
-  need for distinguishing direct and non-direct verification from the point of
-  view of the verifier.
+  response should be a collection of nodes closest to the given key and the
+  history of puzzle states of the recipient.
+  Direct verification simply looks at the latest puzzle in the history and
+  discards all the other information.
+  Non-direct check uses the found key for subsequent find node operations and
+  also the history for SybilControl verification.
+  In fact in this scheme there's no need for distinguishing direct and
+  non-direct verification from the point of view of the verifier.
 
 \subsubsection{SybilControl in Ghoul}
   SybilControl requires additional consideration as to how it integrates with
   Kademlia.
 
-  The protocol described in SybilControl has only local effects, that is a node
-  that does not have an up-to-date puzzle will just not be included into the
-  routing table. Since Ghoul uses a certification system with revocation it is
-  possible for nodes to complain about others to registrars. If registrars find
-  that given node is malicious or Sybil they may globally revoke its
-  certificate.
+  The protocol described in SybilControl has only local effects.
+  A node that does not have an up-to-date puzzle will just not be included in
+  the routing table.
+  Since Ghoul uses a certification system with revocation, it is possible for
+  nodes to accuse others of misbehavior to registrars.
+  If registrars find that given node is malicious or Sybil they may globally
+  revoke its certificate.
 
-  The size of the SybilControl query also needs to be considered. Usually a
-  Kademlia implementation uses UDP protocol for message sending. This means that
-  the maximal size of a single message is 64KB. This gives us a bound on the
-  SybilControl query response. Assuming likely value of keeping 10 last puzzle
-  states in history this means we have 6.4KB for one puzzle state record.
-  Kademlia key and challenge ($B_i || C_{B_i}$) are of size $160 + 16$ or $160
-  + 32$ bytes, that is around 200 bytes. Which forces us to consider only 32
-  neighbor challenges when building a our puzzle. Perhaps even a little bit
-  less to accommodate other metadata. The \texttt{SC\_QUERY} is the only message
-  that has potential to be too large if unconsidered.
-
-\section{Summary}
+  The \texttt{SC\_QUERY} is the only message that has potential to be too large
+  if unconsidered.
+  Usually a Kademlia implementation uses UDP for message sending.
+  The maximal size of a single message is 64KB.
+  This gives us a bound on the SybilControl query response.
+  Assuming that the history keeps 10 last puzzles states; this means there is
+  6.4KB for one puzzle state record.
+  Kademlia key and challenge ($B_i || C_{B_i}$) are of size $160 + 16$ or $160 +
+  32$ bytes, that is around 200 bytes.
+  Which forces us to consider at most $6,400/200 = 32$ neighbor challenges when
+  building a puzzle.
+  The actual value of neighbor challenges should be less than $32$ to accomodate
+  metadata.
+\section{Evaluation}
 \label{sec:ghoul_summary}
   This section concludes the specification of Ghoul. Here I will evaluate its
   strengths and weaknesses.
@@ -701,8 +705,7 @@ puzzles}
   not assume anything about security properties of IP address or other network
   characteristics or require a Social network, or establishment of symmetric key
   architecture.  This means that setting up Ghoul does not require any more work
-  than setting up a bare Kademlia implementation, sometimes even less since some
-  protection schemes stop working for users behind NAT.
+  than setting up a bare Kademlia implementation.
 
   Keeping the completely abstract nature of identification makes it possible to
   augment this scheme with other security protocols. Application programmer may
@@ -738,20 +741,22 @@ puzzles}
   \subsection{Performance}
 
   Ghoul focuses on changing node join and neighbor addition protocol and as
-  such does not change anything else. Especially a typical use of Kademlia for
-  finding nodes or data does incur any performance penalty.
+  such does not change anything else.
+  In particular a typical use of Kademlia for finding nodes or data does incur
+  any performance penalty.
 
-  Node join protocol changes an instantaneous operation into a small distributed
-  protocol with some proof-of-work. Since this happens only once its cost is
-  negligible. From the point of view the central authority the node join
-  protocol requires it to only be able to generate and save nonces and perform
-  the distributed key generation algorithm. Since node's join happens only once
-  in the existence and those operations are lightweight then it means that the
-  central authority can be a simple machine and should not be a performance
-  bottleneck.
+  Node join protocol changes an instantaneous operation into an inexpensive
+  distributed protocol with some proof-of-work.
+  Since this happens only once its cost is negligible.
+  For the central authority the node join protocol requires the ability to
+  generate and save nonces, and perform the distributed key generation
+  algorithm.
+  Since node's join happens only once in node's existence and those operations
+  are lightweight then it means that the central authority can be a simple
+  machine and should not be a performance bottleneck.
 
   The biggest performance overhead happens during neighbor addition when
-  verification is performed. The verification message complexity is on the order
+  verification is performed. The verification message complexity is in the order
   of $O(\log n)$ and requires sending larger messages. This exacerbates effects
   of churn and the network will take longer time to adapt to topology changes.
   A more detailed analysis of SybilControl's impact on DHT behavior can be
@@ -763,7 +768,7 @@ puzzles}
   aware that a Sybil attacker may create as many identities as is the factor
   of his computing power compared to the weakest node. Therefore tests with
   small hardness may prove to be ineffective in blocking an attack. On the other
-  hand a weak node may still use Ghoul without performing any additional work,
+  hand a weak node may still query without performing any additional work,
   so we can only consider more powerful ones for creating the DHT.
 
   \subsection{Centralized key-generation}
