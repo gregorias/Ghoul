@@ -709,41 +709,47 @@ puzzles}
 
   Keeping the completely abstract nature of identification makes it possible to
   augment this scheme with other security protocols. Application programmer may
-  augment the scheme anonymization, using transport-level protocols like Tor or
-  DHT-level solution like Octopus~\cite{wan12b}.
+  augment the scheme anonymization, using transport-level protocols like 
+  Tor~\cite{syv04} or DHT-level solution like Octopus~\cite{wan12b}.
 
   Ghoul ensures that keys are generated fairly and that every node performs
   periodic proof-of-work, which limits the size of a Sybil attack. This coupled
   with natural redundancy of Kademlia protocol also make launching an eclipse
   attack much harder.
 
-  Ghoul, however is not invulnerable and has a few weaknesses:
+  Ghoul, however is not invulnerable and we are aware of two weaknesses of
+  bare Ghoul protocol:
 
   \begin{description}
-    \item{\textbf{anonymization}} Lack of anonymization gives a snooping
-      attacker a possibility to acquire information about node's behavior and
-      use it to augment his attack. For example if an attacker can predict
-      whether node verification in the SybilControl scheme is direct or not then
-      this whole scheme is rendered void.
+    \item{\textbf{anonymization}} Lack of anonymization (adversiaries may easily
+      associate requests with sending nodes) gives a snooping attacker a
+      possibility to acquire information about node's behavior and use it to
+      augment the attacker's attack.
+      For example if an attacker can predict whether node verification in the
+      SybilControl scheme is direct or not then this whole scheme is rendered
+      void.
     \item{\textbf{denial of service}} Additional security mechanisms increase
-      amount of work a node can and needs to perform. If nodes do not limit this
-      a crafty attacker may congest a node with specially defined behavior. One
-      pernicious example of this class of attack is attack on the certificate
-      revocation scheme. An attacker might introduce a large number of correctly
+      amount of work a node needs to perform.
+      If nodes do not limit their workload a crafty attacker may congest a node
+      with specially defined behavior.
+      One pernicious example of this class of attack is attack on the
+      certificate revocation scheme.
+      An attacker might introduce a large number of correctly
       behaving nodes in the system, who after some time start behaving
-      maliciously. This is detected by Ghoul and their certificate's are
-      revoked. On first sight this is a desired behavior, but if the number of
-      such nodes is very large then the revocation list become large as well.
+      maliciously. This is detected by Ghoul and their certificates are
+      revoked.
+      On first sight this is a desired behavior, but if the number of such nodes
+      is very large then the revocation list become large as well.
       Since each DHT node will try to synchronize this list it may generate
       traffic large enough to congest it.
   \end{description}
 
   \subsection{Performance}
 
-  Ghoul focuses on changing node join and neighbor addition protocol and as
+  Ghoul changed jst node join and neighbor additions protocol and as
   such does not change anything else.
-  In particular a typical use of Kademlia for finding nodes or data does incur
-  any performance penalty.
+  In particular a typical use of Kademlia for finding nodes or data does not
+  incur any performance penalty.
 
   Node join protocol changes an instantaneous operation into an inexpensive
   distributed protocol with some proof-of-work.
@@ -788,11 +794,25 @@ puzzles}
   tracker starts behaving maliciously then it is noticed and search browsers do
   not return links to the malicious tracker. Similar set up is done in Ghoul.
 
-  Additionally introduction of central authority is necessary for efficient
-  security. Gatekeeper servers ensure that distributed keys are truly random,
-  something that would be inefficient in distributed setting. Centralized
-  cetrification system allows adding extensions and boost security mechanism
-  which can recognize malicious nodes.
+  Tor anynomizing network \cite{syv04}, which is used worldwide by, for example,
+  political dissidents and whistleblowers to protect against government
+  surveillance, also relies on central authority. Tor currently uses 9 directory
+  authorities
+  \footnote{\texttt{https://www.torproject.org/docs/faq#KeyManagement}
+  \footnote{\texttt{https://atlas.torproject.org/#search/flag:authority}
+  which keep a signed list of active Tor nodes.
+  A Tor client contacts all directory authorities to download this list and
+  trusts relays that are confirmed by a consensus of directory authorities.
+  If an adversary were to shut down directory authorities (through for example a
+  DDOS attack), then she would effectively shut down the entire Tor network.
+  In contrast, in Ghoul, compromise of the central authority would stop new
+  nodes from joining the network.
+
+  Introduction of central authority is necessary for efficient security.
+  Gatekeeper servers ensure that distributed keys are truly random, something
+  that would be inefficient in a distributed setting. Centralized cetrification
+  system allows adding extensions and boost security mechanism which can
+  recognize malicious nodes.
 
   The gatekeeper functionality in Ghoul is only used for node join and doesn't
   require any complex computational power. Even if node join fails or becomes
