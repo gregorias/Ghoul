@@ -511,10 +511,11 @@ for $m=1$.
 \paragraph{Certificate refresh} Once a certificate has been generated it is
 valid only for some time. Every node that has a valid certificate that has not
 been revoked may request a new certificate for the same (public key, dht key)
-pair. To do this it contacts the registrar responsible for given certificate,
-solves a challenge, and then sends a request for certificate update. In this
-request it attaches the certificate in question. As a result the registrar sends
-an updated certificate if it is still valid.
+pair.
+To do this it contacts the registrar which has issued given certificate,
+solves a challenge, and then sends a request for certificate update.
+In this request it attaches the certificate in question. As a result the
+registrar sends an updated certificate if it is still valid.
 
 Certificate refresh is a necessary part of the protocol, since without it each
 node would have to join the network again upon certificate expiration.
@@ -558,9 +559,11 @@ puzzles}
   Verifiable random key generation in Kademlia is a defense against eclipse
   style attacks, which in Kademlia are much harder to launch than in other
   DHTs, such as Chord, due to non-strict routing tables and redundant, iterative
-  routing algorithm. Unless an attacker has access to a large number of nodes,
-  it is difficult to launch an successful eclipse attack \cite{mac09}. Therefore
-  for Ghoul to be secure a protection scheme against a Sybil attack is
+  routing algorithm.
+  Unless an attacker has access to a large number of nodes, it is difficult to
+  launch an successful eclipse attack \cite{mac09}.
+
+  For Ghoul to be secure a protection scheme against a Sybil attack is
   necessary.
   Thanks to the use of computation puzzles the scope of such an attack will be
   limited by the centralized authority.
@@ -798,8 +801,8 @@ puzzles}
   political dissidents and whistleblowers to protect against government
   surveillance, also relies on central authority. Tor currently uses 9 directory
   authorities
-  \footnote{\texttt{https://www.torproject.org/docs/faq#KeyManagement}
-  \footnote{\texttt{https://atlas.torproject.org/#search/flag:authority}
+  \footnote{\texttt{https://www.torproject.org/docs/faq\#KeyManagement}}
+    \footnote{\texttt{https://atlas.torproject.org/\#search/flag:authority}}
   which keep a signed list of active Tor nodes.
   A Tor client contacts all directory authorities to download this list and
   trusts relays that are confirmed by a consensus of directory authorities.
