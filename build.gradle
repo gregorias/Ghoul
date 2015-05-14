@@ -40,7 +40,7 @@ subprojects {
 
 /* Generate gradlew and gradle wrappers for portable gradle use */
 task wrapper(type: Wrapper) {
-  gradleVersion = '2.3'
+  gradleVersion = '2.4'
 }
 
 def generateClassPath(configurationSet, prefix) {
