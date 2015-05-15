@@ -57,12 +57,14 @@ public class KademliaStore {
   }
 
   public synchronized  Collection<byte[]> getKey(Key key) throws IOException, KademliaException {
+    LOGGER.debug("getKey({})", key);
     Collection<byte[]> foundKeys = new ArrayList<>();
     if (mStore.contains(key)) {
       foundKeys.add(mStore.get(key).get());
     }
     GetKeyTask task = new GetKeyTask(key, 1);
     foundKeys.addAll(task.call());
+    LOGGER.debug("getKey({}) -> number of found keys : {}", key, foundKeys.size());
     return foundKeys;
   }
 
@@ -120,6 +122,8 @@ public class KademliaStore {
             throw new IllegalStateException("Unexpected event has been received.");
           }
           queriedCount += sendAdditionalRequests(targetNodes, queriedCount, mRespondedCount);
+          LOGGER.trace("GetKeyTask.call(): handled {} nodes of {}", mRespondedCount,
+              targetNodes.size());
         }
       } catch (InterruptedException e) {
         LOGGER.error("Received unexpected interrupt.", e);
@@ -145,6 +149,7 @@ public class KademliaStore {
     }
 
     private void handleTimeOut(NodeInfo timedOutNodeInfo) {
+      LOGGER.trace("GetKeyTask.handleTimeOut({})", timedOutNodeInfo);
       if (mRegisteredListeners.containsKey(timedOutNodeInfo.getKey())) {
         unregisterFindNodeTaskEventListener(mRegisteredListeners.get(timedOutNodeInfo.getKey()),
             mEventQueue);
@@ -156,7 +161,8 @@ public class KademliaStore {
     private int sendAdditionalRequests(List<NodeInfo> targetNodes,
                                        int queriedCount,
                                        int respondedCount) {
-      int requestCount = Math.min(mConcurrency - respondedCount, targetNodes.size() - queriedCount);
+      int requestCount = Math.min(mConcurrency - (respondedCount - queriedCount),
+          targetNodes.size() - queriedCount);
       for (int i = 0; i < requestCount; ++i) {
         NodeInfo target = targetNodes.get(i + queriedCount);
         sendGetKeyMessage(target);
@@ -169,6 +175,7 @@ public class KademliaStore {
     }
 
     private void sendGetKeyMessage(NodeInfo destination) {
+      LOGGER.trace("GetKeyTask.sendGetKeyMessage({})", destination);
       int messageId = registerGetKeyTaskEventListener(mEventQueue);
       mRegisteredListeners.put(destination.getKey(), messageId);
       mSender.sendMessage(destination.getSocketAddress(),
@@ -201,6 +208,7 @@ public class KademliaStore {
   private class MessageListenerImpl implements MessageListener {
     @Override
     public void receive(KademliaMessage msg) {
+      LOGGER.trace("MessageListenerImpl.receive({})", msg);
       if (msg instanceof GetKeyMessage) {
         handleGetKeyMessage((GetKeyMessage) msg);
       } else if (msg instanceof GetKeyReplyMessage) {
@@ -223,12 +231,14 @@ public class KademliaStore {
   }
 
   private void handleGetKeyMessage(GetKeyMessage msg) {
+    LOGGER.debug("handleGetKeyMessage({})", msg);
     Optional<byte[]> optionalData = mStore.get(msg.getKey());
     GetKeyReplyMessage reply = new GetKeyReplyMessage(msg.getDestinationNodeInfo(),
           msg.getSourceNodeInfo(),
           msg.getId(),
           msg.getKey(),
           optionalData);
+    LOGGER.debug("handleGetKeyMessage({}) -> reply : {}", msg, reply);
     mSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), reply);
   }
 
@@ -238,10 +248,12 @@ public class KademliaStore {
    * @param msg received reply message
    */
   private void handleGetKeyReplyMessage(GetKeyReplyMessage msg) {
+    LOGGER.trace("handleGetKeyReplyMessage({})", msg);
     synchronized (mGetKeyListeners) {
       Collection<BlockingQueue<GetKeyTaskEvent>> listeners = mGetKeyListeners.get(msg.getId());
       try {
         if (listeners != null) {
+          LOGGER.trace("handleGetKeyReplyMessage({}): Found listeners for the reply", msg);
           GetKeyTaskEvent event = new GetKeyTaskReplyEvent(msg);
           for (BlockingQueue<GetKeyTaskEvent> queue : listeners) {
             queue.put(event);
@@ -252,6 +264,7 @@ public class KademliaStore {
         Thread.currentThread().interrupt();
       }
     }
+    LOGGER.trace("handleGetKeyReplyMessage({}) -> void", msg);
   }
 
   private void handlePutKeyMessage(PutKeyMessage msg) {

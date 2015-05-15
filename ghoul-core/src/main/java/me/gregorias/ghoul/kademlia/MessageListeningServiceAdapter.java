@@ -33,6 +33,7 @@ class MessageListeningServiceAdapter implements ListeningService {
 
   @Override
   public synchronized void registerListener(MessageMatcher matcher, MessageListener listener) {
+    LOGGER.debug("registerListener({}, {})", matcher, listener);
     if (mListeners.size() == 0) {
       mByteListeningService.registerListener(mByteToMsgListener);
     }
@@ -41,6 +42,7 @@ class MessageListeningServiceAdapter implements ListeningService {
 
   @Override
   public synchronized void unregisterListener(MessageListener listener) {
+    LOGGER.debug("unregisterListener({})", listener);
     mListeners.remove(listener);
     if (mListeners.size() == 0) {
       mByteListeningService.unregisterListener(mByteToMsgListener);
@@ -63,7 +65,7 @@ class MessageListeningServiceAdapter implements ListeningService {
           }
         }
         if (!hasMatched) {
-          LOGGER.trace("Could not match message: {}", msg);
+          LOGGER.trace("Could not match message: {}", msg.get());
         }
       } else {
         LOGGER.trace("Received undeserializable message of length: {}.", byteMsg.length);

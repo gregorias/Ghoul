@@ -85,7 +85,7 @@ public class GetKeyReplyMessage extends KademliaMessage {
         getDestinationNodeInfo(),
         getId(),
         mKey,
-        mData.length);
+        mData == null ? null : mData.length);
   }
 }
 

@@ -41,5 +41,6 @@ public class UDPByteSender implements ByteSender {
     } catch (IOException e) {
       LOGGER.error("sendMessage(): IOException has been thrown when sending message.", e);
     }
+    LOGGER.trace("sendMessage({}, {}) -> void", dest, message.length);
   }
 }

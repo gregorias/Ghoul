@@ -7,6 +7,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import me.gregorias.ghoul.kademlia.KademliaRouting;
+import me.gregorias.ghoul.kademlia.KademliaStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,9 +21,11 @@ public final class KademliaStopResource {
   private static final Logger LOGGER = LoggerFactory
       .getLogger(KademliaStopResource.class);
   private final KademliaRouting mKademlia;
+  private final KademliaStore mStore;
 
-  public KademliaStopResource(KademliaRouting kademlia) {
+  public KademliaStopResource(KademliaRouting kademlia, KademliaStore store) {
     mKademlia = kademlia;
+    mStore = store;
   }
 
   @POST
@@ -31,6 +34,7 @@ public final class KademliaStopResource {
     LOGGER.info("stop()");
     try {
       mKademlia.stop();
+      mStore.shutDown();
     } catch (Exception e) {
       LOGGER.info("stop() -> bad request");
       return Response.status(Response.Status.BAD_REQUEST)

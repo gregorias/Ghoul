@@ -8,6 +8,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import me.gregorias.ghoul.kademlia.KademliaRouting;
+import me.gregorias.ghoul.kademlia.KademliaStore;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -22,13 +23,15 @@ import org.slf4j.LoggerFactory;
 public class RESTApp {
   private static final Logger LOGGER = LoggerFactory.getLogger(RESTApp.class);
   private final KademliaRouting mKademlia;
+  private final KademliaStore mStore;
   private final URI mUri;
   private final Lock mLock;
   private final Condition mShutDownCondition;
   private final AtomicBoolean mHasShutDownBeenCalled;
 
-  public RESTApp(KademliaRouting kademlia, URI uri) {
+  public RESTApp(KademliaRouting kademlia, KademliaStore store, URI uri) {
     mKademlia = kademlia;
+    mStore = store;
     mUri = uri;
     mLock = new ReentrantLock();
     mShutDownCondition = mLock.newCondition();
@@ -62,12 +65,14 @@ public class RESTApp {
 
   private ResourceConfig createConfig() {
     ResourceConfig config = new ResourceConfig();
-    config.register(new KademliaStartResource(mKademlia));
+    config.register(new KademliaStartResource(mKademlia, mStore));
     config.register(new GetLocalKeyResource(mKademlia));
     config.register(new FindNodesResource(mKademlia));
     config.register(new KademliaGetRoutingTableResource(mKademlia));
-    config.register(new KademliaStopResource(mKademlia));
+    config.register(new KademliaStopResource(mKademlia, mStore));
     config.register(new ServerShutDownResource(mLock, mShutDownCondition, mHasShutDownBeenCalled));
+    config.register(new KademliaGetResource(mStore));
+    config.register(new KademliaPutResource(mStore));
     return config;
   }
 

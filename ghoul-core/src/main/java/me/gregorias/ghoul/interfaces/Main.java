@@ -15,6 +15,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import me.gregorias.ghoul.interfaces.rest.RESTApp;
+import me.gregorias.ghoul.kademlia.KademliaStore;
 import me.gregorias.ghoul.kademlia.data.KademliaException;
 import me.gregorias.ghoul.kademlia.KademliaRouting;
 import me.gregorias.ghoul.kademlia.KademliaRoutingBuilder;
@@ -93,8 +94,8 @@ public class Main {
     final URI baseURI = URI.create(String.format("http://%s:%s/", localInetAddress.getHostName(),
         kadConfig.getString(XML_FIELD_REST_PORT)));
 
-    final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(3);
-    final ExecutorService executor = Executors.newFixedThreadPool(2);
+    final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(4);
+    final ExecutorService executor = Executors.newFixedThreadPool(3);
 
     Random random = new Random();
     KademliaRoutingBuilder builder = new KademliaRoutingBuilder(random);
@@ -139,16 +140,9 @@ public class Main {
     builder.setNetworkAddressDiscovery(networkAddressDiscovery);
 
     KademliaRouting kademlia = builder.createPeer();
-    /* MemoryStore store = new MemoryStore();
-    KademliaStore kademliaStore = new KademliaStore(
-        networkAddressDiscovery,
-        kademlia,
-        null //TODO,
-        null // TODO,
-        store,
-        random);*/
+    KademliaStore store = builder.createStore(kademlia);
 
-    RESTApp app = new RESTApp(kademlia, baseURI);
+    RESTApp app = new RESTApp(kademlia, store, baseURI);
 
     app.run();
 
