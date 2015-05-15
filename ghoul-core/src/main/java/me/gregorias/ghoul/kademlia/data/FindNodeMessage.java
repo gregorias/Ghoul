@@ -1,10 +1,11 @@
 package me.gregorias.ghoul.kademlia.data;
 
+import me.gregorias.ghoul.security.Certificate;
 import me.gregorias.ghoul.utils.DeserializationException;
 
 import javax.validation.constraints.NotNull;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 
 /**
  * FIND_NODE message
@@ -22,6 +23,15 @@ public final class FindNodeMessage extends KademliaMessage {
     mKey = searchedKey;
   }
 
+  public FindNodeMessage(@NotNull NodeInfo srcNodeInfo,
+                         @NotNull NodeInfo destNodeInfo,
+                         int id,
+                         boolean certificateRequest, Collection<Certificate> certificates,
+                         Key key) {
+    super(srcNodeInfo, destNodeInfo, id, certificateRequest, certificates);
+    mKey = key;
+  }
+
   public Key getSearchedKey() {
     return mKey;
   }
@@ -32,22 +42,23 @@ public final class FindNodeMessage extends KademliaMessage {
   }
 
   public void serialize(ByteBuffer buffer) {
-    getSourceNodeInfo().serialize(buffer);
-    getDestinationNodeInfo().serialize(buffer);
-    buffer.putInt(getId());
+    super.serialize(buffer);
     mKey.serialize(buffer);
   }
 
   public static FindNodeMessage deserialize(ByteBuffer buffer) throws DeserializationException {
-    NodeInfo srcNodeInfo = NodeInfo.deserialize(buffer);
-    NodeInfo destNodeInfo = NodeInfo.deserialize(buffer);
-    int id;
-    try {
-      id = buffer.getInt();
-    } catch (BufferUnderflowException e) {
-      throw new DeserializationException(e);
-    }
+    KademliaMessage coreMsg = KademliaMessage.deserialize(buffer);
     Key key = Key.deserialize(buffer);
-    return new FindNodeMessage(srcNodeInfo, destNodeInfo, id, key);
+
+    FindNodeMessage msg = new FindNodeMessage(coreMsg.getSourceNodeInfo(),
+        coreMsg.getDestinationNodeInfo(),
+        coreMsg.getId(),
+        coreMsg.isCertificateRequest(),
+        coreMsg.getCertificates(),
+        key);
+    if (coreMsg.getSignature().isPresent()) {
+      msg.setSignature(coreMsg.getSignature().get());
+    }
+    return msg;
   }
 }

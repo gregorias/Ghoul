@@ -1,10 +1,11 @@
 package me.gregorias.ghoul.kademlia.data;
 
+import me.gregorias.ghoul.security.Certificate;
 import me.gregorias.ghoul.utils.DeserializationException;
 
 import javax.validation.constraints.NotNull;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
+import java.util.Collection;
 
 /**
  * PING message.
@@ -16,22 +17,25 @@ public final class PingMessage extends KademliaMessage {
     super(srcNodeInfo, destNodeInfo, id);
   }
 
-  public void serialize(ByteBuffer buffer) {
-    getSourceNodeInfo().serialize(buffer);
-    getDestinationNodeInfo().serialize(buffer);
-    buffer.putInt(getId());
+  public PingMessage(@NotNull NodeInfo srcNodeInfo,
+                     @NotNull NodeInfo destNodeInfo,
+                     int id,
+                     boolean certificateRequest,
+                     Collection<Certificate> certificates) {
+    super(srcNodeInfo, destNodeInfo, id, certificateRequest, certificates);
   }
 
   public static PingMessage deserialize(ByteBuffer buffer) throws DeserializationException {
-    NodeInfo srcNodeInfo = NodeInfo.deserialize(buffer);
-    NodeInfo destNodeInfo = NodeInfo.deserialize(buffer);
-    int id;
-    try {
-      id = buffer.getInt();
-    } catch (BufferUnderflowException e) {
-      throw new DeserializationException(e);
+    KademliaMessage coreMsg = KademliaMessage.deserialize(buffer);
+    PingMessage msg = new PingMessage(coreMsg.getSourceNodeInfo(),
+        coreMsg.getDestinationNodeInfo(),
+        coreMsg.getId(),
+        coreMsg.isCertificateRequest(),
+        coreMsg.getCertificates());
+    if (coreMsg.getSignature().isPresent()) {
+      msg.setSignature(coreMsg.getSignature().get());
     }
-    return new PingMessage(srcNodeInfo, destNodeInfo, id);
+    return msg;
   }
 
   @Override

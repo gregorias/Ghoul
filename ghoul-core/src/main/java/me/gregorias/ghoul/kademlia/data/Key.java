@@ -20,9 +20,11 @@ import java.util.Random;
 public class Key implements Serializable {
   public static final int KEY_LENGTH = 160;
   public static final int HEX = 16;
+
   private static final long serialVersionUID = 1L;
   private static final int BINARY = 2;
   private static final int BYTE_SIZE = 8;
+
   private final BitSet mKey;
 
   public Key(BitSet key) {

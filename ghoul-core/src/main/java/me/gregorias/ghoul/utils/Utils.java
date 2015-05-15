@@ -1,5 +1,11 @@
 package me.gregorias.ghoul.utils;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -116,5 +122,34 @@ public class Utils {
       throw new DeserializationException(e);
     }
     return new InetSocketAddress(address, port);
+  }
+
+  public static void serializeSerializable(Serializable object,
+                                           ByteBuffer buffer) {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try {
+      ObjectOutputStream oos = new ObjectOutputStream(baos);
+      oos.writeObject(object);
+      oos.close();
+      baos.close();
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
+    byte[] result = baos.toByteArray();
+    buffer.putInt(result.length);
+    buffer.put(result);
+  }
+
+  public static Object deserializeSerializable(ByteBuffer buffer) throws DeserializationException {
+    try {
+      int length = buffer.getInt();
+      byte[] result = new byte[length];
+      buffer.get(result);
+      ByteArrayInputStream bais = new ByteArrayInputStream(result);
+      ObjectInputStream ois = new ObjectInputStream(bais);
+      return ois.readObject();
+    } catch (BufferUnderflowException | ClassNotFoundException | IOException e) {
+      throw new DeserializationException(e);
+    }
   }
 }
