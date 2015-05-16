@@ -6,6 +6,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.channels.DatagramChannel;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Random;
@@ -25,6 +26,8 @@ import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.udp.UDPByteListeningService;
 import me.gregorias.ghoul.network.udp.UDPByteSender;
+import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.PersonalCertificateManager;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.slf4j.Logger;
@@ -109,8 +112,14 @@ public class Main {
       LOGGER.error("main() -> Could not create listening service.", e);
       return;
     }
+
+    CertificateStorage certificateStorage = new CertificateStorage(scheduledExecutor);
+    PersonalCertificateManager certificateManager = new PersonalCertificateManager(
+        new ArrayList<>());
+
     builder.setByteListeningService(ubls);
     builder.setByteSender(new UDPByteSender(datagramChannel));
+    builder.setCertificateStorage(certificateStorage);
     builder.setExecutor(scheduledExecutor);
     Collection<NodeInfo> peersWithKnownAddresses = new LinkedList<>();
     if (!localKey.equals(bootstrapKey)) {
@@ -119,6 +128,7 @@ public class Main {
     }
     builder.setInitialPeersWithKeys(peersWithKnownAddresses);
     builder.setKey(localKey);
+    builder.setPersonalCertificateManager(certificateManager);
 
     if (kadConfig.containsKey(XML_FIELD_BUCKET_SIZE)) {
       final int bucketSize = kadConfig.getInt(XML_FIELD_BUCKET_SIZE);

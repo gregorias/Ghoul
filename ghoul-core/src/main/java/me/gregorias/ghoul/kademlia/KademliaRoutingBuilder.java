@@ -13,6 +13,8 @@ import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.network.ByteListeningService;
 import me.gregorias.ghoul.network.ByteSender;
 import me.gregorias.ghoul.network.NetworkAddressDiscovery;
+import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.PersonalCertificateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +53,9 @@ public class KademliaRoutingBuilder {
   private Key mKey;
   private Collection<NodeInfo> mInitialPeersWithKeys = new LinkedList<>();
   private NetworkAddressDiscovery mNetworkAddressDiscovery;
+  private PersonalCertificateManager mPersonalCertificateManager;
+  private CertificateStorage mCertificateStorage;
+  private Object mPersonalPrivateKey;
 
   public KademliaRoutingBuilder(Random random) {
     mRandom = random;
@@ -96,8 +101,10 @@ public class KademliaRoutingBuilder {
 
     checkIfByteListeningServiceIsSet();
     checkIfByteSenderIsSet();
+    checkIfCertificateStorageIsSet();
     checkIfExecutorIsSet();
     checkIfNetworkAddressDiscoveryIsSet();
+    checkIfPersonalCertificateManagerIsSet();
 
     Key usedKey = getSetKeyOrCreateNew();
 
@@ -117,6 +124,9 @@ public class KademliaRoutingBuilder {
         mMessageTimeoutUnit,
         mHeartBeatDelay,
         mHeartBeatDelayUnit,
+        mPersonalCertificateManager,
+        mCertificateStorage,
+        null,
         mExecutor,
         mRandom);
   }
@@ -156,6 +166,11 @@ public class KademliaRoutingBuilder {
    */
   public KademliaRoutingBuilder setByteListeningService(ByteListeningService byteListeningService) {
     mListeningAdapter = new MessageListeningServiceAdapter(byteListeningService);
+    return this;
+  }
+
+  public KademliaRoutingBuilder setCertificateStorage(CertificateStorage storage) {
+    mCertificateStorage = storage;
     return this;
   }
 
@@ -216,6 +231,11 @@ public class KademliaRoutingBuilder {
     return this;
   }
 
+  public KademliaRoutingBuilder setPersonalCertificateManager(PersonalCertificateManager mgr) {
+    mPersonalCertificateManager = mgr;
+    return this;
+  }
+
   /**
    * A wrapper on top of {@link me.gregorias.ghoul.kademlia.ListeningService} which may
    * have multiple kademlia peers as its listeners.
@@ -259,6 +279,12 @@ public class KademliaRoutingBuilder {
     }
   }
 
+  private void checkIfCertificateStorageIsSet() {
+    if (mCertificateStorage == null) {
+      throw new IllegalStateException("Certificate storage is not set.");
+    }
+  }
+
   private void checkIfExecutorIsSet() {
     if (mExecutor == null) {
       throw new IllegalStateException("Executor is not set.");
@@ -268,6 +294,12 @@ public class KademliaRoutingBuilder {
   private void checkIfNetworkAddressDiscoveryIsSet() {
     if (mNetworkAddressDiscovery == null) {
       throw new IllegalStateException("Network address discovery is not set.");
+    }
+  }
+
+  private void checkIfPersonalCertificateManagerIsSet() {
+    if (mPersonalCertificateManager == null) {
+      throw new IllegalStateException("Personal certificate manager is not set.");
     }
   }
 

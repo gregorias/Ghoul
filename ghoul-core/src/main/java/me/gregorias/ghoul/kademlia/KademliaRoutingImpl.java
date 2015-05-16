@@ -36,6 +36,9 @@ import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.NetworkAddressDiscovery;
+import me.gregorias.ghoul.security.Certificate;
+import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.PersonalCertificateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,6 +110,10 @@ public class KademliaRoutingImpl implements KademliaRouting {
   private final Lock mReadRunningLock;
   private final Lock mWriteRunningLock;
 
+  private final PersonalCertificateManager mPersonalCertificateManager;
+  private final Object mPersonalPrivateKey;
+  private final CertificateStorage mCertificateStorage;
+
   private boolean mIsRunning = false;
 
   /**
@@ -123,6 +130,9 @@ public class KademliaRoutingImpl implements KademliaRouting {
    * @param messageTimeoutUnit timeout unit
    * @param heartBeatDelay     heart beat delay
    * @param heartBeatDelayUnit heart beat delay unit
+   * @param personalCertificateManager TODO
+   * @param certificateStorage TODO
+   * @param personalPrivateKey TODO
    * @param scheduledExecutor  executor used for executing tasks
    * @param random             random number generator
    */
@@ -137,6 +147,9 @@ public class KademliaRoutingImpl implements KademliaRouting {
                       TimeUnit messageTimeoutUnit,
                       long heartBeatDelay,
                       TimeUnit heartBeatDelayUnit,
+                      PersonalCertificateManager personalCertificateManager,
+                      CertificateStorage certificateStorage,
+                      Object personalPrivateKey,
                       ScheduledExecutorService scheduledExecutor,
                       Random random) {
     assert bucketSize > 0;
@@ -163,6 +176,10 @@ public class KademliaRoutingImpl implements KademliaRouting {
 
     mHeartBeatDelay = heartBeatDelay;
     mHeartBeatDelayUnit = heartBeatDelayUnit;
+
+    mPersonalCertificateManager = personalCertificateManager;
+    mCertificateStorage = certificateStorage;
+    mPersonalPrivateKey = personalPrivateKey;
 
     mScheduledExecutor = scheduledExecutor;
 
@@ -474,10 +491,18 @@ public class KademliaRoutingImpl implements KademliaRouting {
       int messageId = registerFindNodeTaskEventListener(mEventQueue);
       mRegisteredListeners.put(nodeInfoWithStatus.mInfo.getKey(), messageId);
 
+      boolean shouldRequestCertificate =
+          !mCertificateStorage.isNodeValid(nodeInfoWithStatus.mInfo.getKey())
+          || mCertificateStorage.isNodeCloseToExpiration(nodeInfoWithStatus.mInfo.getKey());
+
       FindNodeMessage msg = new FindNodeMessage(getLocalNodeInfo(),
           nodeInfoWithStatus.mInfo,
           messageId,
+          shouldRequestCertificate,
+          new ArrayList<>(),
           mSearchedKey);
+
+      msg.signMessage(mPersonalPrivateKey);
 
       mMessageSender.sendMessage(nodeInfoWithStatus.mInfo.getSocketAddress(), msg);
       mScheduledExecutor.schedule(() -> {
@@ -785,8 +810,19 @@ public class KademliaRoutingImpl implements KademliaRouting {
 
     private void sendPingMessage(NodeInfo targetNode) {
       int pingId = mRandom.nextInt();
-      mMessageSender.sendMessage(targetNode.getSocketAddress(),
-          new PingMessage(getLocalNodeInfo(), targetNode, pingId));
+
+      boolean shouldRequestCertificate = !mCertificateStorage.isNodeValid(targetNode.getKey())
+          || mCertificateStorage.isNodeCloseToExpiration(targetNode.getKey());
+
+      PingMessage pingMessage = new PingMessage(getLocalNodeInfo(),
+          targetNode,
+          pingId,
+          shouldRequestCertificate,
+          new ArrayList<>());
+
+      pingMessage.signMessage(mPersonalPrivateKey);
+      mMessageSender.sendMessage(targetNode.getSocketAddress(), pingMessage);
+
       mExpectedIds.addExpectedMessage(pingId, targetNode.getKey());
       mScheduledExecutor.schedule(() -> {
           boolean hasPutSuccessfully = false;
@@ -863,6 +899,9 @@ public class KademliaRoutingImpl implements KademliaRouting {
 
     @Override
     public void receive(KademliaMessage msg) {
+      if (isMessageFromValidHost(msg)) {
+        addCandidate(msg.getSourceNodeInfo());
+      }
       if (msg instanceof FindNodeMessage) {
         receiveFindNodeMessage((FindNodeMessage) msg);
       } else if (msg instanceof FindNodeReplyMessage) {
@@ -891,38 +930,122 @@ public class KademliaRoutingImpl implements KademliaRouting {
       }
     }
 
+    private boolean isMessageFromValidHost(KademliaMessage msg) {
+      NodeInfo sourceNodeInfo = msg.getSourceNodeInfo();
+      if (!mCertificateStorage.isNodeValid(sourceNodeInfo.getKey())) {
+        Collection<Certificate> certificates = msg.getCertificates();
+        if (certificates.size() == 0) {
+          return false;
+        }
+        mCertificateStorage.addCertificates(certificates);
+        return mCertificateStorage.isNodeValid(sourceNodeInfo.getKey());
+      } else {
+        return true;
+      }
+    }
+
     private void receiveFindNodeMessage(FindNodeMessage msg) {
       LOGGER.trace("receiveFindNodeMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
       Collection<NodeInfo> foundNodes = mRoutingTable.getClosestNodes(msg.getSearchedKey(),
           mBucketSize);
-      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(),
-          new FindNodeReplyMessage(getLocalNodeInfo(),
-              msg.getSourceNodeInfo(),
-              msg.getId(),
-              foundNodes));
+
+      Key destinationKey = msg.getSourceNodeInfo().getKey();
+      boolean shouldRequireCertificates = !mCertificateStorage.isNodeValid(destinationKey)
+          || mCertificateStorage.isNodeCloseToExpiration(destinationKey);
+      Collection<Certificate> personalCertificates = new ArrayList<>();
+      if (msg.isCertificateRequest()) {
+        personalCertificates.addAll(mPersonalCertificateManager.getPersonalCertificates());
+      }
+
+      FindNodeReplyMessage replyMessage = new FindNodeReplyMessage(getLocalNodeInfo(),
+          msg.getSourceNodeInfo(),
+          msg.getId(),
+          shouldRequireCertificates,
+          personalCertificates,
+          foundNodes);
+      replyMessage.signMessage(mPersonalPrivateKey);
+      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), replyMessage);
     }
 
     private void receiveFindNodeReplyMessage(FindNodeReplyMessage msg) {
       LOGGER.trace("receiveFindNodeReplyMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
+      if (!mCertificateStorage.isNodeValid(msg.getSourceNodeInfo().getKey())) {
+        LOGGER.info("receiveFindNodeReplyMessage({}): Received reply from invalid node.", msg);
+        return;
+      }
+
+      Optional<Object> pubKey = mCertificateStorage.getPublicKey(msg.getSourceNodeInfo().getKey());
+      if (!pubKey.isPresent()) {
+        return;
+      }
+
+      if (!msg.verifyMessage(pubKey.get())) {
+        LOGGER.info("receiveFindNodeReplyMessage({}): Received message has invalid signature.",
+            msg);
+        return;
+      }
+
       notifyFindNodeTaskEventListeners(msg);
+
+      if (msg.isCertificateRequest()) {
+        PongMessage pongMessage = new PongMessage(getLocalNodeInfo(),
+            msg.getSourceNodeInfo(),
+            msg.getId(),
+            false,
+            mPersonalCertificateManager.getPersonalCertificates());
+        pongMessage.signMessage(mPersonalPrivateKey);
+        mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
+      }
     }
 
     private void receivePingMessage(PingMessage msg) {
       LOGGER.trace("receivePingMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
+      Key destinationKey = msg.getSourceNodeInfo().getKey();
+      boolean shouldRequireCertificates = !mCertificateStorage.isNodeValid(destinationKey)
+          || mCertificateStorage.isNodeCloseToExpiration(destinationKey);
+      Collection<Certificate> personalCertificates = new ArrayList<>();
+      if (msg.isCertificateRequest()) {
+        personalCertificates.addAll(mPersonalCertificateManager.getPersonalCertificates());
+      }
+
       PongMessage pongMessage = new PongMessage(getLocalNodeInfo(),
           msg.getSourceNodeInfo(),
-          msg.getId());
+          msg.getId(),
+          shouldRequireCertificates,
+          personalCertificates);
+      pongMessage.signMessage(mPersonalPrivateKey);
       mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
     }
 
     private void receivePongMessage(PongMessage msg) {
       LOGGER.trace("receivePongMessage({})", msg);
-      addCandidate(msg.getSourceNodeInfo());
+      if (!mCertificateStorage.isNodeValid(msg.getSourceNodeInfo().getKey())) {
+        LOGGER.info("receivePongMessage({}): Received reply from invalid node.", msg);
+        return;
+      }
+
+      Optional<Object> pubKey = mCertificateStorage.getPublicKey(msg.getSourceNodeInfo().getKey());
+      if (!pubKey.isPresent()) {
+        return;
+      }
+
+      if (!msg.verifyMessage(pubKey.get())) {
+        LOGGER.info("receivePongMessage({}): Received message has invalid signature.", msg);
+        return;
+      }
+
       NodeDiscoveryTaskEvent event = new NodeDiscoveryTaskPongEvent(msg);
       mNodeDiscoveryListener.add(event);
+
+      if (msg.isCertificateRequest()) {
+        PongMessage pongMessage = new PongMessage(getLocalNodeInfo(),
+            msg.getSourceNodeInfo(),
+            msg.getId(),
+            false,
+            mPersonalCertificateManager.getPersonalCertificates());
+        pongMessage.signMessage(mPersonalPrivateKey);
+        mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
+      }
     }
   }
 

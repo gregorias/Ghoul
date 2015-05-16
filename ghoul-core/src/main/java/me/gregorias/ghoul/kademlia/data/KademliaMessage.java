@@ -91,8 +91,8 @@ public class KademliaMessage {
     // TODO
   }
 
-  public void verifyMessage(Object publicKey) {
-    // TODO
+  public boolean verifyMessage(Object publicKey) {
+    return true;
   }
 
   public void serialize(ByteBuffer buffer) {

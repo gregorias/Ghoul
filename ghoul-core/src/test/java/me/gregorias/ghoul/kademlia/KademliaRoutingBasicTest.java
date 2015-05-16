@@ -10,6 +10,8 @@ import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.local.LocalMessaging;
+import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.PersonalCertificateManager;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -56,10 +58,12 @@ public final class KademliaRoutingBasicTest {
 
     mBuilder.setByteListeningService(mLocalMessaging.getByteListeningService(0));
     mBuilder.setByteSender(mLocalMessaging.getByteSender(0));
+    mBuilder.setCertificateStorage(new CertificateStorage(scheduledExecutor));
     mLocalSender = new MessageSenderAdapter(mLocalMessaging.getByteSender(0));
     mBuilder.setExecutor(scheduledExecutor);
     mBuilder.setNetworkAddressDiscovery(new UserGivenNetworkAddressDiscovery(mLocalAddress));
     mBuilder.setMessageTimeout(MESSAGE_TIMEOUT, MESSAGE_TIMEOUT_UNIT);
+    mBuilder.setPersonalCertificateManager(new PersonalCertificateManager(new ArrayList<>()));
   }
 
   @Test
