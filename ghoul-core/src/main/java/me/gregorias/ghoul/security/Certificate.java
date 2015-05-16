@@ -26,4 +26,8 @@ public class Certificate implements Serializable {
 
   public void signCertificate(Object privateIssuerKey) {
   }
+
+  public boolean verifySignature(Object publicIssuerKey) {
+    return true;
+  }
 }

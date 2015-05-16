@@ -10,6 +10,7 @@ import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.local.LocalMessaging;
+import me.gregorias.ghoul.security.Certificate;
 import me.gregorias.ghoul.security.CertificateStorage;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
 import org.junit.Before;
@@ -20,8 +21,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
@@ -39,6 +43,8 @@ public final class KademliaRoutingBasicTest {
   private static final Random RANDOM = new Random();
   private static final long MESSAGE_TIMEOUT = 1;
   private static final TimeUnit MESSAGE_TIMEOUT_UNIT = TimeUnit.SECONDS;
+  private final Key mIssuersKey = new Key(10000);
+  private final Map<Key, Object> mIssuersMap = new HashMap<>();
   private KademliaRoutingBuilder mBuilder = null;
   private LocalMessaging mLocalMessaging;
   private MessageSender mLocalSender;
@@ -51,6 +57,8 @@ public final class KademliaRoutingBasicTest {
   public void setUp() throws KademliaException {
     mLocalMessaging = new LocalMessaging();
 
+    mIssuersMap.put(mIssuersKey, mIssuersKey);
+
     ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(6);
 
     mBuilder = new KademliaRoutingBuilder(RANDOM);
@@ -58,12 +66,10 @@ public final class KademliaRoutingBasicTest {
 
     mBuilder.setByteListeningService(mLocalMessaging.getByteListeningService(0));
     mBuilder.setByteSender(mLocalMessaging.getByteSender(0));
-    mBuilder.setCertificateStorage(new CertificateStorage(scheduledExecutor));
     mLocalSender = new MessageSenderAdapter(mLocalMessaging.getByteSender(0));
     mBuilder.setExecutor(scheduledExecutor);
     mBuilder.setNetworkAddressDiscovery(new UserGivenNetworkAddressDiscovery(mLocalAddress));
     mBuilder.setMessageTimeout(MESSAGE_TIMEOUT, MESSAGE_TIMEOUT_UNIT);
-    mBuilder.setPersonalCertificateManager(new PersonalCertificateManager(new ArrayList<>()));
   }
 
   @Test
@@ -71,13 +77,11 @@ public final class KademliaRoutingBasicTest {
     LOGGER.info("kademliaPeersShouldFindEachOther()");
     Key key0 = new Key(0);
     Key key1 = new Key(1);
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
+    KademliaRouting kademlia0 = newPeer(key0);
     Collection<NodeInfo> peerInfos = new ArrayList<>();
     peerInfos.add(new NodeInfo(key0, mLocalAddress));
     mBuilder.setInitialPeersWithKeys(peerInfos);
-    mBuilder.setKey(key1);
-    KademliaRouting kademlia1 = mBuilder.createPeer();
+    KademliaRouting kademlia1 = newPeer(key1);
 
     BlockingQueue<NodeInfo> foundNeighbours = new LinkedBlockingQueue<>();
     NeighbourListener neighbourListener = new QueueingNeighbourListener(foundNeighbours);
@@ -114,8 +118,7 @@ public final class KademliaRoutingBasicTest {
   public void kademliaPeersShouldFindItSelfWhenLookingForItself() throws KademliaException,
       InterruptedException {
     Key key0 = new Key(0);
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia = mBuilder.createPeer();
+    KademliaRouting kademlia = newPeer(key0);
     kademlia.start();
 
     Collection<NodeInfo> foundNodes = kademlia.findClosestNodes(key0);
@@ -131,8 +134,7 @@ public final class KademliaRoutingBasicTest {
       InterruptedException {
     Key key0 = new Key(0);
     Key key10 = new Key(10);
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia = mBuilder.createPeer();
+    KademliaRouting kademlia = newPeer(key0);
     kademlia.start();
 
     Collection<NodeInfo> foundNodes = kademlia.findClosestNodes(key10);
@@ -148,15 +150,12 @@ public final class KademliaRoutingBasicTest {
     Key key0 = new Key(0);
     Key key1 = new Key(1);
     Key key2 = new Key(2);
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
+    KademliaRouting kademlia0 = newPeer(key0);
     Collection<NodeInfo> peerInfos = new ArrayList<>();
     peerInfos.add(new NodeInfo(key0, mLocalAddress));
     mBuilder.setInitialPeersWithKeys(peerInfos);
-    mBuilder.setKey(key1);
-    KademliaRouting kademlia1 = mBuilder.createPeer();
-    mBuilder.setKey(key2);
-    KademliaRouting kademlia2 = mBuilder.createPeer();
+    KademliaRouting kademlia1 = newPeer(key1);
+    KademliaRouting kademlia2 = newPeer(key2);
 
     kademlia0.start();
     kademlia1.start();
@@ -182,8 +181,7 @@ public final class KademliaRoutingBasicTest {
   public void kademliaPeersShouldStartAndStopMultipleTimes() throws KademliaException,
       InterruptedException {
     Key key0 = new Key(0);
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia = mBuilder.createPeer();
+    KademliaRouting kademlia = newPeer(key0);
     kademlia.start();
 
     Collection<NodeInfo> foundNodes = kademlia.findClosestNodes(key0);
@@ -230,12 +228,10 @@ public final class KademliaRoutingBasicTest {
     Collection<NodeInfo> peerInfos = new ArrayList<>();
     peerInfos.add(new NodeInfo(key0, mLocalAddress));
 
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
-    mBuilder.setKey(key1);
+    KademliaRouting kademlia0 = newPeer(key0);
     mBuilder.setHeartBeatDelay(heartBeat, heartBeatUnit);
     mBuilder.setInitialPeersWithKeys(peerInfos);
-    KademliaRouting kademlia1 = mBuilder.createPeer();
+    KademliaRouting kademlia1 = newPeer(key1);
 
     BlockingQueue<NodeInfo> foundNeighbours = new LinkedBlockingQueue<>();
     NeighbourListener neighbourListener = new QueueingNeighbourListener(foundNeighbours);
@@ -257,8 +253,7 @@ public final class KademliaRoutingBasicTest {
     Key key0 = new Key(0);
     Key key1 = new Key(1);
 
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
+    KademliaRouting kademlia0 = newPeer(key0);
     kademlia0.start();
 
     BlockingQueue<NodeInfo> foundNeighbours = new LinkedBlockingQueue<>();
@@ -289,10 +284,9 @@ public final class KademliaRoutingBasicTest {
     Key key5 = new Key(5);
     Key key6 = new Key(6);
 
-    mBuilder.setKey(key0);
     mBuilder.setBucketSize(bucketSize);
     mBuilder.setMessageTimeout(10, TimeUnit.MILLISECONDS);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
+    KademliaRouting kademlia0 = newPeer(key0);
     kademlia0.start();
 
     BlockingQueue<NodeInfo> foundNeighbours = new LinkedBlockingQueue<>();
@@ -334,10 +328,9 @@ public final class KademliaRoutingBasicTest {
     Collection<NodeInfo> peerInfos = new ArrayList<>();
     peerInfos.add(new NodeInfo(key0, mLocalAddress));
 
-    mBuilder.setKey(key0);
     mBuilder.setBucketSize(bucketSize);
     mBuilder.setMessageTimeout(messageTimeout, messageTimeoutUnit);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
+    KademliaRouting kademlia0 = newPeer(key0);
 
     StaticKademliaRouting kademlia2 = newStaticKademlia(2, bucketSize, peerInfos);
     StaticKademliaRouting kademlia3 = newStaticKademlia(3, bucketSize, peerInfos);
@@ -384,10 +377,9 @@ public final class KademliaRoutingBasicTest {
     Collection<NodeInfo> peerInfos = new ArrayList<>();
     peerInfos.add(new NodeInfo(key0, mLocalAddress));
 
-    mBuilder.setKey(key0);
     mBuilder.setBucketSize(bucketSize);
     mBuilder.setMessageTimeout(messageTimeout, messageTimeoutUnit);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
+    KademliaRouting kademlia0 = newPeer(key0);
 
     StaticKademliaRouting kademlia2 = newStaticKademlia(2, bucketSize, peerInfos);
     StaticKademliaRouting kademlia3 = newStaticKademlia(3, bucketSize, peerInfos);
@@ -427,8 +419,7 @@ public final class KademliaRoutingBasicTest {
     Collection<NodeInfo> peerInfos = new ArrayList<>();
     peerInfos.add(new NodeInfo(key0, mLocalAddress));
 
-    mBuilder.setKey(key0);
-    KademliaRouting kademlia0 = mBuilder.createPeer();
+    KademliaRouting kademlia0 = newPeer(key0);
 
     StaticKademliaRouting kademlia2 = newStaticKademlia(key2, bucketSize, peerInfos);
     kademlia0.start();
@@ -449,8 +440,7 @@ public final class KademliaRoutingBasicTest {
   @Test
   public void shouldReturnLocalKey() {
     Key key = new Key(0);
-    mBuilder.setKey(key);
-    KademliaRouting kademlia = mBuilder.createPeer();
+    KademliaRouting kademlia = newPeer(key);
     assertEquals(key, kademlia.getLocalKey());
   }
 
@@ -520,6 +510,24 @@ public final class KademliaRoutingBasicTest {
     return false;
   }
 
+  private KademliaRouting newPeer(Key key) {
+    Certificate personalCertificate = new Certificate(key,
+        key,
+        mIssuersKey,
+        ZonedDateTime.now().plusDays(1));
+    Collection<Certificate> personalCertificates = new ArrayList<>();
+    personalCertificates.add(personalCertificate);
+
+    CertificateStorage certificateStorage = new CertificateStorage(mIssuersMap);
+    PersonalCertificateManager certificateManager = new PersonalCertificateManager(
+        personalCertificates);
+    mBuilder.setCertificateStorage(certificateStorage);
+    mBuilder.setPersonalCertificateManager(certificateManager);
+    mBuilder.setKey(key);
+    return mBuilder.createPeer();
+  }
+
+
   private StaticKademliaRouting newStaticKademlia(int nr,
                                                   int bucketSize,
                                                   Collection<NodeInfo> knownPeers) {
@@ -530,12 +538,23 @@ public final class KademliaRoutingBasicTest {
     return new StaticKademliaRouting(new NodeInfo(localKey, socketAddress),
         new MessageSenderAdapter(mLocalMessaging.getByteSender(nr)),
         new MessageListeningServiceAdapter(mLocalMessaging.getByteListeningService(nr)),
-        routingTable);
+        routingTable,
+        mIssuersKey);
   }
 
   private void sendPing(Key from, Key to) {
+    Certificate personalCertificate = new Certificate(from,
+        from,
+        mIssuersKey,
+        ZonedDateTime.now().plusDays(1));
+
+    Collection<Certificate> personalCertificates = new ArrayList<>();
+    personalCertificates.add(personalCertificate);
     PingMessage pingMessage = new PingMessage(new NodeInfo(from, mLocalAddress),
-        new NodeInfo(to, mLocalAddress), 1);
+        new NodeInfo(to, mLocalAddress),
+        1,
+        false,
+        personalCertificates);
     mLocalSender.sendMessage(mLocalAddress, pingMessage);
   }
 }

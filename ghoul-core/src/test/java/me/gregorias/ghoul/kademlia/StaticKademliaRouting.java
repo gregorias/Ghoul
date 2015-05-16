@@ -1,6 +1,8 @@
 package me.gregorias.ghoul.kademlia;
 
 import java.net.InetSocketAddress;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,6 +19,7 @@ import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
+import me.gregorias.ghoul.security.Certificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,14 +42,19 @@ final class StaticKademliaRouting implements KademliaRouting {
   private final Lock mReadRunningLock;
   private final Lock mWriteRunningLock;
 
+  private final Collection<Certificate> mPersonalCertificates;
+
   private boolean mIsRunning = false;
 
   private MessageListener mAuxListener;
 
-  public StaticKademliaRouting(NodeInfo localNodeInfo,
-                            MessageSender sender,
-                            ListeningService listeningService,
-                            KademliaRoutingTable routingTable) {
+
+  public StaticKademliaRouting(
+      NodeInfo localNodeInfo,
+      MessageSender sender,
+      ListeningService listeningService,
+      KademliaRoutingTable routingTable,
+      Key issuerKey) {
     mLocalKey = localNodeInfo.getKey();
     mLocalAddress = localNodeInfo.getSocketAddress();
     mMessageSender = sender;
@@ -57,6 +65,14 @@ final class StaticKademliaRouting implements KademliaRouting {
     ReadWriteLock rwLock = new ReentrantReadWriteLock();
     mReadRunningLock = rwLock.readLock();
     mWriteRunningLock = rwLock.writeLock();
+
+    Certificate personalCertificate = new Certificate(mLocalKey,
+        mLocalKey,
+        issuerKey,
+        ZonedDateTime.now().plusDays(1));
+
+    mPersonalCertificates = new ArrayList<>();
+    mPersonalCertificates.add(personalCertificate);
   }
 
   @Override
@@ -210,8 +226,13 @@ final class StaticKademliaRouting implements KademliaRouting {
 
   private void sendPingsToNodes(Collection<NodeInfo> routingTableNodes) {
     for (NodeInfo info : routingTableNodes) {
-      mMessageSender.sendMessage(info.getSocketAddress(),
-          new PingMessage(getLocalNodeInfo(), info, 1));
+      PingMessage msg = new PingMessage(getLocalNodeInfo(),
+          info,
+          1,
+          false,
+          mPersonalCertificates);
+
+      mMessageSender.sendMessage(info.getSocketAddress(), msg);
     }
   }
 }

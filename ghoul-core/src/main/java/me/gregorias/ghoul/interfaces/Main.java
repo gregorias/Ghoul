@@ -6,9 +6,12 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.channels.DatagramChannel;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,6 +29,7 @@ import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.udp.UDPByteListeningService;
 import me.gregorias.ghoul.network.udp.UDPByteSender;
+import me.gregorias.ghoul.security.Certificate;
 import me.gregorias.ghoul.security.CertificateStorage;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
 import org.apache.commons.configuration.ConfigurationException;
@@ -113,9 +117,18 @@ public class Main {
       return;
     }
 
-    CertificateStorage certificateStorage = new CertificateStorage(scheduledExecutor);
+    Map<Key, Object> issuersMap = new HashMap<>();
+    Key issuersKey = new Key(10000);
+    issuersMap.put(issuersKey, issuersKey);
+
+    Certificate personalCertificate = new Certificate(localKey, localKey, issuersKey,
+        ZonedDateTime.now().plusDays(1));
+    Collection<Certificate> personalCertificates = new ArrayList<>();
+    personalCertificates.add(personalCertificate);
+
+    CertificateStorage certificateStorage = new CertificateStorage(issuersMap);
     PersonalCertificateManager certificateManager = new PersonalCertificateManager(
-        new ArrayList<>());
+        personalCertificates);
 
     builder.setByteListeningService(ubls);
     builder.setByteSender(new UDPByteSender(datagramChannel));
