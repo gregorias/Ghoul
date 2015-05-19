@@ -121,7 +121,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
    *
    * @param localKey           key representing this host
    * @param networkAddressDiscovery address discovery mechanism for this peer
-   * @param sender             MessageSender module for this peer
+   * @param sender             RegistrarMessageSender module for this peer
    * @param listeningService   ListeningService module for this peer
    * @param bucketSize         maximal of a single bucket
    * @param alpha              concurrency factor in find node request

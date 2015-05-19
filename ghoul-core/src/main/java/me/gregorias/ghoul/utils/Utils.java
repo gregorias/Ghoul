@@ -2,6 +2,8 @@ package me.gregorias.ghoul.utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -150,6 +152,22 @@ public class Utils {
       return ois.readObject();
     } catch (BufferUnderflowException | ClassNotFoundException | IOException e) {
       throw new DeserializationException(e);
+    }
+  }
+
+  public static Object loadObjectFromFile(String path) throws IOException, ClassNotFoundException {
+    try (FileInputStream fis = new FileInputStream(path)) {
+      try (ObjectInputStream ois = new ObjectInputStream(fis)) {
+        return ois.readObject();
+      }
+    }
+  }
+
+  public static void storeObjectToFile(String path, Serializable object) throws IOException {
+    try (FileOutputStream fos = new FileOutputStream(path)) {
+      try (ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+        oos.writeObject(object);
+      }
     }
   }
 }

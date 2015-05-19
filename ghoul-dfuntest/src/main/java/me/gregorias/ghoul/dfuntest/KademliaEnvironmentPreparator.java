@@ -190,6 +190,7 @@ public class KademliaEnvironmentPreparator implements EnvironmentPreparator<Envi
     xmlConfiguration.addProperty(Main.XML_FIELD_BOOTSTRAP_PORT, mInitialPort);
     xmlConfiguration.addProperty(Main.XML_FIELD_REST_PORT, mInitialRestPort + portSkew);
     xmlConfiguration.addProperty(Main.XML_FIELD_HEART_BEAT_DELAY, mHeartBeatDelay);
+    xmlConfiguration.addProperty(Main.XML_FIELD_IS_REGISTRAR, false);
     env.setProperty(Main.XML_FIELD_LOCAL_ADDRESS, env.getHostname());
     env.setProperty(Main.XML_FIELD_REST_PORT, mInitialRestPort + portSkew);
     return xmlConfiguration;

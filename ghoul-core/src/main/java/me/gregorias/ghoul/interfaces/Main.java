@@ -6,12 +6,15 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.channels.DatagramChannel;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,8 +34,16 @@ import me.gregorias.ghoul.network.udp.UDPByteListeningService;
 import me.gregorias.ghoul.network.udp.UDPByteSender;
 import me.gregorias.ghoul.security.Certificate;
 import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.CryptographyTools;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
+import me.gregorias.ghoul.security.Registrar;
+import me.gregorias.ghoul.security.RegistrarDescription;
+import me.gregorias.ghoul.security.RegistrarMessageSender;
+import me.gregorias.ghoul.security.RegistrarMessageSenderImpl;
+import me.gregorias.ghoul.utils.Utils;
 import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.HierarchicalConfiguration;
+import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +83,15 @@ public class Main {
   public static final String XML_FIELD_CONCURRENCY_PARAMETER = "concurrencyParameter";
   public static final String XML_FIELD_HEART_BEAT_DELAY = "heartBeatDelay";
   public static final String XML_FIELD_REST_PORT = "restPort";
+
+  public static final String XML_FIELD_IS_REGISTRAR = "isRegistrar";
+  public static final String XML_FIELD_REGISTRAR_KEY = "registrarKey";
+  public static final String XML_FIELD_REGISTRAR_PUB_KEY_FILE = "registrarPubKeyFile";
+  public static final String XML_FIELD_REGISTRAR_PRIV_KEY_FILE = "registrarPrivKeyFile";
+  public static final String XML_FIELD_REGISTRAR_ADDRESS = "registrarAddress";
+  public static final String XML_FIELD_REGISTRAR_PORT = "registrarPort";
+  public static final String XML_FIELD_REGISTRARS_INFO = "registrarsInfo";
+  public static final String XML_FIELD_REGISTRAR_INFO = "registrarInfo";
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
   public static void main(String[] args) throws IOException {
@@ -90,6 +110,9 @@ public class Main {
     }
 
     XMLConfiguration kadConfig = config;
+
+    Optional<Registrar> registrarOptional = createRegistrar(config);
+
     final InetAddress localInetAddress = InetAddress.getByName(kadConfig
         .getString(XML_FIELD_LOCAL_ADDRESS));
     final int localPort = kadConfig.getInt(XML_FIELD_LOCAL_PORT);
@@ -167,6 +190,10 @@ public class Main {
 
     RESTApp app = new RESTApp(kademlia, store, baseURI);
 
+    if (registrarOptional.isPresent()) {
+      executor.execute(registrarOptional.get());
+    }
+
     app.run();
 
     if (kademlia.isRunning()) {
@@ -188,5 +215,56 @@ public class Main {
       LOGGER.error("main() -> unexpected interrupt", e);
     }
     LOGGER.info("main() -> void");
+  }
+
+  private static Optional<Registrar> createRegistrar(XMLConfiguration config) {
+    try {
+      if (!config.getBoolean(XML_FIELD_IS_REGISTRAR)) {
+        return Optional.empty();
+      }
+
+      final PublicKey pubKey = (PublicKey) Utils.loadObjectFromFile(
+          config.getString(XML_FIELD_REGISTRAR_PUB_KEY_FILE));
+      final PrivateKey privKey = (PrivateKey) Utils.loadObjectFromFile(
+          config.getString(XML_FIELD_REGISTRAR_PRIV_KEY_FILE));
+      final Key registrarKey = new Key(config.getInt(XML_FIELD_REGISTRAR_KEY));
+      final int port = config.getInt(XML_FIELD_REGISTRAR_PORT);
+
+      final RegistrarDescription description =
+          new RegistrarDescription(pubKey, registrarKey, new InetSocketAddress(port));
+
+      final Collection<RegistrarDescription> allRegistrars =
+          loadRegistrarDescriptions(config.configurationAt(XML_FIELD_REGISTRARS_INFO));
+
+      RegistrarMessageSender sender = new RegistrarMessageSenderImpl(allRegistrars);
+      ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
+      CryptographyTools tools = new CryptographyTools(null, null, null);
+
+      return Optional.of(new Registrar(description,
+          privKey,
+          allRegistrars,
+          sender,
+          executor,
+          tools,
+          port));
+    } catch (ClassNotFoundException | IOException e) {
+      return Optional.empty();
+    }
+  }
+
+  private static Collection<RegistrarDescription> loadRegistrarDescriptions(
+      SubnodeConfiguration subnodeConfiguration) throws IOException, ClassNotFoundException {
+    Collection<RegistrarDescription> descriptions = new ArrayList<>();
+    for (HierarchicalConfiguration sub :
+        subnodeConfiguration.configurationsAt(XML_FIELD_REGISTRAR_INFO)) {
+      Key key = new Key(sub.getInt(XML_FIELD_REGISTRAR_KEY));
+      PublicKey pubKey = (PublicKey) Utils.loadObjectFromFile(
+          sub.getString(XML_FIELD_REGISTRAR_PUB_KEY_FILE));
+      String address = sub.getString(XML_FIELD_REGISTRAR_ADDRESS);
+      int port = sub.getInt(XML_FIELD_REGISTRAR_PORT);
+
+      descriptions.add(new RegistrarDescription(pubKey, key, new InetSocketAddress(address, port)));
+    }
+    return descriptions;
   }
 }
