@@ -1,1 +1,580 @@
-\chapter{Dfuntest}
+\chapter{Dfuntest - Streamlined functional testing framework for distributed applications}
+\section{Chapter introduction and overview}
+Good practices of software engineering agree \cite{mccon04} that quality code has to be tested and testable.
+While many single-application projects rely only on extensive unit-testing frameworks, a distributed application requires more encompassing tools.
+
+Simulation is the most common method to test parallel and distributed algorithms and systems in research.
+With right tools (such as SimGrid\cite{cas08}), the simulation environment is realistic, and the whole experiment reproducible.
+However, a simulation experiment rarely covers the whole distributed system, from network packets to high level functionalities.
+Instead, only a certain, isolated fragment is tested.
+Although the simulations confirm the efficiency of an algorithm, the entire application requires a lot more functionalities which are not covered by the simulation, such as the network code, resource management etc.
+
+For the project to be accepted by a wider audience the code needs to be of sufficient quality.
+However, performing and reproducing experiments with a distributed application is tedious.
+Not only do we have to code the application, but also we need to configure the experimental platform, deploy the application; then, after performing a particular test scenario, gather the results and analyze them.
+Developers commonly write ad-hoc scripts to automate many of these tasks; however, these scripts are repetitive, full of boilerplate, and do not add any new core functionality.
+Moreover, such scripts are hard to maintain and port between e.g. user credentials, or experimental platforms (e.g. a local cluster or Planet-lab).
+
+We developed dfuntest to test our implementation of Kadmlia, but the project's ambition is to facilitate the process of testing distributed applications in general. 
+Dfuntest not only defines a flexible testing pattern, but also automates common tasks such as preparing remote environments, deploying the code, running the application and test cases, generating a report, and downloading log files.
+
+Dfuntest is written in Java but the tested application may be written in any language since dfuntest tests the application by querying the application's external interface.
+Having the testing library and the tests in a statically-typed language helps to avoid common bugs, which would be only visible at the runtime in a dynamically-typed language. 
+Static typing also provides a way of documentation.
+
+The ultimate goal of dfuntest is to become an equivalent of jUnit for distributed applications.
+A tool that allows developers to focus on the logic in tests, rather than diluting in repetitive code and complex, partially-automated procedures.
+A tool that facilitates switching parameters, settings, even platforms.
+Finally, a tool that enables others to easily reproduce reported results and verify application's usefulness in their environment.
+
+In this chapter dfuntest is presented.
+First, we define a design pattern for testing distributed applications (Section~\ref{sec:dfuntest-design}).
+Second, we present (Section~\ref{sec:dfunt-impl}) a concrete implementation of the proposed pattern --- the dfuntest framework.
+We evaluate the framework by testing our DHT implementation (Section~\ref{sec:exampl-test-kademl}): in particular, we show how to verify that the implementation maintains the correct DHT topology.
+Dfuntest is available as a separate project at \url{https://github.com/gregorias/dfuntest}.
+
+Dfuntest was initially built for our bare Kademlia implementation.
+Ghoul extends Kademlia with additional background security protocols, therefore distributed tests for Kademlia are also tests for Ghoul (with small adjusments in environment preparation).
+For this historical reason the name Kademlia is used in examples in section~\ref{sec:exampl-test-kademl}.
+
+\section{Dfuntest design}\label{sec:dfuntest-design}
+
+\subsection{Abstracting tests of distributed applications}
+One of the key features of testing frameworks are the structural abstractions of
+the testing process. These abstractions are a result of a delicate equilibrium.
+They must be general enough not to limit tester's expressiveness; but they must
+be feasible to automate by the library code. A distributed testing framework
+is no exception.
+
+We will use the following vocabulary when describing the architecture. 
+The framework runs on a single host called the \emph{testmaster}.
+The application/system tested by the framework is the \emph{tested application}.
+This application is composed of many \emph{instances};
+each instance runs on an \emph{environment}---a remote host, or a separate directory on the testmaster.
+
+We recognize the following phases when running a single test of a distributed
+application:
+
+\begin{enumerate}
+\item \textbf{Test configuration} The tester decides which scenarios to run, on what
+  hosts, and with which parameters.
+\item \textbf{Environment preparation} The application and the test data are deployed on the target environments.
+\item \textbf{Testing} The tested application runs according to a pre-defined \emph{scenario}; the test checks assertions on the application's state.
+\item \textbf{Report generation} A report includes the test
+  result and supplementary information for debugging, such as logs.
+\item \textbf{Clean up} Generated artifacts (and perhaps also the environment) are deleted from remote hosts.
+\end{enumerate}
+
+A feature specific to distributed tests is the point of control of a test---that
+describes how the testing scenario is executed. The point of control has the
+following design axes:
+
+\begin{description}
+  \item{\textbf{Decentralization}} The degree by which the code describing the testing scenario is itself distributed.
+
+    Some testing scenarios are inherently distributed, e.g., checking whether
+    neighbors of a host respond to a periodic ping.  However, centralized
+    control is more flexible, as it is easier to verify global properties of the
+    application (e.g.: whether the induced graph is connected, see
+    Section~\ref{sec:exampl-test-kademl}).  A scenario with distributed control
+    can be centralized by exposing the requested behavior in an external
+    interface of the tested application. In contrast, decentralization of a centralized
+    test is more difficult.
+    We refer to~\cite{ulr99,hie08,hie12} for further discussion.
+
+    Centralized control introduces a single point of responsibility.
+    This is not a true weakness, since it allows for more accurate detection and reasoning about errors.
+    More importantly, a centralized control is less scalable.
+    Lesser scalability might prevent the framework from effective testing of larger networks.
+
+  \item{\textbf{Interactivity}} How much does the testing control interacts with
+    the tested application over the course of the test.
+    For example an interactive test may analyze workload and responsibilities of
+    individual nodes in the tested application and try to put additional work to
+    nodes whose failure may break the tested application.
+\end{description}
+
+
+\subsection{Architecture of Dfuntest}
+
+\begin{figure}[tbp]
+  \centering
+  \def\svgwidth{\columnwidth}
+  \scriptsize {
+  \input{dfuntest_deployment.pdf_tex}
+}
+\caption{Deployment architecture}
+\label{fig:4_deployment_architecture}.
+\end{figure}
+
+Dfuntest assumes a centralized control of a test. A single master
+host --- the testmaster --- executes all phases of the test.
+Tests scenarios can be highly interactive.
+They are limited only by the interface provided by the tested application.
+The deployment architecture of dfuntest testing process is shown on Figure \ref{fig:4_deployment_architecture}.
+
+We describe the architecture of dfuntest by tracing the flow of a single test (as
+described in the previous section); to motivate certain design decisions we
+start our description from the \emph{testing} phase.
+
+The testing phase consists of executing a certain scenario with actors
+corresponding to applications running on (remote) environments.
+This scenario is a \texttt{TestScript}; it is defined by the tester. The
+scenario needs actors which are (remote) instances of the application --- or, more
+accurately, proxies to external interfaces of the instances of the application that run on (remote) 
+environments.
+This proxy is represented by an \texttt{App} class.
+
+To prepare the test environment on remote hosts, our framework uses standard OS
+tools to copy, upload, or download files, traverse directories, run processes
+etc.  Dfuntest abstracts from concrete implementations of these tools by a proxy
+class \texttt{Environment}.
+An abstract \texttt{Environment} enables dfuntest to abstract from where the
+environment is located or how it is accessed.
+This separation of \texttt{Environment} from \texttt{App} gives greater
+flexibility and allows testing an application in various environments.
+One frequent use-case is a test failing on a remote environment---by changing
+the remote environment to a local one (i.e., the whole system runs as multiple
+processes on a single host), debugging is faster and more accessible.
+
+The process of deploying an instance of the tested application to an
+environment (e.g., choosing which test data to put on which hosts)
+depends strongly on the particular user application. This functionality is
+described by the tester and encompassed in \texttt{EnvironmentPreparator}.
+
+A test should result in an artifact documenting its results and logs to debug
+possible failures. In dfuntest, the \texttt{TestScript} is responsible for this
+functionality.
+
+After tests are finished we may want to clean up environments and download test's artificats.
+These are additional responsibilities of \texttt{EnvironmentPreparator}.
+
+The class architecture of the process described above is shown on Figure
+\ref{fig:4_class_architecture}.
+
+\begin{figure}[tbp]
+  \centering
+  \def\svgwidth{\columnwidth}
+  \scriptsize {
+  \input{dfuntest_bw2.pdf_tex}
+}
+\caption{Class architecture}
+\label{fig:4_class_architecture}
+\end{figure}
+
+\section{Dfuntest implementation}\label{sec:dfunt-impl}
+
+In this section, we describe how dfuntest maps the abstractions sketched in the previous section to concrete code. Dfuntest defines a number of interfaces and provides reusable tools (such as concrete \texttt{Environment}s used for interacting with remote hosts) to stitch a coherent testing framework.
+
+\paragraph{\texttt{Environment}} interface (Figure~\ref{fig:env_interface}) represent a proxy
+object that performs typical shell operations on an environment.
+Dfuntest provides two implementations of an \texttt{Environment}:
+a \texttt{LocalEnvironment} and an \texttt{SSHEnvironment}.
+In a local test, an application is deployed to multiple directories of the testmaster; the \texttt{LocalEnvironment} acts on the provided directory.
+An \texttt{SSHEnvironment} connects to a remote host and translates method calls to SSH functions, e.g. \texttt{copy} to \texttt{scp}.
+
+A tester may want to add new functions to \texttt{Environment}. For this reason, we defined other dfuntest interfaces as generics, taking a subclass of \texttt{Environment} as a parameter. 
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public interface Environment {
+  void copyFilesFromLocalDisk(Path srcPath, String destRelPath)
+    throws IOException;
+  void copyFilesToLocalDisk(String srcRelPath, Path destPath)
+    throws IOException;
+  String getHostname();
+  int getId();
+  String getName();
+  Object getProperty(String key) throws NoSuchElementException;
+  RemoteProcess runCommand(List<String> command)
+    throws InterruptedException, IOException;
+  RemoteProcess runCommandAsynchronously(List<String> command)
+    throws IOException;
+  void removeFile(String relPath) throws InterruptedException, IOException;
+  void setProperty(String key, Object value);
+}
+\end{lstlisting}
+\caption{\texttt{Environment} interface}
+\label{fig:env_interface}
+\end{figure}
+
+\paragraph{\texttt{EnvironmentPreparator}} (Figure \ref{fig:envprepint}) defines the environmental dependencies between the application and its environment. The preparator prepares the environment, collects any output (including logs), and cleans the environment. The tester implements the preparator, as this process is specific to a concrete application.
+
+Some applications depend on many external libraries, or datasets; copying these
+files to remote hosts takes time.
+To speed-up environment preparation for subsequent tests in a test suite, we
+split the preparation process into two methods:
+\texttt{prepare} assumes an empty environment, and thus copies all dependencies;
+while \texttt{restore} assumes that all read-only files have been loaded.
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public interface EnvironmentPreparator<EnvironmentT extends Environment> {
+  // Prepare the environment from scratch.
+  void prepare(Collection<EnvironmentT> envs) throws IOException;
+  // Restore the environment after cleanOutput
+  void restore(Collection<EnvironmentT> envs) throws IOException;
+  // Download output and log files to local destPath
+  void collectOutput(Collection<EnvironmentT> envs, Path destPath);
+  // Remove all files generated by the application
+  void cleanOutput(Collection<EnvironmentT> envs);
+  // Restore the environment to clean state
+  void cleanAll(Collection<EnvironmentT> envs);
+}
+\end{lstlisting}
+\caption{\texttt{EnvironmentPreparator} interface}
+\label{fig:envprepint}
+\end{figure}
+
+\paragraph{\texttt{App}}
+The App interface is a proxy translating Java method calls to RPC invocations to a concrete instance of the tested application (running on a (remote) environment).
+A tester should subclass \texttt{App} and add methods which correspond to the external RPC interface of their application.
+
+\paragraph{\texttt{TestScript}}, the interface for testing scenarios, is the one
+that will be subclassed the most and that is also the simplest. It implements
+only one method \texttt{run} which executes the testing scenario, checks
+assertions, and returns a report.
+
+\paragraph{\texttt{EnvironmentFactory}, \texttt{AppFactory}} Since
+\texttt{Environment} and \texttt{App} are meant to be subclassed, dfuntest uses
+the Factory pattern to hide specific implementation from classes that do not require
+it, like \texttt{TestRunner}.
+
+\paragraph{\texttt{TestRunner}} A runner is an object which takes all previous
+classes as dependencies, including a collection of \texttt{TestScript}s to run,
+and runs the entire testing pipeline. It is a dfuntest equivalent of a
+\texttt{Runner} in jUnit.
+\texttt{TestRunner} uses the \texttt{EnvironmentFactory} to
+create and prepare remote environments. Then, for each test, it uses the
+\texttt{AppFactory} to create instances of \texttt{App}s (which in turn start
+the remote instances of application). Once \texttt{App}s are created,
+\texttt{TestRunner} runs \texttt{TestScript}s, collecting logs and cleaning
+environments in-between. Finally it produces a report directory.
+
+
+\section{Testing Ghoul DHT}\label{sec:exampl-test-kademl}
+In this section we will present how we have prepared dfuntests for Ghoul.
+
+The core Kademlia submodule uses UDP messages for internal communication between instances.
+The application exposes an external RPC over HTTP.
+This interface allows the user to control and to query Ghoul for typical DHT operations (put/get).
+We show a subset of available external RPC in Table~\ref{tab:http_rpc}.
+
+\begin{table}[tbp]
+  \begin{tabular}{|c|p{3cm}|p{3.6cm}|p{3.4cm}|}
+    \hline
+    HTTP-RPC & Arguments & Response & Description \\
+    \hline
+    \texttt{START} & None & Plain HTTP & Start Kademlia service.\\
+    \hline
+    \texttt{STOP} & None & Plain HTTP  & Stop Kademlia service.\\
+    \hline
+    \texttt{SHUT\_DOWN} & None & Plain HTTP &
+      Shutdown the entire application after returning this call.\\
+    \hline
+    \texttt{FIND\_NODES} & Kademlia key & JSON list of key-ip pairs &
+      Find Kademlia's neighbors close to given key.\\
+    \hline
+    \texttt{GET\_ROUTING\_TABLE} & None & JSON list of key-ip pairs & Return
+      Kademlia node's neighbors present in its routing table.\\
+    \hline
+    \texttt{GET\_KEY} & None & String representing the key & Return callee's
+      Kademlia ke.y\\
+    \hline
+    \texttt{GET} & Kademlia key  & JSON list of binary data & Get instances of
+    data stored under given key. \\
+    \hline
+    \texttt{PUT} & Kademlia key and binary data  & Plain HTTP & Store given
+    key-data pair in Kademlia. \\
+    \hline
+  \end{tabular}
+  \caption{RPC-over-HTTP interface of Ghoul application}
+  \label{tab:http_rpc}
+\end{table}
+
+\subsection{Preparation}
+We need to provide to dfuntest information on how to start and use our
+application. This is done only once and does not need to be rewritten as long as
+the Ghoul API and its requirements remain the same.
+
+\paragraph{\texttt{App}} 
+\texttt{KademliaApp} extends the proxy \texttt{App} class with Ghoul's interface methods.
+\texttt{KademliaApp}'s main responsibility is to translate Java method calls into the RPC-over-HTTP interface of the Ghoul application.
+An example code of those methods is shown in \ref{fig:app_example}.
+\texttt{KademliaApp} is parametrized by the base \texttt{Environment}, as we use only standard operations.
+To construct, \texttt{KademliaApp} requires the URI address of the external
+application's interface; and the environment on which it works.
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public synchronized void startUp() throws IOException {
+  List<String> runCommand = new LinkedList<>();
+  runCommand.add(mJavaCommand);
+  runCommand.add("-Dorg.slf4j.simpleLogger.logFile=" + LOG_FILE);
+  runCommand.add("-Dorg.slf4j.simpleLogger.defaultLogLevel=trace");
+  runCommand.add("-cp");
+  runCommand.add("lib/*:Kademlia.jar");
+  runCommand.add("me.gregorias.Kademlia.interfaces.Main");
+  runCommand.add("Kademlia.xml");
+  mProcess = mKademliaEnv.runCommandAsynchronously(runCommand);
+}
+
+public Collection<NodeInfo> findNodes(Key key) throws IOException {
+  Client client = ClientBuilder.newClient();
+  WebTarget target = client.target(mUri).path("find_nodes/" + key.toInt());
+
+  NodeInfoCollectionBean beanColl;
+  try {
+    beanColl = target.request(MediaType.APPLICATION_JSON_TYPE)
+        .get(NodeInfoCollectionBean.class);
+  } catch (ProcessingException e) {
+    throw new IOException("Could not find node.", e);
+  }
+  NodeInfoBean[] beans = beanColl.getNodeInfo();
+  Collection<NodeInfo> infos = new LinkedList<>();
+  for (NodeInfoBean bean : beans) {
+    infos.add(bean.toNodeInfo());
+  }
+  return infos;
+}
+\end{lstlisting}
+\caption{\texttt{KademliaApp}: start a remote Ghoul instance; and use
+HTTP-RPC to find neighboring nodes of the instance.}
+\label{fig:app_example}
+\end{figure}
+
+\paragraph{\texttt{KademliaEnvironmentPreparator}} (Figure~\ref{fig:prepare})
+\texttt{KademliaEnvironmentPreparator} copies Kademlia's dependency jar files and configuration
+files to to the target environment.
+
+\texttt{KademliaEnvironmentPreparator} uses methods of \texttt{Environment} to deploy the application.
+graph;
+\begin{figure}[tbp]
+\begin{lstlisting}
+public void prepare(Collection<Environment> envs)
+    throws IOException {
+  Collection<Environment> preparedEnvs = new LinkedList<>();
+  Environment firstEnv = findFirstEnvironment(envs);
+  for (Environment env : envs) {
+    XMLConfiguration xmlConfig = prepareXMLConfiguration(env, firstEnv);
+    try {
+      xmlConfig.save(XML_CONFIG_FILENAME);
+      Path localConfigPath = FileSystems.getDefault().getPath(LOCAL_CONFIG_PATH).toAbsolutePath();
+      env.copyFilesFromLocalDisk(localConfigPath, ".");
+      env.copyFilesFromLocalDisk(LOCAL_JAR_PATH.toAbsolutePath(), ".");
+      env.copyFilesFromLocalDisk(LOCAL_LIBS_PATH.toAbsolutePath(), ".");
+      preparedEnvs.add(env);
+    } catch (ConfigurationException | IOException e) {
+      clean(preparedEnvs);
+      throw new IOException(e);
+    }
+  }
+}
+\end{lstlisting}
+\caption{\texttt{KademliaEnvironmentPreparator} (fragment): prepare remote environments by copying jars and configuration files. Methods \texttt{restore}, \texttt{collectOutput}, \texttt{cleanOutput} and \texttt{cleanAll} are similar.}
+\label{fig:prepare}
+\end{figure}
+
+
+\paragraph{Main and \texttt{KademliaAppFactory}} To glue those we also need to
+define a simple factory which instantiates \texttt{KademliaApp}s given prepared
+\texttt{Environments}. Also the entry point to dfuntest application - the main
+method - needs to be defined.
+
+\subsection{Test script}
+
+We show how to check whether the topology graph induced by Kademlia routing
+tables is connected (consistent).
+
+To define the testing scenario, the tester writes the \texttt{run} method defined by the
+\texttt{TestScript} interface (Figure~\ref{fig:core}).
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public TestResult run(Collection<KademliaApp> apps) {
+  try {
+    startUpApps(apps); // Call startUp method of each KademliaApp.
+    Thread.sleep(START_UP_DELAY_UNIT.toMillis(START_UP_DELAY));
+  } catch (IOException e) {
+    return new TestResult(Type.FAILURE,
+        "Could not start up applications.", e);
+  }
+  try {
+    startKademlias(apps); // Send start HTTP-RPC to each interface
+  } catch (KademliaException | IOException e) {
+    shutDownApps(apps);
+    return new TestResult(Type.FAILURE, "Could not start Kademlias.", e);
+  }
+  mResult = new TestResult(Type.SUCCESS,
+      "Connection graph was consistent the entire time.");
+  scheduleCheckerToRunPeriodically(new ConsistencyChecker(apps))
+  waitTillCheckerFinished();
+  stopKademlias(apps);
+  shutDownApps(apps);
+  return mResult;
+}
+
+private class ConsistencyChecker implements Runnable {
+  @Override
+  public void run() {
+    Map<Key, Collection<Key>> graph;
+    try {
+      // Call GET_ROUTING_TABLE RPC of each node
+      graph = getConnectionGraph(mApps);
+      ConsistencyResult result = checkConsistency(graph);
+      if (result.getType() == ConsistencyResult.Type.INCONSISTENT) {
+        mResult = new TestResult(Type.FAILURE,
+            "Graph is not consistent starting from: " + result.getStartVert()
+            + " could only reach " + result.getReachableVerts().size());
+        shutDown();
+        return;
+      }
+    } catch (IOException e) {
+      mResult = new TestResult(Type.FAILURE,
+          "Could not get connection graph: " + e + ".");
+      shutDown();
+      return;
+    }
+    --mCheckCount;
+    if (mCheckCount == 0) {
+      shutDown();
+    }
+  }
+  ...
+}
+\end{lstlisting}
+\caption{\texttt{KadmliaConsistencyTestScript} (fragment) periodically checks consistency of the induced Kademlia graph.}
+\label{fig:core}
+\end{figure}
+
+\subsection{Usage}
+
+We configured Ghoul build system to create a separate .jar package with the above dfuntest.
+The tests are executed as a standard Java application.
+The main method expects an XML configuration file as its argument.
+This configuration file contains all pertinent parameters for setting up
+environments and controlling test execution. For example to start a test suite on
+7 remote hosts we provide an XML configuration file with following information:
+
+\begin{verbatim}
+<SSHEnvironmentFactory>
+  <hosts>
+    roti.mimuw.edu.pl,
+    prata.mimuw.edu.pl,
+    planetlab2.wiwi.hu-berlin.de,
+    planetlab2.s3.kth.se,
+    planetlab1.u-strasbg.fr,
+    planetlab01.tkn.tu-berlin.de,
+    pl1.uni-rostock.de
+  </hosts>
+  <username>
+    mimuw_user
+  </username>
+  <privateKeyPath>
+    /home/mimuw_user/.ssh/id_rsa
+  </privateKeyPath>
+</SSHEnvironmentFactory>
+\end{verbatim}
+
+The rest is handled by the dfuntest application and at the end a human-readable
+report directory is produced. This report directory contains a separate
+directory for each executed TestScript test with logs and summary report.
+Additionally there's a summary for all the executed tests
+(Figure~\ref{fig:sumrep}).
+
+\begin{figure}[tbp]
+\begin{verbatim}
+[FAILURE] KademliaConsistencyCheckTestScript
+[SUCCESS] KademliaPingTestScript
+[SUCCESS] KademliaDataReplicationTestScript
+\end{verbatim}
+\caption{A summary report for the test in which one \texttt{TestScript} has failed}
+\label{fig:sumrep}
+\end{figure}
+
+To inject a failure into Ghoul, we used a too small bucket size (1, compared with a usual value of 20).
+Such small bucket should make the graph inconsistent, because node finding messages will have too little diversity.
+The generated summary (Figure~\ref{fig:conrep}) clearly points to a misbehaving node (7). 
+This points the tester where to look to the source of this error.
+
+\begin{figure}[tbp]
+\begin{verbatim}
+[FAILURE] Found inconsistent graph.
+The connection graph was:
+3: [2, 0, 4]
+0: [1, 2, 4]
+1: [0, 2, 4]
+6: [4, 0]
+7: [4, 0]
+4: [5, 6, 0]
+5: [4, 6, 0]
+2: [3, 0, 4]
+
+Its strongly connected components are:
+[7]
+[3, 2, 0, 1, 6, 4, 5]
+\end{verbatim}
+\caption{A report generated after KademliaConsistencyCheckTestScript fails.}
+\label{fig:conrep}
+\end{figure}
+
+In case an error requires a debugging process the developer may easily change
+the testing environment and test parameters by changing the configuration file
+to facilitate the bug triage.
+
+\section{Related work}
+The reader may suspect by now that the author might suffer from the "Not Invented Here" syndrome \footnote{\url{https://en.wikipedia.org/wiki/Not\_invented\_here}} (the author certainly asks himself this question from time to time).
+After all, secure DHT and distributed testing of peer-to-peer applications should be solved problems.
+Although several frameworks for testing distributed applications have been proposed, we found none that would have dfuntest scope and we would be able to use.
+In this section we review research articles as well as available software that falls into dfuntest's scope
+
+\cite{ulr99}~proposes a decentralized testing architecture and presents a tool for distributed monitoring and assessment of test events. This tool does not facilitate deployment automation.
+In~\cite{tsa03}, a test scenario defined in an XML file uses tested application's external SOAP interface. 
+While dfuntest also uses external interface, we envision that this interface is enriched for particular tests (new methods  added); moreover, scenarios as Java methods enable greater expressiveness.
+In~\cite{hug04}, the code of the tested application is modified using aspects (thus, the framework tests only Java code). 
+Given examples focus on monitoring rather than testing---tests can verify how many nodes are, e.g., executing a method.
+\cite{de10}~uses annotations, which again limits the applicability of the framework to Java applications. 
+The scenarios are defined in a pseudo-language that, compared to dfuntest, might increase readability, but also reduce expressiveness.
+The framework is more distributed compared to dfuntest, as proxy objects (similar to our \texttt{App}) run on remote hosts. 
+Remote proxies reduce the need for an external interface; 
+however, dfuntest centralization helps to check assertions on whole state of the system.
+\cite{tor10}~focuses on methods of isolating submodules by emulating some of the components---dfuntest tests the whole distributed application. 
+
+To our best knowledge, frameworks described above are not publicly available. In addition to described differences, they do not abstract the remote environment (dfuntest's \texttt{Environment} and \texttt{EnvironmentPreparator}), thus they do not facilitate deployment, nor porting tests between user credentials or testing infrastructures.
+
+We continue with the available software for distributed testing.
+The Software Testing Automation Framework (STAF) \footnote{\url{http://staf.sourceforge.net}} is an open source
+project that creates cross-platform, distributed software test environments. It
+uses services to provide an uniform interface to environment's resources, such
+as file system, process management etc. From an architectural point of view its
+services correspond to \texttt{Environment} abstraction layer in dfuntest.
+If needed, it is possible to extend \texttt{Environment} interface with STAF facilities and provide its features.
+
+SmartBear TestComplete \footnote{\url{http://smartbear.com/product/testcomplete/overview}} proprietary product has distributed testing functionality.
+The framework allows definition of arbitrary environments and runs jobs sequentially.
+SmartBear does not provide any particular mechanism for running a testing scenario or generating a testing report.
+Additionally the software requires that the environment has the TestComplete software installed and running and the application uses TestComplete bindings.
+
+Robot Framework \footnote{\url{http://robotframework.org}} is a generic test automation framework for acceptance testing and acceptance test-driven development.
+Users can define their testing scenarios in a high-level language resembling natural language.
+Robot Framework then automates running and generating a testing report.
+Robot does not provide any mechanisms for distributed test control and flexible distributed environment preparation.
+
+Neither of those libraries covers the entire scope of dfuntest framework. What
+all of them lack is the ability to define complex testing scenarios
+programatically, which is provided by script and app abstraction layers.
+
+\section{Conclusion and Future Work}
+
+We have presented the dfuntest's design pattern for writing distributed tests with centralized control.
+Dfuntest offers a coherent and expressive abstraction for distributed testing.
+This abstraction allows for clean automation of the testing process which in turn also gives greater control of the real-world testing environment.
+
+The main goal of dfuntest are jUnit-like acceptance tests: set up environments,
+run the tested application, check some assertions on the state. However, thanks
+to flexible test scripts, we are currently using dfuntest also for performance
+evaluation of various subsystems of
+nebulostore\footnote{\url{http://nebulostore.org}}, which previously required ad-hoc deployment scripts.
+
+In the immediate future we plan to extend dfuntest library with ability to run tests of heterogeneous applications in heterogeneous environmnents---e.g., a client-server application where capabilities of environments are different.
+We also plan better mechanisms for coping with failing environments: a failure of remote host, independent from the application. Currently such failure can only be detected with ssh queries.
