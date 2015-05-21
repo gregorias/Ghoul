@@ -30,10 +30,13 @@ public class RegistrarMessageSenderImpl implements RegistrarMessageSender {
 
   @Override
   public synchronized void sendMessage(Key key, SignedObject msg) {
+    LOGGER.trace("sendMessage(key={}, msg={})", key, msg);
     RegistrarDescription description = mRegistrarsMap.get(key);
     TCPMessageChannel channel = mChannels.get(key);
     try {
       if (channel == null) {
+        LOGGER.trace("sendMessage(key={}, msg={}): Creating a channel to {}.", key, msg,
+            description.getAddress());
         channel = TCPMessageChannel.create(description.getAddress());
         mChannels.put(key, channel);
       }
@@ -41,6 +44,8 @@ public class RegistrarMessageSenderImpl implements RegistrarMessageSender {
       try {
         channel.sendMessage(msg);
       } catch (IOException e) {
+        LOGGER.trace("sendMessage(key={}, msg={}): Caught an exception."
+                + " Creating the channel again.", e);
         channel = TCPMessageChannel.create(description.getAddress());
         mChannels.put(key, channel);
         channel.sendMessage(msg);

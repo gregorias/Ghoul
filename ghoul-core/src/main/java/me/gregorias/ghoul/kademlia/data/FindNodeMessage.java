@@ -1,6 +1,6 @@
 package me.gregorias.ghoul.kademlia.data;
 
-import me.gregorias.ghoul.security.Certificate;
+import me.gregorias.ghoul.security.SignedCertificate;
 import me.gregorias.ghoul.utils.DeserializationException;
 
 import javax.validation.constraints.NotNull;
@@ -26,7 +26,7 @@ public final class FindNodeMessage extends KademliaMessage {
   public FindNodeMessage(@NotNull NodeInfo srcNodeInfo,
                          @NotNull NodeInfo destNodeInfo,
                          int id,
-                         boolean certificateRequest, Collection<Certificate> certificates,
+                         boolean certificateRequest, Collection<SignedCertificate> certificates,
                          Key key) {
     super(srcNodeInfo, destNodeInfo, id, certificateRequest, certificates);
     mKey = key;

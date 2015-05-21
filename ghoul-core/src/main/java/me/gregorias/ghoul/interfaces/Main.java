@@ -6,12 +6,14 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.channels.DatagramChannel;
+import java.security.KeyPair;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,9 +32,17 @@ import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.udp.UDPByteListeningService;
 import me.gregorias.ghoul.network.udp.UDPByteSender;
 import me.gregorias.ghoul.security.Certificate;
+import me.gregorias.ghoul.security.CertificateImpl;
 import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.CryptographyTools;
+import me.gregorias.ghoul.security.GhoulProtocolException;
+import me.gregorias.ghoul.security.KeyGenerator;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
+import me.gregorias.ghoul.security.RegistrarClient;
+import me.gregorias.ghoul.security.RegistrarDescription;
+import me.gregorias.ghoul.security.SignedCertificate;
 import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,6 +82,8 @@ public class Main {
   public static final String XML_FIELD_CONCURRENCY_PARAMETER = "concurrencyParameter";
   public static final String XML_FIELD_HEART_BEAT_DELAY = "heartBeatDelay";
   public static final String XML_FIELD_REST_PORT = "restPort";
+  public static final String XML_FIELD_USE_AND_ALLOW_SELF_SIGNED_CERTIFICATES =
+      "useAndAllowSelfSignedCertificates";
 
   private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
@@ -90,18 +102,16 @@ public class Main {
       return;
     }
 
-    XMLConfiguration kadConfig = config;
-
-    final InetAddress localInetAddress = InetAddress.getByName(kadConfig
+    final InetAddress localInetAddress = InetAddress.getByName(config
         .getString(XML_FIELD_LOCAL_ADDRESS));
-    final int localPort = kadConfig.getInt(XML_FIELD_LOCAL_PORT);
-    final InetAddress hostZeroInetAddress = InetAddress.getByName(kadConfig
+    final int localPort = config.getInt(XML_FIELD_LOCAL_PORT);
+    final InetAddress hostZeroInetAddress = InetAddress.getByName(config
         .getString(XML_FIELD_BOOTSTRAP_ADDRESS));
-    final int hostZeroPort = kadConfig.getInt(XML_FIELD_BOOTSTRAP_PORT);
-    final Key localKey = new Key(kadConfig.getInt(XML_FIELD_LOCAL_KEY));
-    final Key bootstrapKey = new Key(kadConfig.getInt(XML_FIELD_BOOTSTRAP_KEY));
+    final int hostZeroPort = config.getInt(XML_FIELD_BOOTSTRAP_PORT);
+    final Key localKey = new Key(config.getInt(XML_FIELD_LOCAL_KEY));
+    final Key bootstrapKey = new Key(config.getInt(XML_FIELD_BOOTSTRAP_KEY));
     final URI baseURI = URI.create(String.format("http://%s:%s/", localInetAddress.getHostName(),
-        kadConfig.getString(XML_FIELD_REST_PORT)));
+        config.getString(XML_FIELD_REST_PORT)));
 
     final ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(4);
     final ExecutorService executor = Executors.newFixedThreadPool(3);
@@ -119,22 +129,8 @@ public class Main {
       return;
     }
 
-    Map<Key, Object> issuersMap = new HashMap<>();
-    Key issuersKey = new Key(10000);
-    issuersMap.put(issuersKey, issuersKey);
-
-    Certificate personalCertificate = new Certificate(localKey, localKey, issuersKey,
-        ZonedDateTime.now().plusDays(1));
-    Collection<Certificate> personalCertificates = new ArrayList<>();
-    personalCertificates.add(personalCertificate);
-
-    CertificateStorage certificateStorage = new CertificateStorage(issuersMap);
-    PersonalCertificateManager certificateManager = new PersonalCertificateManager(
-        personalCertificates);
-
     builder.setByteListeningService(ubls);
     builder.setByteSender(new UDPByteSender(datagramChannel));
-    builder.setCertificateStorage(certificateStorage);
     builder.setExecutor(scheduledExecutor);
     Collection<NodeInfo> peersWithKnownAddresses = new LinkedList<>();
     if (!localKey.equals(bootstrapKey)) {
@@ -143,26 +139,36 @@ public class Main {
     }
     builder.setInitialPeersWithKeys(peersWithKnownAddresses);
     builder.setKey(localKey);
-    builder.setPersonalCertificateManager(certificateManager);
 
-    if (kadConfig.containsKey(XML_FIELD_BUCKET_SIZE)) {
-      final int bucketSize = kadConfig.getInt(XML_FIELD_BUCKET_SIZE);
+    if (config.containsKey(XML_FIELD_BUCKET_SIZE)) {
+      final int bucketSize = config.getInt(XML_FIELD_BUCKET_SIZE);
       builder.setBucketSize(bucketSize);
     }
 
-    if (kadConfig.containsKey(XML_FIELD_CONCURRENCY_PARAMETER)) {
-      final int concurrencyParameter = kadConfig.getInt(XML_FIELD_CONCURRENCY_PARAMETER);
+    if (config.containsKey(XML_FIELD_CONCURRENCY_PARAMETER)) {
+      final int concurrencyParameter = config.getInt(XML_FIELD_CONCURRENCY_PARAMETER);
       builder.setConcurrencyParameter(concurrencyParameter);
     }
 
-    if (kadConfig.containsKey(XML_FIELD_HEART_BEAT_DELAY)) {
-      final long heartBeatDelay = kadConfig.getLong(XML_FIELD_HEART_BEAT_DELAY);
+    if (config.containsKey(XML_FIELD_HEART_BEAT_DELAY)) {
+      final long heartBeatDelay = config.getLong(XML_FIELD_HEART_BEAT_DELAY);
       builder.setHeartBeatDelay(heartBeatDelay, TimeUnit.MILLISECONDS);
     }
 
     NetworkAddressDiscovery networkAddressDiscovery = new UserGivenNetworkAddressDiscovery(
             new InetSocketAddress(localInetAddress, localPort));
     builder.setNetworkAddressDiscovery(networkAddressDiscovery);
+
+    CryptographyTools tools = CryptographyTools.getDefault();
+    KeyPair localKeyPair = KeyGenerator.generateKeys();
+
+
+    setUpSecurityExtensions(localKey,
+        localKeyPair.getPublic(),
+        localKeyPair.getPrivate(),
+        tools,
+        builder,
+        config);
 
     KademliaRouting kademlia = builder.createPeer();
     KademliaStore store = builder.createStore(kademlia);
@@ -190,6 +196,59 @@ public class Main {
       LOGGER.error("main() -> unexpected interrupt", e);
     }
     LOGGER.info("main() -> void");
+  }
+
+  private static Collection<SignedCertificate> joinDHT(Collection<RegistrarDescription> registrars)
+      throws IOException, ClassNotFoundException, GhoulProtocolException {
+    KeyPair keyPair = KeyGenerator.generateKeys();
+    RegistrarClient client = new RegistrarClient(
+        registrars,
+        keyPair,
+        CryptographyTools.getDefault());
+    return client.joinDHT();
+  }
+
+  private static boolean setUpSecurityExtensions(
+      Key localDHTKey,
+      PublicKey publicKey,
+      PrivateKey privateKey,
+      CryptographyTools tools,
+      KademliaRoutingBuilder builder,
+      HierarchicalConfiguration config) {
+    PersonalCertificateManager personalManager;
+    CertificateStorage storage;
+
+    if (config.containsKey(Main.XML_FIELD_USE_AND_ALLOW_SELF_SIGNED_CERTIFICATES)) {
+      Certificate personalCertificate = new CertificateImpl(publicKey, localDHTKey, localDHTKey,
+          ZonedDateTime.now().plusDays(7));
+      SignedCertificate signedCertificate = SignedCertificate.sign(personalCertificate,
+          privateKey,
+          tools);
+
+      Collection<SignedCertificate> certificates = new ArrayList<>();
+      certificates.add(signedCertificate);
+
+      personalManager = new PersonalCertificateManager(certificates);
+      storage = new CertificateStorage(new HashMap<>(), tools, true);
+    } else {
+      HierarchicalConfiguration registrarsConfig = config.configurationAt(
+          RegistrarMain.XML_FIELD_REGISTRARS_INFO);
+      Collection<RegistrarDescription> registrars;
+      Collection<SignedCertificate> personalCertificates;
+      try {
+        registrars = RegistrarMain.loadRegistrarDescriptions(registrarsConfig);
+        personalCertificates = joinDHT(registrars);
+        personalManager = new PersonalCertificateManager(personalCertificates);
+      } catch (ClassNotFoundException | GhoulProtocolException | IOException e) {
+        LOGGER.error("setUpSecurityExtension(): Could not get certificates.", e);
+        return false;
+      }
+      storage = null;
+    }
+
+    builder.setPersonalCertificateManager(personalManager);
+    builder.setCertificateStorage(storage);
+    return true;
   }
 
 }

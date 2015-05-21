@@ -2,6 +2,8 @@ package me.gregorias.ghoul.security;
 
 import me.gregorias.ghoul.kademlia.data.Key;
 
+import java.security.PublicKey;
+import java.security.SignedObject;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,57 +16,74 @@ import java.util.Optional;
 public class CertificateStorage extends Observable {
   private final Map<Key, Map<Key, Certificate>> mCertificates;
   private final Map<Key, ZonedDateTime> mRevokedNodes;
-  private final Map<Key, Object> mIssuerKeys;
+  private final Map<Key, PublicKey> mIssuerKeys;
+  private final boolean mAllowSelfSigned;
+  private final CryptographyTools mTools;
 
-  public CertificateStorage(Map<Key, Object> issuerKeys) {
+  public CertificateStorage(Map<Key, PublicKey> issuerKeys, CryptographyTools tools) {
+    this(issuerKeys, tools, false);
+  }
+
+  public CertificateStorage(
+      Map<Key, PublicKey> issuerKeys,
+      CryptographyTools tools,
+      boolean allowSelfSigned) {
     mCertificates = new HashMap<>();
     mRevokedNodes = new HashMap<>();
     mIssuerKeys = issuerKeys;
+    mTools = tools;
+    mAllowSelfSigned = allowSelfSigned;
   }
 
-  public synchronized void addCertificate(Certificate certificate) {
+  public synchronized void addCertificate(SignedObject signedObject) {
     removeExpiredCertificates();
-    if (!isCertificateValid(certificate)) {
-      return;
-    } else if (mRevokedNodes.containsKey(certificate.mDHTKey)) {
+    if (!isCertificateValid(signedObject)) {
       return;
     }
+
+    Certificate certificate = SignedCertificate.unwrap(signedObject).get();
+
+    if (mRevokedNodes.containsKey(certificate.getNodeDHTKey())) {
+      return;
+    }
+
+
 
     Map<Key, Certificate> issuersMap;
-    if (mCertificates.containsKey(certificate.mDHTKey)) {
-      issuersMap = mCertificates.get(certificate.mDHTKey);
+    if (mCertificates.containsKey(certificate.getNodeDHTKey())) {
+      issuersMap = mCertificates.get(certificate.getNodeDHTKey());
     } else {
       issuersMap = new HashMap<>();
-      mCertificates.put(certificate.mDHTKey, issuersMap);
+      mCertificates.put(certificate.getNodeDHTKey(), issuersMap);
     }
 
-    if (issuersMap.containsKey(certificate.mIssuerKey)) {
-      Certificate old = issuersMap.get(certificate.mIssuerKey);
-      if (old.mExpirationDate.compareTo(certificate.mExpirationDate) < 0) {
-        issuersMap.put(certificate.mIssuerKey, certificate);
+    if (issuersMap.containsKey(certificate.getIssuerKey())) {
+      Certificate old = issuersMap.get(certificate.getIssuerKey());
+      if (old.getExpirationDateTime().compareTo(certificate.getExpirationDateTime()) < 0) {
+        issuersMap.put(certificate.getIssuerKey(), certificate);
       }
     } else {
-      issuersMap.put(certificate.mIssuerKey, certificate);
+      issuersMap.put(certificate.getIssuerKey(), certificate);
     }
-
   }
 
-  public void addCertificates(Collection<Certificate> certificates) {
+  public void addCertificates(Collection<SignedObject> certificates) {
     removeExpiredCertificates();
-    for (Certificate certificate : certificates) {
+    for (SignedObject certificate : certificates) {
       addCertificate(certificate);
     }
   }
 
-  public synchronized void addCertificateRevocation(Certificate certificate) {
+  public synchronized void addCertificateRevocation(SignedObject signedObject) {
     removeExpiredCertificates();
-    if (isCertificateValid(certificate)) {
-      mRevokedNodes.put(certificate.mDHTKey, certificate.mExpirationDate);
-      mCertificates.remove(certificate.mDHTKey);
+    if (isCertificateValid(signedObject)) {
+      Certificate certificate = SignedCertificate.unwrap(signedObject).get();
+      mRevokedNodes.put(certificate.getNodeDHTKey(), certificate.getExpirationDateTime());
+      mCertificates.remove(certificate.getNodeDHTKey());
     }
   }
 
-  public synchronized Optional<Object> getPublicKey(Key key) {
+  public synchronized Optional<PublicKey> getPublicKey(Key key) {
     removeExpiredCertificates();
     Map<Key, Certificate> issuersMap = mCertificates.get(key);
 
@@ -77,7 +96,7 @@ public class CertificateStorage extends Observable {
     }
 
     Certificate certificate = issuersMap.values().iterator().next();
-    return Optional.of(certificate.mPublicKey);
+    return Optional.of(certificate.getNodePublicKey());
   }
 
   public synchronized Collection<Certificate> getCertificates(Key key) {
@@ -111,21 +130,31 @@ public class CertificateStorage extends Observable {
   }
 
   private boolean isCertificateCloseToExpiration(Certificate certificate) {
-    return certificate.mExpirationDate.isBefore(ZonedDateTime.now().plusMinutes(10));
+    return certificate.getExpirationDateTime().isBefore(ZonedDateTime.now().plusMinutes(10));
   }
 
-  private boolean isCertificateValid(Certificate certificate) {
-    if (certificate.mExpirationDate.isBefore(ZonedDateTime.now())) {
+  private boolean isCertificateValid(SignedObject certificate) {
+    Certificate baseCertificate = SignedCertificate.unwrap(certificate).get();
+    if (baseCertificate.getExpirationDateTime().isBefore(ZonedDateTime.now())) {
       return false;
     }
 
-    if (!mIssuerKeys.containsKey(certificate.mIssuerKey)) {
+    if (mAllowSelfSigned && baseCertificate.getIssuerKey().equals(
+        baseCertificate.getNodeDHTKey())) {
+      Optional<SignedCertificate> signedCertificate = SignedCertificate.verifyAndCreate(
+          certificate, baseCertificate.getNodePublicKey(), mTools);
+      if (signedCertificate.isPresent()) {
+        return true;
+      }
+    }
+
+    if (!mIssuerKeys.containsKey(baseCertificate.getIssuerKey())) {
       return false;
     }
 
-    Object issuerPublicKey = mIssuerKeys.get(certificate.mIssuerKey);
+    PublicKey issuerPublicKey = mIssuerKeys.get(baseCertificate.getIssuerKey());
 
-    return certificate.verifySignature(issuerPublicKey);
+    return SignedCertificate.verify(certificate, issuerPublicKey, mTools);
   }
 
   private void removeExpiredCertificates() {
@@ -136,7 +165,7 @@ public class CertificateStorage extends Observable {
       Iterator<Map.Entry<Key, Certificate>> issuerKeyIter = issuersMap.entrySet().iterator();
       while (issuerKeyIter.hasNext()) {
         Certificate certificate = issuerKeyIter.next().getValue();
-        if (certificate.mExpirationDate.isBefore(ZonedDateTime.now())) {
+        if (certificate.getExpirationDateTime().isBefore(ZonedDateTime.now())) {
           issuerKeyIter.remove();
         }
       }

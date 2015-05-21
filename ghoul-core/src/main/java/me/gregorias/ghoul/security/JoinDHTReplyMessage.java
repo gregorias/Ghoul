@@ -7,13 +7,13 @@ import java.util.Collection;
 public class JoinDHTReplyMessage implements Serializable {
   private static final long serialVersionUID = 1L;
 
-  private final Collection<Certificate> mCertificates;
+  private final Collection<SignedCertificate> mCertificates;
 
-  public JoinDHTReplyMessage(Collection<Certificate> certificates) {
+  public JoinDHTReplyMessage(Collection<SignedCertificate> certificates) {
     mCertificates = new ArrayList<>(certificates);
   }
 
-  public final Collection<Certificate> getCertificates() {
+  public final Collection<SignedCertificate> getCertificates() {
     return new ArrayList<>(mCertificates);
   }
 }

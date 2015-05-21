@@ -1,6 +1,6 @@
 package me.gregorias.ghoul.kademlia.data;
 
-import me.gregorias.ghoul.security.Certificate;
+import me.gregorias.ghoul.security.SignedCertificate;
 import me.gregorias.ghoul.utils.DeserializationException;
 
 import javax.validation.constraints.NotNull;
@@ -21,7 +21,7 @@ public final class PingMessage extends KademliaMessage {
                      @NotNull NodeInfo destNodeInfo,
                      int id,
                      boolean certificateRequest,
-                     Collection<Certificate> certificates) {
+                     Collection<SignedCertificate> certificates) {
     super(srcNodeInfo, destNodeInfo, id, certificateRequest, certificates);
   }
 

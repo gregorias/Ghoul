@@ -20,14 +20,23 @@ public class KeyGenerator {
     }
 
     try {
-      KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DSA");
-      KeyPair keyPair = keyPairGenerator.generateKeyPair();
+      KeyPair keyPair = generateKeys();
       Utils.storeObjectToFile(args[0] + ".pub", keyPair.getPublic());
       Utils.storeObjectToFile(args[0] + ".priv", keyPair.getPrivate());
-    } catch (NoSuchAlgorithmException | IOException e) {
+    } catch (IOException e) {
       LOGGER.error("main()", e);
     }
     LOGGER.info("main({}): Ending the program.");
+  }
+
+  public static KeyPair generateKeys() {
+    try {
+      KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DSA");
+      return keyPairGenerator.generateKeyPair();
+    } catch (NoSuchAlgorithmException e) {
+      LOGGER.error("generateKeys()", e);
+      throw new IllegalStateException("DSA not found.", e);
+    }
 
   }
 }

@@ -1,6 +1,7 @@
 package me.gregorias.ghoul.kademlia;
 
 import java.net.InetSocketAddress;
+import java.security.KeyPair;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -20,6 +21,9 @@ import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.security.Certificate;
+import me.gregorias.ghoul.security.CertificateImpl;
+import me.gregorias.ghoul.security.CryptographyTools;
+import me.gregorias.ghoul.security.SignedCertificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +37,7 @@ final class StaticKademliaRouting implements KademliaRouting {
   private static final Logger LOGGER = LoggerFactory.getLogger(StaticKademliaRouting.class);
 
   private final Key mLocalKey;
+  private final KeyPair mKeyPair;
   private InetSocketAddress mLocalAddress;
   private final MessageSender mMessageSender;
   private final ListeningService mListeningService;
@@ -42,7 +47,7 @@ final class StaticKademliaRouting implements KademliaRouting {
   private final Lock mReadRunningLock;
   private final Lock mWriteRunningLock;
 
-  private final Collection<Certificate> mPersonalCertificates;
+  private final Collection<SignedCertificate> mPersonalCertificates;
 
   private boolean mIsRunning = false;
 
@@ -51,11 +56,13 @@ final class StaticKademliaRouting implements KademliaRouting {
 
   public StaticKademliaRouting(
       NodeInfo localNodeInfo,
+      KeyPair myKeyPair,
+      CryptographyTools tools,
       MessageSender sender,
       ListeningService listeningService,
-      KademliaRoutingTable routingTable,
-      Key issuerKey) {
+      KademliaRoutingTable routingTable) {
     mLocalKey = localNodeInfo.getKey();
+    mKeyPair = myKeyPair;
     mLocalAddress = localNodeInfo.getSocketAddress();
     mMessageSender = sender;
     mListeningService = listeningService;
@@ -66,13 +73,14 @@ final class StaticKademliaRouting implements KademliaRouting {
     mReadRunningLock = rwLock.readLock();
     mWriteRunningLock = rwLock.writeLock();
 
-    Certificate personalCertificate = new Certificate(mLocalKey,
+    Certificate personalCertificate = new CertificateImpl(mKeyPair.getPublic(),
         mLocalKey,
-        issuerKey,
+        mLocalKey,
         ZonedDateTime.now().plusDays(1));
 
     mPersonalCertificates = new ArrayList<>();
-    mPersonalCertificates.add(personalCertificate);
+    mPersonalCertificates.add(SignedCertificate.sign(personalCertificate, mKeyPair.getPrivate(),
+        tools));
   }
 
   @Override

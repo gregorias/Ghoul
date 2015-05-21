@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -37,9 +37,8 @@ public class Registrar implements Runnable {
   private final RegistrarMessageSender mRegistrarMessageSender;
   private final ScheduledExecutorService mExecutor;
 
-  private final Map<Integer, BlockingQueue<Optional<SignedObject>>> mInputQueues;
-  private final Map<Integer, BlockingQueue<Certificate>> mCertificateQueues;
-  private int mKGPID;
+  private final Map<PublicKey, BlockingQueue<Optional<SignedObject>>> mInputQueues;
+  private final Map<PublicKey, BlockingQueue<SignedCertificate>> mCertificateQueues;
 
   private final int mLocalPort;
 
@@ -61,16 +60,18 @@ public class Registrar implements Runnable {
 
     mInputQueues = new HashMap<>();
     mCertificateQueues = new HashMap<>();
-    mKGPID = 0;
 
     mLocalPort = localPort;
   }
 
   @Override
   public void run() {
+    LOGGER.debug("run()");
+
     ServerSocket server;
     try {
       server = new ServerSocket(mLocalPort);
+      LOGGER.debug("run(): Listening at port: {}", mLocalPort);
     } catch (IOException e) {
       LOGGER.error("run()", e);
       return;
@@ -79,6 +80,7 @@ public class Registrar implements Runnable {
     while (true) {
       try {
         Socket socket = server.accept();
+        LOGGER.debug("run(): Accepted connection from: {}.", socket.getRemoteSocketAddress());
         TCPMessageChannel channel = TCPMessageChannel.create(socket);
         Worker worker = new Worker(channel);
         mExecutor.execute(worker);
@@ -86,8 +88,6 @@ public class Registrar implements Runnable {
         LOGGER.error("run()", e);
       }
     }
-
-
   }
 
   private class Worker implements Runnable {
@@ -99,32 +99,41 @@ public class Registrar implements Runnable {
 
     @Override
     public void run() {
+      LOGGER.trace("Worker.run()");
       try {
         Object msg = mMsgChannel.receiveMessage();
 
         if (!(msg instanceof SignedObject)) {
-          LOGGER.warn("run(): Received unsigned object: {}.", msg);
+          LOGGER.warn("Worker.run(): Received unsigned object: {}.", msg);
         }
 
         SignedObject signedObject = (SignedObject) msg;
         Object content = signedObject.getObject();
 
         if (content instanceof RegistrarMessage) {
-          handleRegistrar(mMsgChannel, signedObject, (RegistrarMessage) msg);
+          LOGGER.trace("Worker.run(): Received registrar message: {}", content);
+          handleRegistrar(mMsgChannel, signedObject, (RegistrarMessage) content);
         } else if (content instanceof JoinDHTMessage) {
-          JoinDHTMessage joinMsg = (JoinDHTMessage) msg;
+          LOGGER.trace("Worker.run(): Received join message: {}", content);
+          JoinDHTMessage joinMsg = (JoinDHTMessage) content;
           handleClient(mMsgChannel, signedObject, joinMsg);
+        } else {
+          LOGGER.warn("Worker.run(): Received unknown type of message: {}.", content);
         }
       } catch (ClassNotFoundException | IOException | GhoulProtocolException
           | InterruptedException | InvalidKeyException | SignatureException e) {
-        LOGGER.warn("run()", e);
+        LOGGER.warn("Worker.run()", e);
+      } catch (Exception e) {
+        LOGGER.warn("Worker.run()", e);
       } finally {
         try {
+          LOGGER.trace("Worker.run(): Closing client channel.");
           mMsgChannel.close();
         } catch (IOException e) {
-          LOGGER.warn("run()", e);
+          LOGGER.warn("Worker.run()", e);
         }
       }
+      LOGGER.trace("Worker.run() -> void");
     }
 
     public void handleClient(
@@ -132,42 +141,46 @@ public class Registrar implements Runnable {
         SignedObject signedObject,
         JoinDHTMessage joinMsg)
         throws GhoulProtocolException, IOException, InterruptedException {
-      int id = createKGPID();
+      createKGPID(joinMsg.getPublicKey());
       try {
-        boolean isVerified = signedObject.verify(joinMsg.getPublicKey(),
-            mCryptoTools.getSignature());
+        boolean isVerified = mCryptoTools.verifyObject(signedObject, joinMsg.getPublicKey());
         if (!isVerified) {
           LOGGER.warn("handleClient(): Received JoinDHTMessage with wrong signature.");
           return;
         }
 
         Collection<RegistrarDescription> participants = chooseParticipants();
-        broadcastStartProtocol(participants, joinMsg.getPublicKey(), id);
+        broadcastStartProtocol(participants, joinMsg.getPublicKey());
         KeyGenerationProtocol kgp = createKGP(
             participants.stream().map(RegistrarDescription::getKey).collect(Collectors.toList()),
-            id);
+            mKey,
+            joinMsg.getPublicKey());
+        LOGGER.trace("handleClient(): Running key generation protocol.");
         Optional<Key> keyOptional = kgp.call();
         if (!keyOptional.isPresent()) {
           LOGGER.warn("handleClient(): Could not generate key.");
           return;
         }
 
-        Optional<Collection<Certificate>> certifcatesOptional = waitForCertificates(participants,
-            id);
+        LOGGER.trace("handleClient(): Waiting for certificates from other registrars.");
+        Optional<Collection<SignedCertificate>> certifcatesOptional = waitForCertificates(
+            participants,
+            joinMsg.getPublicKey());
         if (!certifcatesOptional.isPresent()) {
           LOGGER.warn("handleClient(): Did not receive all certificates.");
           return;
         }
 
-        Collection<Certificate> certificates = certifcatesOptional.get();
-        Certificate myCertificate = createCertificate(joinMsg.getPublicKey(), keyOptional.get());
+        Collection<SignedCertificate> certificates = certifcatesOptional.get();
+        SignedCertificate myCertificate = createCertificate(joinMsg.getPublicKey(),
+            keyOptional.get());
         certificates.add(myCertificate);
 
         JoinDHTReplyMessage reply = new JoinDHTReplyMessage(certificates);
         SignedObject signedReply =
             null;
         try {
-          signedReply = new SignedObject(reply, mPrivateKey, mCryptoTools.getSignature());
+          signedReply = mCryptoTools.signObject(reply, mPrivateKey);
         } catch (InvalidKeyException | SignatureException e) {
           throw new IllegalStateException("Unexpected signature exception.", e);
         }
@@ -175,7 +188,7 @@ public class Registrar implements Runnable {
       } catch (InvalidKeyException | SignatureException e) {
         throw new GhoulProtocolException(e);
       } finally {
-        destroyKGPID(id);
+        destroyKGPID(joinMsg.getPublicKey());
       }
     }
 
@@ -206,19 +219,23 @@ public class Registrar implements Runnable {
         registrarMessage = (RegistrarMessage) content;
       }
 
+      LOGGER.trace("handleRegistrar(): Received message: {}.", registrarMessage);
+
       Key remoteSourceKey = registrarMessage.getSender();
       Optional<PublicKey> pubKeyOptional = getRegistrarPublicKey(remoteSourceKey);
 
       if (!pubKeyOptional.isPresent()) {
         LOGGER.warn("handleRegistrar(): Unknown registrar (key: {}) has sent a message."
             + " Ignoring it.", remoteSourceKey);
+        registrarMessage = null;
         continue;
       }
 
       PublicKey pubKey = pubKeyOptional.get();
 
-      boolean isSignatureValid = signedObject.verify(pubKey, mCryptoTools.getSignature());
+      boolean isSignatureValid = mCryptoTools.verifyObject(signedObject, pubKey);
       if (!isSignatureValid) {
+        registrarMessage = null;
         continue;
       }
 
@@ -227,100 +244,108 @@ public class Registrar implements Runnable {
 
         Collection<Key> participants;
         if (!startMsg.getRegistrars().stream().anyMatch((reg) -> reg.equals(mKey))) {
+          registrarMessage = null;
           continue;
         } else {
           participants =  startMsg.getRegistrars().stream().filter((reg) -> !reg.equals(mKey))
               .collect(Collectors.toList());
         }
 
-        KeyGenerationProtocol keyGenProtocol = createKGP(participants, registrarMessage.getId());
+        mInputQueues.put(startMsg.getClientPublicKey(), new LinkedBlockingQueue<>());
+
+        KeyGenerationProtocol keyGenProtocol = createKGP(participants,
+            registrarMessage.getSender(),
+            startMsg.getClientPublicKey());
 
         final RegistrarMessage finalRegistrarMessage = registrarMessage;
         mExecutor.execute(() -> {
             Optional<Key> keyOptional = keyGenProtocol.call();
             if (keyOptional.isPresent()) {
-              Certificate certificate = createCertificate(pubKey, keyOptional.get());
-              CertificateMessage msg = new CertificateMessage(mKey, startMsg.getId(), certificate);
+              SignedCertificate certificate = createCertificate(pubKey, keyOptional.get());
+              CertificateMessage msg = new CertificateMessage(mKey,
+                  startMsg.getClientPublicKey(),
+                  certificate);
               SignedObject signedMsg = null;
               try {
-                signedMsg = new SignedObject(msg, mPrivateKey,
-                    mCryptoTools.getSignature());
+                signedMsg = mCryptoTools.signObject(msg, mPrivateKey);
               } catch (InvalidKeyException | SignatureException | IOException e) {
                 LOGGER.warn("handleRegistrar()", e);
               }
               mRegistrarMessageSender.sendMessage(finalRegistrarMessage.getSender(), signedMsg);
             }
+            mInputQueues.remove(startMsg.getClientPublicKey());
           });
       } else if (registrarMessage instanceof CommitmentMessage
           || registrarMessage instanceof ViewMessage) {
-        int id = registrarMessage.getId();
-        BlockingQueue<Optional<SignedObject>> inputQueue = mInputQueues.get(id);
+        BlockingQueue<Optional<SignedObject>> inputQueue = mInputQueues
+            .get(registrarMessage.getClientPublicKey());
         if (inputQueue != null) {
           inputQueue.put(Optional.of(signedObject));
         }
       } else if (registrarMessage instanceof CertificateMessage) {
-        BlockingQueue<Certificate> queue = mCertificateQueues.get(registrarMessage.getId());
+        BlockingQueue<SignedCertificate> queue = mCertificateQueues
+            .get(registrarMessage.getClientPublicKey());
         if (queue != null) {
           queue.put(((CertificateMessage) registrarMessage).getCertificate());
         }
       }
+      registrarMessage = null;
     }
   }
 
   private void broadcastStartProtocol(
       Collection<RegistrarDescription> participants,
-      PublicKey clientPublicKey,
-      int id) throws InvalidKeyException, IOException, SignatureException {
+      PublicKey clientPublicKey) throws InvalidKeyException, IOException, SignatureException {
     Collection<Key> keys = participants.stream()
         .map((reg) -> reg.getKey()).collect(Collectors.toList());
     keys.add(mKey);
     StartKeyGenerationMessage stmMsg = new StartKeyGenerationMessage(mKey,
-        id,
-        keys,
-        clientPublicKey);
-    SignedObject signedMsg = new SignedObject(stmMsg, mPrivateKey, mCryptoTools.getSignature());
+        clientPublicKey,
+        keys);
+    SignedObject signedMsg = mCryptoTools.signObject(stmMsg, mPrivateKey);
     for (RegistrarDescription registrar : participants) {
+      LOGGER.trace("broadcastStartProtocol(): Sending StartProtocolMessage to: {}",
+          registrar.getKey());
       mRegistrarMessageSender.sendMessage(registrar.getKey(), signedMsg);
     }
   }
 
   private Collection<RegistrarDescription> chooseParticipants() {
-    return mRegistrars.stream().filter((RegistrarDescription reg) -> reg.getKey() != mKey)
-        .collect(Collectors.toList());
+    return getOtherRegistrars();
   }
 
-  private Certificate createCertificate(PublicKey publicKey, Key key) {
+  private SignedCertificate createCertificate(PublicKey publicKey, Key key) {
     ZonedDateTime expiration = ZonedDateTime.now().plusDays(1);
-    Certificate certificate = new Certificate(publicKey, key, mKey, expiration);
-    certificate.signCertificate(mPrivateKey);
-    return certificate;
+    Certificate certificate = new CertificateImpl(publicKey, key, mKey, expiration);
+    return SignedCertificate.sign(certificate, mPrivateKey, mCryptoTools);
   }
 
   private synchronized KeyGenerationProtocol createKGP(
       Collection<Key> participants,
-      int id) {
+      Key initiator,
+      PublicKey clientPublicKey) {
     return new KeyGenerationProtocol(
         mKey,
-        id,
+        clientPublicKey,
         mPrivateKey,
         participants,
         mRegistrarMessageSender,
-        mInputQueues.get(id),
+        mInputQueues.get(clientPublicKey),
         mExecutor,
         mCryptoTools,
         20,
         TimeUnit.SECONDS);
   }
 
-  private synchronized int createKGPID() {
-    int id = mKGPID++;
-    BlockingQueue<Optional<SignedObject>> inputQueue = new LinkedBlockingDeque<>();
-    mInputQueues.put(id, inputQueue);
-    return id;
+  private synchronized void createKGPID(PublicKey publicKey) {
+    BlockingQueue<Optional<SignedObject>> inputQueue = new LinkedBlockingQueue<>();
+    mInputQueues.put(publicKey, inputQueue);
+    mCertificateQueues.put(publicKey, new LinkedBlockingQueue<>());
   }
 
-  private synchronized void destroyKGPID(int id) {
-    mInputQueues.remove(id);
+  private synchronized void destroyKGPID(PublicKey clientPublicKey) {
+    mCertificateQueues.remove(clientPublicKey);
+    mInputQueues.remove(clientPublicKey);
   }
 
   private Optional<PublicKey> getRegistrarPublicKey(Key key) {
@@ -334,13 +359,18 @@ public class Registrar implements Runnable {
     }
   }
 
-  private Optional<Collection<Certificate>> waitForCertificates(
+  private Collection<RegistrarDescription> getOtherRegistrars() {
+    return mRegistrars.stream().filter(reg -> !reg.getKey()
+        .equals(mKey)).collect(Collectors.toList());
+  }
+
+  private Optional<Collection<SignedCertificate>> waitForCertificates(
       Collection<RegistrarDescription> participants,
-      int id) throws InterruptedException {
-    BlockingQueue<Certificate> queue = mCertificateQueues.get(id);
-    Collection<Certificate> certificates = new ArrayList<>();
+      PublicKey clientPublicKey) throws InterruptedException {
+    BlockingQueue<SignedCertificate> queue = mCertificateQueues.get(clientPublicKey);
+    Collection<SignedCertificate> certificates = new ArrayList<>();
     while (certificates.size() < participants.size()) {
-      Certificate certificate = queue.poll(10, TimeUnit.SECONDS);
+      SignedCertificate certificate = queue.poll(10, TimeUnit.SECONDS);
       if (certificate == null) {
         return Optional.empty();
       }

@@ -8,17 +8,12 @@
 <bootstrapNetAddress>localhost</bootstrapNetAddress>
 <bootstrapNetPort>9000</bootstrapNetPort>
 <restPort>10000</restPort>
-<isRegistrar>false</isRegistrar>
-<registrarKey>0</registrarKey>
-<registrarPubKeyFile>/home/grzesiek/reg0.pub</registrarPubKeyFile>
-<registrarPrivKeyFile>/home/grzesiek/reg0.priv</registrarPrivKeyFile>
-<registrarPort>11000</registrarPort>
 <registrarsInfo>
-  <registarInfo>
+  <registrarInfo>
     <registrarKey>0</registrarKey>
     <registrarAddress>localhost</registrarAddress>
     <registrarPort>11000</registrarPort>
-    <registrarPubKeyFile>/home/grzesiek/reg0.pub</registrarPubKeyFile>
+    <registrarPubKeyFile>PATH_TO_PUBKEY</registrarPubKeyFile>
   </registrarInfo>
 </registrarsInfo>
 </configuration>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<configuration>
+<isRegistrar>false</isRegistrar>
+<registrarKey>0</registrarKey>
+<registrarPubKeyFile>/home/grzesiek/ghoul_keys/reg0.pub</registrarPubKeyFile>
+<registrarPrivKeyFile>/home/grzesiek/ghoul_keys/reg0.priv</registrarPrivKeyFile>
+<registrarPort>11000</registrarPort>
+<registrarsInfo>
+  <registrarInfo>
+    <registrarKey>0</registrarKey>
+    <registrarAddress>localhost</registrarAddress>
+    <registrarPort>11000</registrarPort>
+    <registrarPubKeyFile>/home/grzesiek/ghoul_keys/reg0.pub</registrarPubKeyFile>
+  </registrarInfo>
+  <registrarInfo>
+    <registrarKey>1</registrarKey>
+    <registrarAddress>localhost</registrarAddress>
+    <registrarPort>11001</registrarPort>
+    <registrarPubKeyFile>/home/grzesiek/ghoul_keys/reg1.pub</registrarPubKeyFile>
+  </registrarInfo>
+</registrarsInfo>
+</configuration>

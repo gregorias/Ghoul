@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -16,12 +17,14 @@ import java.util.concurrent.TimeUnit;
 public class TCPMessageChannel {
   private static final Logger LOGGER = LoggerFactory.getLogger(TCPMessageChannel.class);
   private final Socket mSocket;
+  private final OutputStream mOS;
   private final ObjectOutputStream mOOS;
   private final ObjectInputStream mOIS;
 
   private TCPMessageChannel(Socket socket) throws IOException {
     mSocket = socket;
-    mOOS = new ObjectOutputStream(socket.getOutputStream());
+    mOS = socket.getOutputStream();
+    mOOS = new ObjectOutputStream(mOS);
     mOIS = new ObjectInputStream(socket.getInputStream());
   }
 
@@ -50,6 +53,7 @@ public class TCPMessageChannel {
 
   public Optional<Object> receiveMessage(long timeout, TimeUnit unit)
       throws ClassNotFoundException, IOException {
+    LOGGER.trace("receiveMessage()");
     mSocket.setSoTimeout((int) unit.toMillis(timeout));
     try {
       return Optional.of(mOIS.readObject());
@@ -62,5 +66,7 @@ public class TCPMessageChannel {
 
   public void sendMessage(Serializable message) throws IOException {
     mOOS.writeObject(message);
+    mOOS.flush();
+    mOS.flush();
   }
 }

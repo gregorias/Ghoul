@@ -10,7 +10,6 @@ import java.util.NoSuchElementException;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import me.gregorias.ghoul.interfaces.Main;
-import me.gregorias.ghoul.interfaces.RegistrarMain;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.XMLConfiguration;
 import me.gregorias.dfuntest.Environment;
@@ -191,7 +190,7 @@ public class KademliaEnvironmentPreparator implements EnvironmentPreparator<Envi
     xmlConfiguration.addProperty(Main.XML_FIELD_BOOTSTRAP_PORT, mInitialPort);
     xmlConfiguration.addProperty(Main.XML_FIELD_REST_PORT, mInitialRestPort + portSkew);
     xmlConfiguration.addProperty(Main.XML_FIELD_HEART_BEAT_DELAY, mHeartBeatDelay);
-    xmlConfiguration.addProperty(RegistrarMain.XML_FIELD_IS_REGISTRAR, false);
+    xmlConfiguration.addProperty(Main.XML_FIELD_USE_AND_ALLOW_SELF_SIGNED_CERTIFICATES, true);
     env.setProperty(Main.XML_FIELD_LOCAL_ADDRESS, env.getHostname());
     env.setProperty(Main.XML_FIELD_REST_PORT, mInitialRestPort + portSkew);
     return xmlConfiguration;

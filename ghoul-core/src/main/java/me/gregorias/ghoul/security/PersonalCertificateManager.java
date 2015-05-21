@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 public class PersonalCertificateManager {
-  private Collection<Certificate> mPersonalCertificates;
+  private Collection<SignedCertificate> mPersonalCertificates;
 
-  public PersonalCertificateManager(Collection<Certificate> personalCertificates) {
+  public PersonalCertificateManager(Collection<SignedCertificate> personalCertificates) {
     mPersonalCertificates = new ArrayList<>(personalCertificates);
   }
 
-  public Collection<Certificate> getPersonalCertificates() {
+  public Collection<SignedCertificate> getPersonalCertificates() {
     return new ArrayList<>(mPersonalCertificates);
   }
 }

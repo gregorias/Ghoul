@@ -1,6 +1,7 @@
 package me.gregorias.ghoul.kademlia;
 
 import java.net.InetSocketAddress;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -36,9 +37,9 @@ import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.NetworkAddressDiscovery;
-import me.gregorias.ghoul.security.Certificate;
 import me.gregorias.ghoul.security.CertificateStorage;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
+import me.gregorias.ghoul.security.SignedCertificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -933,11 +934,12 @@ public class KademliaRoutingImpl implements KademliaRouting {
     private boolean isMessageFromValidHost(KademliaMessage msg) {
       NodeInfo sourceNodeInfo = msg.getSourceNodeInfo();
       if (!mCertificateStorage.isNodeValid(sourceNodeInfo.getKey())) {
-        Collection<Certificate> certificates = msg.getCertificates();
+        Collection<SignedCertificate> certificates = msg.getCertificates();
         if (certificates.size() == 0) {
           return false;
         }
-        mCertificateStorage.addCertificates(certificates);
+        mCertificateStorage.addCertificates(certificates.stream()
+            .map(SignedCertificate::getSignedObject).collect(Collectors.toList()));
         return mCertificateStorage.isNodeValid(sourceNodeInfo.getKey());
       } else {
         return true;
@@ -952,7 +954,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
       Key destinationKey = msg.getSourceNodeInfo().getKey();
       boolean shouldRequireCertificates = !mCertificateStorage.isNodeValid(destinationKey)
           || mCertificateStorage.isNodeCloseToExpiration(destinationKey);
-      Collection<Certificate> personalCertificates = new ArrayList<>();
+      Collection<SignedCertificate> personalCertificates = new ArrayList<>();
       if (msg.isCertificateRequest()) {
         personalCertificates.addAll(mPersonalCertificateManager.getPersonalCertificates());
       }
@@ -974,7 +976,8 @@ public class KademliaRoutingImpl implements KademliaRouting {
         return;
       }
 
-      Optional<Object> pubKey = mCertificateStorage.getPublicKey(msg.getSourceNodeInfo().getKey());
+      Optional<PublicKey> pubKey = mCertificateStorage.getPublicKey(
+          msg.getSourceNodeInfo().getKey());
       if (!pubKey.isPresent()) {
         return;
       }
@@ -1003,7 +1006,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
       Key destinationKey = msg.getSourceNodeInfo().getKey();
       boolean shouldRequireCertificates = !mCertificateStorage.isNodeValid(destinationKey)
           || mCertificateStorage.isNodeCloseToExpiration(destinationKey);
-      Collection<Certificate> personalCertificates = new ArrayList<>();
+      Collection<SignedCertificate> personalCertificates = new ArrayList<>();
       if (msg.isCertificateRequest()) {
         personalCertificates.addAll(mPersonalCertificateManager.getPersonalCertificates());
       }
@@ -1024,7 +1027,8 @@ public class KademliaRoutingImpl implements KademliaRouting {
         return;
       }
 
-      Optional<Object> pubKey = mCertificateStorage.getPublicKey(msg.getSourceNodeInfo().getKey());
+      Optional<PublicKey> pubKey = mCertificateStorage.getPublicKey(
+          msg.getSourceNodeInfo().getKey());
       if (!pubKey.isPresent()) {
         return;
       }

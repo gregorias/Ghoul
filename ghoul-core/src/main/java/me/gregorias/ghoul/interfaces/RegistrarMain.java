@@ -9,7 +9,6 @@ import me.gregorias.ghoul.security.RegistrarMessageSenderImpl;
 import me.gregorias.ghoul.utils.Utils;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.HierarchicalConfiguration;
-import org.apache.commons.configuration.SubnodeConfiguration;
 import org.apache.commons.configuration.XMLConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,10 +63,27 @@ public class RegistrarMain {
     Optional<Registrar> registrarOptional = RegistrarMain.createRegistrar(config);
 
     if (registrarOptional.isPresent()) {
+      LOGGER.debug("main(): Running the registrar.");
       registrarOptional.get().run();
     }
 
     LOGGER.info("main() -> Ending the program.");
+  }
+
+  public static Collection<RegistrarDescription> loadRegistrarDescriptions(
+      HierarchicalConfiguration configuration) throws IOException, ClassNotFoundException {
+    Collection<RegistrarDescription> descriptions = new ArrayList<>();
+    for (HierarchicalConfiguration sub :
+        configuration.configurationsAt(XML_FIELD_REGISTRAR_INFO)) {
+      Key key = new Key(sub.getInt(XML_FIELD_REGISTRAR_KEY));
+      PublicKey pubKey = (PublicKey) Utils.loadObjectFromFile(
+          sub.getString(XML_FIELD_REGISTRAR_PUB_KEY_FILE));
+      String address = sub.getString(XML_FIELD_REGISTRAR_ADDRESS);
+      int port = sub.getInt(XML_FIELD_REGISTRAR_PORT);
+
+      descriptions.add(new RegistrarDescription(pubKey, key, new InetSocketAddress(address, port)));
+    }
+    return descriptions;
   }
 
   private static Optional<Registrar> createRegistrar(XMLConfiguration config) {
@@ -105,21 +121,5 @@ public class RegistrarMain {
     } catch (ClassNotFoundException | IOException | NoSuchAlgorithmException e) {
       return Optional.empty();
     }
-  }
-
-  private static Collection<RegistrarDescription> loadRegistrarDescriptions(
-      SubnodeConfiguration subnodeConfiguration) throws IOException, ClassNotFoundException {
-    Collection<RegistrarDescription> descriptions = new ArrayList<>();
-    for (HierarchicalConfiguration sub :
-        subnodeConfiguration.configurationsAt(XML_FIELD_REGISTRAR_INFO)) {
-      Key key = new Key(sub.getInt(XML_FIELD_REGISTRAR_KEY));
-      PublicKey pubKey = (PublicKey) Utils.loadObjectFromFile(
-          sub.getString(XML_FIELD_REGISTRAR_PUB_KEY_FILE));
-      String address = sub.getString(XML_FIELD_REGISTRAR_ADDRESS);
-      int port = sub.getInt(XML_FIELD_REGISTRAR_PORT);
-
-      descriptions.add(new RegistrarDescription(pubKey, key, new InetSocketAddress(address, port)));
-    }
-    return descriptions;
   }
 }

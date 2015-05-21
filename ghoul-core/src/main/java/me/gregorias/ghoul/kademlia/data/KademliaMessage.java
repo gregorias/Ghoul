@@ -1,6 +1,6 @@
 package me.gregorias.ghoul.kademlia.data;
 
-import me.gregorias.ghoul.security.Certificate;
+import me.gregorias.ghoul.security.SignedCertificate;
 import me.gregorias.ghoul.utils.DeserializationException;
 import me.gregorias.ghoul.utils.Utils;
 
@@ -19,7 +19,7 @@ public class KademliaMessage {
   private final NodeInfo mSrcNodeInfo;
   private final NodeInfo mDestNodeInfo;
   private final boolean mCertificateRequest;
-  private final Collection<Certificate> mCertificates;
+  private final Collection<SignedCertificate> mCertificates;
   private Optional<byte[]> mSignature;
   private final int mId;
 
@@ -36,7 +36,7 @@ public class KademliaMessage {
                          @NotNull NodeInfo dest,
                          int id,
                          boolean certificateRequest,
-                         Collection<Certificate> certificates) {
+                         Collection<SignedCertificate> certificates) {
     mSrcNodeInfo = src;
     mDestNodeInfo = dest;
     mCertificateRequest = certificateRequest;
@@ -49,7 +49,7 @@ public class KademliaMessage {
                          @NotNull NodeInfo dest,
                          int id,
                          boolean certificateRequest,
-                         Collection<Certificate> certificates,
+                         Collection<SignedCertificate> certificates,
                          byte[] signature) {
     mSrcNodeInfo = src;
     mDestNodeInfo = dest;
@@ -59,7 +59,7 @@ public class KademliaMessage {
     mId = id;
   }
 
-  public Collection<Certificate> getCertificates() {
+  public Collection<SignedCertificate> getCertificates() {
     return mCertificates;
   }
 
@@ -118,8 +118,8 @@ public class KademliaMessage {
     try {
       int id = buffer.getInt();
       boolean certificateRequest = buffer.get() == 1 ? true : false;
-      Collection<Certificate> certificates =
-          (Collection<Certificate>) Utils.deserializeSerializable(buffer);
+      Collection<SignedCertificate> certificates =
+          (Collection<SignedCertificate>) Utils.deserializeSerializable(buffer);
       KademliaMessage msg = new KademliaMessage(srcNodeInfo,
           destNodeInfo,
           id,

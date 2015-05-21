@@ -31,9 +31,11 @@ public class RegistrarClient {
     mCryptoTools = tools;
   }
 
-  public Collection<Certificate> joinDHT() throws GhoulProtocolException, IOException {
+  public Collection<SignedCertificate> joinDHT() throws GhoulProtocolException, IOException {
+    LOGGER.trace("joinDHT()");
     RegistrarDescription registrar = chooseRandomRegistrar();
 
+    LOGGER.trace("joinDHT(): creating TCP channel to: {}", registrar.getAddress());
     TCPMessageChannel channel = TCPMessageChannel.create(registrar.getAddress());
     try {
       JoinDHTMessage joinMsg = new JoinDHTMessage(mKeyPair.getPublic());
@@ -48,6 +50,7 @@ public class RegistrarClient {
         throw new IllegalStateException(e);
       }
 
+      LOGGER.trace("joinDHT(): Sending join message to registrar.");
       channel.sendMessage(signedJoinMsg);
 
       try {

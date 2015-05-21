@@ -11,8 +11,12 @@ import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.local.LocalMessaging;
 import me.gregorias.ghoul.security.Certificate;
+import me.gregorias.ghoul.security.CertificateImpl;
 import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.CryptographyTools;
+import me.gregorias.ghoul.security.KeyGenerator;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
+import me.gregorias.ghoul.security.SignedCertificate;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -21,11 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.security.KeyPair;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
@@ -43,8 +47,7 @@ public final class KademliaRoutingBasicTest {
   private static final Random RANDOM = new Random();
   private static final long MESSAGE_TIMEOUT = 1;
   private static final TimeUnit MESSAGE_TIMEOUT_UNIT = TimeUnit.SECONDS;
-  private final Key mIssuersKey = new Key(10000);
-  private final Map<Key, Object> mIssuersMap = new HashMap<>();
+  private final CryptographyTools mCryptoTools = CryptographyTools.getDefault();
   private KademliaRoutingBuilder mBuilder = null;
   private LocalMessaging mLocalMessaging;
   private MessageSender mLocalSender;
@@ -56,8 +59,6 @@ public final class KademliaRoutingBasicTest {
   @Before
   public void setUp() throws KademliaException {
     mLocalMessaging = new LocalMessaging();
-
-    mIssuersMap.put(mIssuersKey, mIssuersKey);
 
     ScheduledExecutorService scheduledExecutor = Executors.newScheduledThreadPool(6);
 
@@ -511,14 +512,18 @@ public final class KademliaRoutingBasicTest {
   }
 
   private KademliaRouting newPeer(Key key) {
-    Certificate personalCertificate = new Certificate(key,
+    KeyPair pair = KeyGenerator.generateKeys();
+    Certificate personalCertificate = new CertificateImpl(pair.getPublic(),
         key,
-        mIssuersKey,
+        key,
         ZonedDateTime.now().plusDays(1));
-    Collection<Certificate> personalCertificates = new ArrayList<>();
-    personalCertificates.add(personalCertificate);
+    Collection<SignedCertificate> personalCertificates = new ArrayList<>();
+    personalCertificates.add(SignedCertificate.sign(personalCertificate, pair.getPrivate(),
+        mCryptoTools));
 
-    CertificateStorage certificateStorage = new CertificateStorage(mIssuersMap);
+    CertificateStorage certificateStorage = new CertificateStorage(new HashMap<>(),
+        mCryptoTools,
+        true);
     PersonalCertificateManager certificateManager = new PersonalCertificateManager(
         personalCertificates);
     mBuilder.setCertificateStorage(certificateStorage);
@@ -536,20 +541,23 @@ public final class KademliaRoutingBasicTest {
     KademliaRoutingTable routingTable = new KademliaRoutingTable(localKey, bucketSize);
     routingTable.addAll(knownPeers);
     return new StaticKademliaRouting(new NodeInfo(localKey, socketAddress),
+        KeyGenerator.generateKeys(),
+        mCryptoTools,
         new MessageSenderAdapter(mLocalMessaging.getByteSender(nr)),
         new MessageListeningServiceAdapter(mLocalMessaging.getByteListeningService(nr)),
-        routingTable,
-        mIssuersKey);
+        routingTable);
   }
 
   private void sendPing(Key from, Key to) {
-    Certificate personalCertificate = new Certificate(from,
+    KeyPair pair = KeyGenerator.generateKeys();
+    Certificate personalCertificate = new CertificateImpl(pair.getPublic(),
         from,
-        mIssuersKey,
+        from,
         ZonedDateTime.now().plusDays(1));
 
-    Collection<Certificate> personalCertificates = new ArrayList<>();
-    personalCertificates.add(personalCertificate);
+    Collection<SignedCertificate> personalCertificates = new ArrayList<>();
+    personalCertificates.add(SignedCertificate.sign(personalCertificate, pair.getPrivate(),
+        mCryptoTools));
     PingMessage pingMessage = new PingMessage(new NodeInfo(from, mLocalAddress),
         new NodeInfo(to, mLocalAddress),
         1,
