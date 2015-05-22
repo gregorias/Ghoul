@@ -1,3 +1,75 @@
 \chapter{Introduction}
 
-[TODO Wprowadzenie]
+Peer-to-Peer applications are applications which run on multiple computers in
+such a way that each instance is treated equally.
+This is in direct opposition to a client-server model, such as for example
+web-browsing, in which one instance (the client) request data from another (the
+server), which handles and serves the data.
+Peer-to-Peer model is popular among applications that need to scale dynamically
+with the size of their user-base and applications for which users want privacy
+and independence of central authority.
+A good example of both of those factors is BitTorrent.
+BitTorrent is a file-sharing protocol.
+BitTorrent application wanting to download a file, acquires a list of other
+computers that are interested in that file (either want to download it or have
+it).
+Next, the application downloads missing parts of the file from hosts that have
+it, while at the same time providing parts of the file it has to other hosts.
+This kind of sharing approach means that with the increase of an interest in a
+file the total bandwidth of hosts having the file also increases.
+Since there is no central-authority, noone may easily collect data about user
+behaviour or shutdown the service.
+
+An important part of a Peer-to-Peer application is how different instances
+communicate with each other.
+Unlike the client-server model, in which there is global known, always-present
+authority to communicate to, Peer-to-Peer applications have to handle users
+dynamically joining and leaving the network (this is called a churn) and find
+a way to efficiently send messages between two arbitrary nodes.
+This problem may be compared the problem of sending a message to an unknown
+town.
+We are in a town X and want to send a message to town Z.
+However we only how to reach our neighbouring town and we do not know the entire
+map of the country.
+One of the roles of a Peer-to-Peer application is to define a protocol for
+creation of roads in the country (the entire map is called a topology) and
+establishment of routes to between two non-neighbouring towns.
+A popular approach is to use structured topologies created by Distributed Hash
+Tables (DHT). 
+Distributed Hash Tables define where roads are created and how two entities may
+find each other.
+DHTs additionally provide constrainst on which nodes may be directly connected.
+The structure that they create has certain properties that guarantee that routes
+between non-neighbouring nodes will be relatively short and easy to find.
+
+Unfortunately the structural nature of the topology created by the DHT and their
+Peer-to-Peer character make them vulnerable to attacks.
+[TODO examples]
+Since topology is the basis of a Peer-to-Peer application, a successfull attack
+on it is often enough to shut it down entirely.
+
+In this work we show 
+
+
+
+\section{Overview}
+In chapter \ref{ch:threats} the problem domain.
+We define a Distributed Hash Table (DHT) and evaluate its typical weaknesses.
+We show what are the main classes of security threats that DHTs are vulnerable to.
+Finally we review proposed security mechanisms.
+
+In chapter \ref{ch:description} we describe the protocols used in Ghouls.
+
+In chapter \ref{ch:dfuntest} we present dfuntest - a framework for testing distributed peer-to-peer applications.
+Dfuntest was originally developed by the author to test kademlia application in Planet-lab environment, but its design later proved to be flexible enough to be a general framework for any P2P application.
+
+In chapter \ref{ch:implementation} we explain how Ghoul is built and run as a stand-alone application.
+We focus on presenting tools and techniques used to guarantee high-quality code.
+
+In chapter \ref{ch:conclusion} we summarize our contribution and state future plans towards the prototype we have developed.
+
+\section{Contributions}
+This paper provides the following contributions:
+\begin{itemize}
+  \item Design of Ghoul - 
+\end{itemize}

@@ -9,17 +9,11 @@ system may be controlled or shutdown by even a modest adversary.
 There exists a rich set of proposals which aim to secure DHTs, and yet most of
 the popular and widely used Peer-to-Peer applications using DHTs, such as:
 Bittorrent Mainline DHT, Kad, OpenDHT, are not using them and are known to be
-insecure. I feel that this is the case, because these solutions often are found
-to be impractical by developers. Impracticalities include things such as:
-suboptimal performance, too stringent assumptions, i.e. reliance on central
-authority, but most important of all is lack of good implementation.
+insecure. We feel that this is the case, because these solutions often are found
+to be impractical by developers.
+Impracticalities include things such as: suboptimal performance, too stringent assumptions, and lack of good implementation.
 
 This goal of this work is to design and implement an extensible DHT system
-that is protected against wide array of attacks, doesn't need to rely on
-central, trusted host, and can self-recover in case an attack happens.  This
-implementation is done using Java using tested software engineering practices
-that provide elasticity and customizability necessary to allow easy inclusion of
-the library into an application.
-
-[TODO rezultaty (extensibility?)]
+that is protected against wide array of attacks.
+This implementation is done using Java using tested software engineering practices that provide elasticity and customizability necessary to allow easy inclusion of the library into an application.
 \end{abstract}

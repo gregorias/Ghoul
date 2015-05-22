@@ -1,4 +1,5 @@
 \chapter{Dfuntest - Streamlined functional testing framework for distributed applications}
+\label{ch:dfuntest}
 \section{Chapter introduction and overview}
 Good practices of software engineering agree \cite{mccon04} that quality code has to be tested and testable.
 While many single-application projects rely only on extensive unit-testing frameworks, a distributed application requires more encompassing tools.
@@ -112,6 +113,11 @@ host --- the testmaster --- executes all phases of the test.
 Tests scenarios can be highly interactive.
 They are limited only by the interface provided by the tested application.
 The deployment architecture of dfuntest testing process is shown on Figure \ref{fig:4_deployment_architecture}.
+In the figure, grey boxes represent physical hosts.
+White boxes represent dfuntest classes in testmaster and the tested application in remote nodes.
+Arrows represent dependencies and communication channels between elements. 
+\texttt{TestRunner} runs sequentially \texttt{TestScript}s, which in turn use proxy \texttt{App}s to run the test.
+Instances of the tested application accept requests from the testmaster and use the Internet to communicate among themselves.
 
 We describe the architecture of dfuntest by tracing the flow of a single test (as
 described in the previous section); to motivate certain design decisions we
@@ -563,18 +569,3 @@ Robot does not provide any mechanisms for distributed test control and flexible 
 Neither of those libraries covers the entire scope of dfuntest framework. What
 all of them lack is the ability to define complex testing scenarios
 programatically, which is provided by script and app abstraction layers.
-
-\section{Conclusion and future work}
-
-We have presented the dfuntest's design pattern for writing distributed tests with centralized control.
-Dfuntest offers a coherent and expressive abstraction for distributed testing.
-This abstraction allows for clean automation of the testing process which in turn also gives greater control of the real-world testing environment.
-
-The main goal of dfuntest are jUnit-like acceptance tests: set up environments,
-run the tested application, check some assertions on the state. However, thanks
-to flexible test scripts, we are currently using dfuntest also for performance
-evaluation of various subsystems of
-nebulostore\footnote{\url{http://nebulostore.org}}, which previously required ad-hoc deployment scripts.
-
-In the immediate future we plan to extend dfuntest library with ability to run tests of heterogeneous applications in heterogeneous environmnents---e.g., a client-server application where capabilities of environments are different.
-We also plan better mechanisms for coping with failing environments: a failure of remote host, independent from the application. Currently such failure can only be detected with ssh queries.

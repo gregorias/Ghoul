@@ -1,4 +1,5 @@
 \chapter{Ghoul implementation}
+\label{ch:implementation}
 In this chapter we present Ghoul's implementation.
 We focus on general techniques used in Ghoul's development to produce high-quality code.
 In section \ref{sec:build} we present build tools used and an example session with Ghoul.
@@ -80,12 +81,12 @@ An example session which runs 2 registrars and 3 DHT nodes is shown in figures
 \ref{fig:ghoul_manual_run} and \ref{fig:ghoul_manipulation}.
 In the session we use curl to send RPC-over-HTTP queries to DHT nodes.
 First we start registrars and then DHT nodes.
-Afterwards we get routing tables of the first and third DHT node.
+Afterwards we get routing tables of the second DHT node.
 Then we put \texttt{DATA} string under the key \texttt{100}.
 Later we ask the third node get all replicas of the data under key \texttt{100}.
 The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 
-\begin{figure}[h]
+\begin{figure}[tbp]
 \begin{verbatim}
 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.RegistrarMain\
   registrar0.xml > /dev/null &
@@ -112,14 +113,8 @@ The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 \label{fig:ghoul_manual_run}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[tbp]
 \begin{verbatim}
-> curl -X GET 127.0.0.1:10000/get_routing_table
-{"nodeInfo":[{"inetAddress":"localhost","port":9001,
-    "key":"fca426586c9a211513c4338e975c5508250c1a0"},
-{"inetAddress":"localhost","port":9002,
-    "key":"2d1386c9c601676189faa7790b60dbeda3ed3e9b"}]}
-
 > curl -X GET 127.0.0.1:10001/get_routing_table
 {"nodeInfo":[{"inetAddress":"localhost","port":9000,
     "key":"15624f385826cae60bef58da5b53b4dc1cf070bd"},

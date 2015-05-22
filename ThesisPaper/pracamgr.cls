@@ -43,7 +43,7 @@
       \vspace{8mm plus .1fill}
       {\Huge\textbf{\@title}\par}
       \vspace{8mm plus .1fill}
-      {\large\bf Master thesis\\[3pt]
+      {\large\bf Master's thesis\\[3pt]
         in \MakeUppercase{\@kierunek} \\
 %----zakres---
         \@zakres \par}
@@ -65,32 +65,28 @@
     \null
     \vfill
     
-    \textbf{\Large O\'swiadczenie kieruj\k{a}cego prac\k{a} }
+    \textbf{\Large Supervisor’s statement}
       \vspace{10mm}
-      
-   Potwierdzam, {\.z}e niniejsza praca zosta{\l}a przygotowana pod moim 
-   kierunkiem i kwalifikuje si\k{e} do przedstawienia jej w post\k{e}powaniu 
-   o nadanie tytu{\l}u zawodowego. 
+
+    Hereby I confirm that the present thesis was prepared under my supervision and
+    that it fulfills the requirements for the degree of Master of Computer Science.
    \vspace{15mm}
    
-   Data \hfill Podpis kieruj\k{a}cego prac\k{a}
+   Date \hfill Supervisor's signature
    
    \vspace{3cm}
-   \textbf{\Large O\'swiadczenie autora (autor\'ow) pracy}
+   \textbf{\Large Author's statement}
     \vspace{10mm}
     
-   \'{S}wiadom odpowiedzialno\'sci prawnej o\'swiadczam, {\.z}e niniejsza praca dyplomowa zosta{\l}a 
-   napisana przeze mnie samodzielnie i nie zawiera tre\'sci uzyskanych w spos\'ob niezgodny 
-   z obowi\k{a}zuj\k{a}cymi przepisami. 
-   
-   O\'swiadczam r\'ownie{\.z}, {\.z}e przedstawiona praca nie by{\l}a 
-   wcze\'sniej przedmiotem procedur zwi\k{a}zanych z uzyskaniem tytu{\l}u zawodowego w wy{\.z}szej uczelni. 
-   
-   O\'swiadczam ponadto, {\.z}e niniejsza wersja pracy jest identyczna z
-   za{\l}\k{a}czon\k{a} wersj\k{a} elektroniczn\k{a}. 
+Hereby I declare that the present thesis was prepared by me and none of its contents
+was obtained by means that are against the law.
+The thesis has never before been a subject of any procedure of obtaining an academic
+degree.
+Moreover, I declare that the present version of the thesis is identical to the attached
+electronic version.
    \vspace{15mm}
    
-   Data \hfill Podpis autora (autor\'ow) pracy
+   Date \hfill Author's signature
     \vspace{4cm}
   \end{titlepage}
   \setcounter{footnote}{0}%
@@ -120,6 +116,8 @@
 \def\@dziedzina{???\ClassError{pracamgr}{Brak dziedziny Socrates-Erasmus}\@ehc}
 \def\klasyfikacja#1{\gdef\@klasyfikacja{#1}}
 \def\@klasyfikacja{???\ClassError{pracamgr}{Brak klasyfikacji tematycznej}\@ehc}
+\def\polishtitle#1{\gdef\@polishtitle{#1}}
+\def\@polishtitle{???\ClassError{pracamgr}{Brak tytułu pracy w języku polskim}\@ehc}
 
 
 \renewenvironment{abstract}{%
@@ -136,19 +134,28 @@
     \bfseries\large Keywords
     \@endparpenalty\@M
   \end{center}
-  \@keywords\par
+  \@keywords
+  \par
   \vspace*{26pt}%
   \begin{center}%
-    \bfseries\large Dziedzina pracy (kody wg programu Socrates-Erasmus)
+    \bfseries\large Thesis domain (Socrates-Erasmus subject area codes)
     \@endparpenalty\@M
   \end{center}
    \@dziedzina\par
   \vspace*{26pt}%
   \begin{center}%
-    \bfseries\large Klasyfikacja tematyczna
+    \bfseries\large Subject classification
     \@endparpenalty\@M
   \end{center}
-  \@klasyfikacja\par
+  \@klasyfikacja
+  \par
+  \vspace*{26pt}%
+  \begin{center}%
+    \bfseries\large Tytuł pracy w języku polskim
+    \@endparpenalty\@M
+  \end{center}
+   \@polishtitle
+  \par
   \vspace*{26pt}%
 %-------------------nowosc----------------
   \nobreak\vfil\null\endtitlepage\cleardoublepage}
