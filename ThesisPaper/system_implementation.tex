@@ -1,8 +1,9 @@
 \chapter{Ghoul implementation}
-In this chapter we will present the Ghoul's implementation.
-We will focus on general techniques used in Ghoul's development to produce high-quality code.
+In this chapter we present Ghoul's implementation.
+We focus on general techniques used in Ghoul's development to produce high-quality code.
 In section \ref{sec:build} we present build tools used and an example session with Ghoul.
-In section \ref{sec:implementation} we show as an example of our design principles the interface of \texttt{KademliaRouting} - the core class in the protocol.
+In section \ref{sec:implementation} we show, as an example of our design principles, the interface of \texttt{KademliaRouting} - the core class in the protocol.
+
 Ghoul is an open-source project.
 An up-to-date Ghoul's code is available for public audience at \url{https://github.com/gregorias/ghoul}.
 
@@ -14,10 +15,10 @@ Currently Ghoul's code contains around 8000 lines of code in 126 Java files (exc
 To maintain this amount of code we use Gradle \footnote{\url{https://gradle.org/}} build automation framework.
 In Gradle, developers write configuration scripts called \texttt{build.gradle} in which they define code's properties --- e.g. name of the project, project's dependencies; and build tasks.
 Those configuration scripts are written in a functional, dynamically typed language.
-This allows for expressive and succint definition of build tasks, which is an
+This allows for expressive and succinct definition of build tasks, which is an
 advantage over more traditional build framework - Maven \footnote{\url{https://maven.apache.org/}}.
 Next, Gradle performs, using provided information, typical task in Java's build ecosystem: compilation, packaging, dependency resolution, unit testing, software validation etc.
-Gradle allows developers to download and build Ghoul in two steps: Download the software from GitHub and run build task in gradle (shown in figure \ref{fig:ghoul_build_process})
+Gradle allows developers to download and build Ghoul in two steps: Download the software from GitHub and run build task in Gradle (shown in figure \ref{fig:ghoul_build_process})
 
 \begin{figure}[tb]
 \begin{verbatim}
@@ -84,7 +85,7 @@ Then we put \texttt{DATA} string under the key \texttt{100}.
 Later we ask the third node get all replicas of the data under key \texttt{100}.
 The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 
-\begin{figure}[tb]
+\begin{figure}[h]
 \begin{verbatim}
 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.RegistrarMain\
   registrar0.xml > /dev/null &
@@ -111,7 +112,7 @@ The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 \label{fig:ghoul_manual_run}
 \end{figure}
 
-\begin{figure}[tb]
+\begin{figure}[h]
 \begin{verbatim}
 > curl -X GET 127.0.0.1:10000/get_routing_table
 {"nodeInfo":[{"inetAddress":"localhost","port":9001,
@@ -139,12 +140,12 @@ The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 \label{sec:implementation}
 
 The core interface of the protocol is \texttt{KademliaRouting} (shown in figure \ref{fig:routing_interface}).
-Implementation of this interface should implement the Kademlia protocol with Ghoul extensions.
+Implementations of this interface should implement the Kademlia protocol with Ghoul extensions.
 One of the focus of Ghoul's code is modularizabilty and \texttt{KademliaRouting} is an example of that focus.
-First, \texttt{KademliaRouting} is an interface, although there is only one implementation of it in the library's code.
+First, \texttt{KademliaRouting} is an interface, although there is only one implementation of it in the public part of the library's code.
 However, because it is an interface it is possible to easily mock it in unit-tests.
 \texttt{KademliaRouting} has another implementations in unit-testing code, e.g. \texttt{StaticKademliaRouting}, which has static routing table.
-This allows creation of proper, isolated unit-tests that test non-trivial scenarios and do not depend on complex dependencies.
+This allows creation of proper, isolated unit-tests that test non-trivial scenarios and do not depend on complex, error-prone dependencies.
 Second, \texttt{KademliaRouting} does not implement storage functionality.
 Storage is done by \texttt{KademliaStore} class.
 Such division of responsibilities is also an example of Single Responsibility
@@ -206,9 +207,18 @@ public interface KademliaRouting {
 \end{figure}
 
 {\texttt{KademliaRoutingImpl}'s constructor} is shown in figure \ref{fig:routing_constr_header}.
-Large number of parameters is sometimes considered a code smell, but dependency inversion is a more important consideration in this case and additionally a builder design pattern is used for creating instances of \texttt{KademliaRouting}.
-The dependencies of \texttt{KademliaRoutingImpl} are mostly interfaces (apart from \texttt{Key}, \texttt{TimeUnit}).
-For instance the core class - \texttt{KademliaRoutingImpl}, implements the core kademlia protocol with security checks, takes all its dependencies as constructor parameter (DependencyInversion).
+This constructor shows dependencies of \texttt{KademliaRoutingImpl}.
+Functions such as: discovering current internet address
+(\texttt{NetworkAddressDiscovery}), sending messages to given network address
+(\texttt{MessageSender}), background thread execution
+(\texttt{ScheduledExecutorService}), are realized by interfaces.
+This allows custom definition of those functionalities by the user.
+This is realization of yet another principle called dependency inversion - dependencies of classes should be provided to the classes not created by it.
+Again, the biggest strength of such approach is mostly visible in unit tests.
+Since network code is abstracted by interfaces, unit-tests may use fake implementations which transmit messages in memory and inject failures arbitrarily.
+Additionally, users of the Ghoul library may, for example, connect \texttt{KademliaRoutingImpl} with their own network code.
+Large number of parameters is sometimes considered a code smell, but dependency inversion is a more important consideration in this case.
+Additionally a builder design pattern is used for creating instances of \texttt{KademliaRouting}.
 
 \begin{figure}[tbp]
 \begin{lstlisting}
