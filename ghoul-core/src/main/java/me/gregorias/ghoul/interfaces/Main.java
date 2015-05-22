@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -243,7 +244,18 @@ public class Main {
         LOGGER.error("setUpSecurityExtension(): Could not get certificates.", e);
         return false;
       }
-      storage = null;
+
+      if (personalCertificates.size() == 0) {
+        return false;
+      }
+      SignedCertificate certificate = personalCertificates.iterator().next();
+      builder.setKey(certificate.getNodeDHTKey());
+
+      Map<Key, PublicKey> issuerKeys = new HashMap<>();
+      for (RegistrarDescription registrar : registrars) {
+        issuerKeys.put(registrar.getKey(), registrar.getPublicKey());
+      }
+      storage = new CertificateStorage(issuerKeys, tools, false);
     }
 
     builder.setPersonalCertificateManager(personalManager);

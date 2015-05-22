@@ -1,6 +1,8 @@
 package me.gregorias.ghoul.security;
 
 import me.gregorias.ghoul.kademlia.data.Key;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.security.PublicKey;
 import java.security.SignedObject;
@@ -14,6 +16,7 @@ import java.util.Observable;
 import java.util.Optional;
 
 public class CertificateStorage extends Observable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CertificateStorage.class);
   private final Map<Key, Map<Key, Certificate>> mCertificates;
   private final Map<Key, ZonedDateTime> mRevokedNodes;
   private final Map<Key, PublicKey> mIssuerKeys;
@@ -36,8 +39,10 @@ public class CertificateStorage extends Observable {
   }
 
   public synchronized void addCertificate(SignedObject signedObject) {
+    LOGGER.trace("addCertificate()");
     removeExpiredCertificates();
     if (!isCertificateValid(signedObject)) {
+      LOGGER.debug("addCertificate(): An invalid certificate was tried to be added.");
       return;
     }
 
@@ -46,8 +51,6 @@ public class CertificateStorage extends Observable {
     if (mRevokedNodes.containsKey(certificate.getNodeDHTKey())) {
       return;
     }
-
-
 
     Map<Key, Certificate> issuersMap;
     if (mCertificates.containsKey(certificate.getNodeDHTKey())) {
@@ -63,6 +66,7 @@ public class CertificateStorage extends Observable {
         issuersMap.put(certificate.getIssuerKey(), certificate);
       }
     } else {
+      LOGGER.trace("addCertificate(): Adding the certificate {}.", certificate.getNodeDHTKey());
       issuersMap.put(certificate.getIssuerKey(), certificate);
     }
   }
@@ -136,6 +140,7 @@ public class CertificateStorage extends Observable {
   private boolean isCertificateValid(SignedObject certificate) {
     Certificate baseCertificate = SignedCertificate.unwrap(certificate).get();
     if (baseCertificate.getExpirationDateTime().isBefore(ZonedDateTime.now())) {
+      LOGGER.trace("isCertificateValid(): Certificate's expiration date is due.");
       return false;
     }
 
@@ -149,6 +154,7 @@ public class CertificateStorage extends Observable {
     }
 
     if (!mIssuerKeys.containsKey(baseCertificate.getIssuerKey())) {
+      LOGGER.trace("isCertificateValid(): Certificate's issuer key is unknown.");
       return false;
     }
 

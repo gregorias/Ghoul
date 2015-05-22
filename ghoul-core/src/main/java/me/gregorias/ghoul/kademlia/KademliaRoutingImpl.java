@@ -932,8 +932,11 @@ public class KademliaRoutingImpl implements KademliaRouting {
     }
 
     private boolean isMessageFromValidHost(KademliaMessage msg) {
+      LOGGER.trace("isMessageFromValidHost({})", msg);
       NodeInfo sourceNodeInfo = msg.getSourceNodeInfo();
       if (!mCertificateStorage.isNodeValid(sourceNodeInfo.getKey())) {
+        LOGGER.trace("isMessageFromValidHost({}): Unknown source. Adding {} certificates.", msg,
+            msg.getCertificates().size());
         Collection<SignedCertificate> certificates = msg.getCertificates();
         if (certificates.size() == 0) {
           return false;

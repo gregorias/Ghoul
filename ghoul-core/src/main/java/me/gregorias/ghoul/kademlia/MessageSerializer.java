@@ -26,7 +26,7 @@ public class MessageSerializer {
   public static final byte PUT_TAG = 4;
   public static final byte GET_TAG = 5;
   public static final byte GET_REPLY_TAG = 6;
-  private static final int MAX_MESSAGE_SIZE = 1 << 12;
+  private static final int MAX_MESSAGE_SIZE = 1 << 15;
 
   public static byte[] serializeMessage(KademliaMessage msg) {
     ByteBuffer buffer = ByteBuffer.allocate(MAX_MESSAGE_SIZE);

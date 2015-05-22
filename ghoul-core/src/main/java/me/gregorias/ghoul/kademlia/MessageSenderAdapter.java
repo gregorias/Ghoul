@@ -25,7 +25,12 @@ public final class MessageSenderAdapter implements MessageSender {
   @Override
   public void sendMessage(InetSocketAddress dest, KademliaMessage msg) {
     LOGGER.debug("sendMessage({}, {})", dest, msg);
-    byte[] array = MessageSerializer.serializeMessage(msg);
-    mByteSender.sendMessage(dest, array);
+    try {
+      byte[] array = MessageSerializer.serializeMessage(msg);
+      LOGGER.debug("sendMessage({}, {}): sending", dest, msg);
+      mByteSender.sendMessage(dest, array);
+    } catch (Exception e) {
+      LOGGER.error("YOLO", e);
+    }
   }
 }

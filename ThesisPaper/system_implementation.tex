@@ -1,1 +1,177 @@
 \chapter{Ghoul implementation}
+In this chapter we will present the Ghoul's implementation.
+We will focus on general techniques used in Ghoul's development to produce high-quality code.
+In section \ref{sec:build} we present build tools used and how Ghoul may be run.
+Ghoul is an open-source project.
+An up-to-do Ghoul's code is available for public audience at \url{https://github.com/gregorias/ghoul}.
+
+\section{Build system and running}
+\label{sec:build}
+
+\subsection{Gradle}
+Currently Ghoul's code contains around 8000 lines of code in 126 Java files (excluding dfuntest's project).
+To maintain this amount of code we use Gradle \footnote{\url{https://gradle.org/}} build automation framework.
+In Gradle, developers write configuration scripts called \texttt{build.gradle} in which they define code's properties --- e.g. name of the project, project's dependencies; and build tasks.
+Those configuration scripts are written in a functional, dynamically typed language.
+This allows for expressive and succint definition of build tasks, which is an
+advantage over more traditional build framework - Maven \footnote{\url{https://maven.apache.org/}}.
+Next, Gradle performs, using provided information, typical task in Java's build ecosystem: compilation, packaging, dependency resolution, unit testing, software validation etc.
+Gradle allows developers to download and build Ghoul in two steps: Download the software from GitHub and run build task in gradle (shown in figure \ref{fig:ghoul_build_process})
+
+\begin{figure}[tb]
+\begin{verbatim}
+> git clone https://github.com/gregorias/ghoul
+...
+
+> cd ghoul
+
+> ./gradlew build
+:assemble UP-TO-DATE
+:check UP-TO-DATE
+:build UP-TO-DATE
+:ghoul-core:compileJava
+:ghoul-core:processResources UP-TO-DATE
+:ghoul-core:classes
+:ghoul-core:jar
+:ghoul-core:javadoc
+...
+:ghoul-dfuntest:pmdMain
+:ghoul-dfuntest:pmdTest UP-TO-DATE
+:ghoul-dfuntest:test UP-TO-DATE
+:ghoul-dfuntest:check
+:ghoul-dfuntest:build
+
+BUILD SUCCESSFUL
+
+Total time: 31.617 secs
+\end{verbatim}
+\caption{Ghoul's build process}
+\label{fig:ghoul_build_process}
+\end{figure}
+
+We have added additional automatic code quality checking tools to Ghoul's automatic build:
+
+\begin{description}
+  \item{\textbf{jUnit}\footnote{\url{http://junit.org}}} 
+    jUnit is the framework for writing repeatable unit tests for Java code.
+  \item{\textbf{JaCoCo}\footnote{\url{www.eclemma.org/jacoco/}}}
+    JaCoCo is a code coverage library which automatically analyzes code executed by jUnit tests and produces an HTML or XML report summarizing code coverage.
+
+  \item{\textbf{PMD}\footnote{\url{http://pmd.sourceforge.net}}}
+    PMD is a source code analyzer.
+    It finds common programming flaws like unused variables, empty catch blocks, unnecessary object creation etc.
+  \item{\textbf{Findbugs}\footnote{\url{http://findbugs.sourceforge.net/}}}
+    Findbugs is a static analysis tools which looks for bugs in Java's code.
+    It can detect such bugs are code smells as: unused variables, null value dereference, use of \texttt{AtomicBoolean} for comparison etc.
+    
+\end{description}
+
+We haven't included dfuntest's test into the automatic build, because this is a long task.
+However dfuntest's testing suite is always run manually to confirm code's correctness.
+
+\subsection{Usage}
+
+Although Ghoul is mainly designed to be used as a library, it is also possible to run it as a standalone application.
+In standalone mode Ghoul additionally exposes an RPC-over-HTTP interface over which it is possible to query and manipulate the DHT node (shown in table \ref{tab:http_rpc}).
+
+An example session which runs 2 registrars and 3 DHT nodes is shown in figures 
+\ref{fig:ghoul_manual_run} and \ref{fig:ghoul_manipulation}.
+In the session we use curl to send RPC-over-HTTP queries to DHT nodes.
+First we start registrars and then DHT nodes.
+Afterwards we get routing tables of the first and third DHT node.
+Then we put \texttt{DATA} string under the key \texttt{100}.
+Later we ask the third node get all replicas of the data under key \texttt{100}.
+
+\begin{figure}[tb]
+\begin{verbatim}o
+> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.RegistrarMain\
+  registrar0.xml > /dev/null &
+
+> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.RegistrarMain\
+  registrar1.xml > /dev/null &
+
+> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+  kademlia0.xml >/dev/null &
+
+> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+  kademlia1.xml >/dev/null &
+
+> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+  kademlia2.xml >/dev/null &
+
+> curl -X POST 127.0.0.1:10000/start
+
+> curl -X POST 127.0.0.1:10001/start
+
+> curl -X POST 127.0.0.1:10002/start
+\end{verbatim}
+\caption{Ghoul's starting commands}
+\label{fig:ghoul_manual_run}
+\end{figure}
+
+\begin{figure}[tb]
+\begin{verbatim}
+> curl -X GET 127.0.0.1:10000/get_routing_table
+{"nodeInfo":[{"inetAddress":"localhost","port":9001,
+    "key":"fca426586c9a211513c4338e975c5508250c1a0"},
+{"inetAddress":"localhost","port":9002,
+    "key":"2d1386c9c601676189faa7790b60dbeda3ed3e9b"}]}
+
+> curl -X GET 127.0.0.1:10001/get_routing_table
+{"nodeInfo":[{"inetAddress":"localhost","port":9000,
+    "key":"15624f385826cae60bef58da5b53b4dc1cf070bd"},
+{"inetAddress":"localhost","port":9002,
+    "key":"2d1386c9c601676189faa7790b60dbeda3ed3e9b"}]}
+
+> curl -X POST --header "Content-Type:application/octet-stream" \ 
+--data-binary DATA 127.0.0.1:10000/put/100
+
+> curl -X GET 127.0.0.1:10002/get/100
+["REFUQQ==","REFUQQ==","REFUQQ=="]
+\end{verbatim}
+\caption{Ghoul's status query and DHT manipulation}
+\label{fig:ghoul_manipulation}
+\end{figure}
+
+\section{Implementation}
+
+%Ghoul's class design uses SOLID [Agile Software Development, Principles,
+%Patterns and Practices] principles of object design.
+%SOLID principles are a set of 5 guidelines for designing objects such that the entire code will more likely to be easier to maintain and extend.
+%Those 5 principles are:
+
+%\begin{description}
+  %\item{\textbf{Single responsibility principle}}
+%\end{description}
+%
+%SOLID principles increase code's modularity and reusability.
+%Their effects are especially visible in unit tests.
+%For instance the core class - \texttt{KademliaRoutingImpl}, implements the core kademlia protocol with security checks, takes all its dependencies as constructor parameter (DependencyInversion).
+%Its constructor's header is show on figure \ref{fig:routing_constr_header}.
+%Large number of parameters is sometimes considered a code smell, but dependency inversion is a more important consideration in this case and additionally a builder design pattern is used for creating instances of \texttt{KademliaRouting}.
+%The dependencies of \texttt{KademliaRoutingImpl} are mostly interfaces (apart from \texttt{Key}, \texttt{TimeUnit}).
+%This is a realization of the Liskov substitution principle; Later we will that this allows creation of mocks and stubs in unit-testing for testing not-trivial scenarios.
+%
+%\begin{figure}[tbp]
+%\begin{lstlisting}
+%KademliaRoutingImpl(Key localKey,
+                    %NetworkAddressDiscovery networkAddressDiscovery,
+                    %MessageSender sender,
+                    %ListeningService listeningService,
+                    %int bucketSize,
+                    %int alpha,
+                    %Collection<NodeInfo> initialKnownPeers,
+                    %long messageTimeout,
+                    %TimeUnit messageTimeoutUnit,
+                    %long heartBeatDelay,
+                    %TimeUnit heartBeatDelayUnit,
+                    %PersonalCertificateManager personalCertificateManager,
+                    %CertificateStorage certificateStorage,
+                    %PrivateKey personalPrivateKey,
+                    %ScheduledExecutorService scheduledExecutor,
+                    %Random random) {
+%\end{lstlisting}
+%\caption{\texttt{KademliaRoutingImpl}}
+%\label{fig:routing_constr_header}
+%\end{figure}
+
