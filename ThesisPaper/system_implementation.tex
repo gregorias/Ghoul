@@ -1,9 +1,10 @@
 \chapter{Ghoul implementation}
 In this chapter we will present the Ghoul's implementation.
 We will focus on general techniques used in Ghoul's development to produce high-quality code.
-In section \ref{sec:build} we present build tools used and how Ghoul may be run.
+In section \ref{sec:build} we present build tools used and an example session with Ghoul.
+In section \ref{sec:implementation} we show as an example of our design principles the interface of \texttt{KademliaRouting} - the core class in the protocol.
 Ghoul is an open-source project.
-An up-to-do Ghoul's code is available for public audience at \url{https://github.com/gregorias/ghoul}.
+An up-to-date Ghoul's code is available for public audience at \url{https://github.com/gregorias/ghoul}.
 
 \section{Build system and running}
 \label{sec:build}
@@ -83,7 +84,7 @@ Then we put \texttt{DATA} string under the key \texttt{100}.
 Later we ask the third node get all replicas of the data under key \texttt{100}.
 
 \begin{figure}[tb]
-\begin{verbatim}o
+\begin{verbatim}
 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.RegistrarMain\
   registrar0.xml > /dev/null &
 
@@ -134,6 +135,7 @@ Later we ask the third node get all replicas of the data under key \texttt{100}.
 \end{figure}
 
 \section{Implementation}
+\label{sec:implementation}
 
 %Ghoul's class design uses SOLID [Agile Software Development, Principles,
 %Patterns and Practices] principles of object design.
@@ -152,26 +154,96 @@ Later we ask the third node get all replicas of the data under key \texttt{100}.
 %The dependencies of \texttt{KademliaRoutingImpl} are mostly interfaces (apart from \texttt{Key}, \texttt{TimeUnit}).
 %This is a realization of the Liskov substitution principle; Later we will that this allows creation of mocks and stubs in unit-testing for testing not-trivial scenarios.
 %
-%\begin{figure}[tbp]
-%\begin{lstlisting}
-%KademliaRoutingImpl(Key localKey,
-                    %NetworkAddressDiscovery networkAddressDiscovery,
-                    %MessageSender sender,
-                    %ListeningService listeningService,
-                    %int bucketSize,
-                    %int alpha,
-                    %Collection<NodeInfo> initialKnownPeers,
-                    %long messageTimeout,
-                    %TimeUnit messageTimeoutUnit,
-                    %long heartBeatDelay,
-                    %TimeUnit heartBeatDelayUnit,
-                    %PersonalCertificateManager personalCertificateManager,
-                    %CertificateStorage certificateStorage,
-                    %PrivateKey personalPrivateKey,
-                    %ScheduledExecutorService scheduledExecutor,
-                    %Random random) {
-%\end{lstlisting}
-%\caption{\texttt{KademliaRoutingImpl}}
-%\label{fig:routing_constr_header}
-%\end{figure}
 
+The core interface of the protocol is \texttt{KademliaRouting} (shown in figure \ref{fig:routing_interface}).
+Implementation of this interface should implement the Kademlia protocol with Ghoul extensions.
+One of the focus of Ghoul's code is modularizabilty and \texttt{KademliaRouting} is an example of that focus.
+First, \texttt{KademliaRouting} is an interface, although there is only one implementation of it in the library's code.
+However, because it is an interface it is possible to easily mock it in unit-tests.
+\texttt{KademliaRouting} has another implementations in unit-testing code, e.g. \texttt{StaticKademliaRouting}, which has static routing table.
+This allows creation of proper, isolated unit-tests that test non-trivial scenarios and do not depend on complex dependencies.
+Second, \texttt{KademliaRouting} does not implement storage functionality.
+Storage is done by \texttt{KademliaStore} class.
+Such division of responsibilities is also an example of Single Responsibility
+Prinicple - one class should have only one responsibility.
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public interface KademliaRouting {
+  /**
+   * Find size number of nodes closest to given {@link Key}.
+   *
+   * @param key key to look up
+   * @param size number of nodes to find
+   * @return up to size found nodes
+   */
+  Collection<NodeInfo> findClosestNodes(Key key, int size) throws InterruptedException,
+      KademliaException;
+
+  /**
+   * @return hosts present in the local routing table.
+   */
+  Collection<NodeInfo> getFlatRoutingTable();
+
+  /**
+   * @return Key representing this peer
+   */
+  Key getLocalKey();
+
+  /**
+   * @return is kademlia running.
+   */
+  boolean isRunning();
+
+  /**
+   * Registers neighbour listener which will receive notifications about newly added nodes.
+   *
+   * @param listener listener to register
+   */
+  void registerNeighbourListener(NeighbourListener listener);
+
+  /**
+   * Unregisters neighbour listener if any is present.
+   */
+  void unregisterNeighbourListener();
+
+  /**
+   * Connect and initialize this peer.
+   */
+  void start() throws KademliaException;
+
+  /**
+   * Disconnects peer from network.
+   */
+  void stop() throws KademliaException;
+}
+\end{lstlisting}
+\caption{\texttt{KademliaRouting} interface}
+\label{fig:routing_interface}
+\end{figure}
+
+{\texttt{KademliaRoutingImpl}'s constructor} is shown in figure
+\ref{fig:routing_constr_header}.
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+KademliaRoutingImpl(Key localKey,
+                    NetworkAddressDiscovery networkAddressDiscovery,
+                    MessageSender sender,
+                    ListeningService listeningService,
+                    int bucketSize,
+                    int alpha,
+                    Collection<NodeInfo> initialKnownPeers,
+                    long messageTimeout,
+                    TimeUnit messageTimeoutUnit,
+                    long heartBeatDelay,
+                    TimeUnit heartBeatDelayUnit,
+                    PersonalCertificateManager personalCertificateManager,
+                    CertificateStorage certificateStorage,
+                    PrivateKey personalPrivateKey,
+                    ScheduledExecutorService scheduledExecutor,
+                    Random random);
+\end{lstlisting}
+\caption{\texttt{KademliaRoutingImpl}'s constructor}
+\label{fig:routing_constr_header}
+\end{figure}
