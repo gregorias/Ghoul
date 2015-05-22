@@ -82,6 +82,7 @@ First we start registrars and then DHT nodes.
 Afterwards we get routing tables of the first and third DHT node.
 Then we put \texttt{DATA} string under the key \texttt{100}.
 Later we ask the third node get all replicas of the data under key \texttt{100}.
+The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 
 \begin{figure}[tb]
 \begin{verbatim}
@@ -137,24 +138,6 @@ Later we ask the third node get all replicas of the data under key \texttt{100}.
 \section{Implementation}
 \label{sec:implementation}
 
-%Ghoul's class design uses SOLID [Agile Software Development, Principles,
-%Patterns and Practices] principles of object design.
-%SOLID principles are a set of 5 guidelines for designing objects such that the entire code will more likely to be easier to maintain and extend.
-%Those 5 principles are:
-
-%\begin{description}
-  %\item{\textbf{Single responsibility principle}}
-%\end{description}
-%
-%SOLID principles increase code's modularity and reusability.
-%Their effects are especially visible in unit tests.
-%For instance the core class - \texttt{KademliaRoutingImpl}, implements the core kademlia protocol with security checks, takes all its dependencies as constructor parameter (DependencyInversion).
-%Its constructor's header is show on figure \ref{fig:routing_constr_header}.
-%Large number of parameters is sometimes considered a code smell, but dependency inversion is a more important consideration in this case and additionally a builder design pattern is used for creating instances of \texttt{KademliaRouting}.
-%The dependencies of \texttt{KademliaRoutingImpl} are mostly interfaces (apart from \texttt{Key}, \texttt{TimeUnit}).
-%This is a realization of the Liskov substitution principle; Later we will that this allows creation of mocks and stubs in unit-testing for testing not-trivial scenarios.
-%
-
 The core interface of the protocol is \texttt{KademliaRouting} (shown in figure \ref{fig:routing_interface}).
 Implementation of this interface should implement the Kademlia protocol with Ghoul extensions.
 One of the focus of Ghoul's code is modularizabilty and \texttt{KademliaRouting} is an example of that focus.
@@ -165,7 +148,7 @@ This allows creation of proper, isolated unit-tests that test non-trivial scenar
 Second, \texttt{KademliaRouting} does not implement storage functionality.
 Storage is done by \texttt{KademliaStore} class.
 Such division of responsibilities is also an example of Single Responsibility
-Prinicple - one class should have only one responsibility.
+Principle - one class should have only one responsibility.
 
 \begin{figure}[tbp]
 \begin{lstlisting}
@@ -222,8 +205,10 @@ public interface KademliaRouting {
 \label{fig:routing_interface}
 \end{figure}
 
-{\texttt{KademliaRoutingImpl}'s constructor} is shown in figure
-\ref{fig:routing_constr_header}.
+{\texttt{KademliaRoutingImpl}'s constructor} is shown in figure \ref{fig:routing_constr_header}.
+Large number of parameters is sometimes considered a code smell, but dependency inversion is a more important consideration in this case and additionally a builder design pattern is used for creating instances of \texttt{KademliaRouting}.
+The dependencies of \texttt{KademliaRoutingImpl} are mostly interfaces (apart from \texttt{Key}, \texttt{TimeUnit}).
+For instance the core class - \texttt{KademliaRoutingImpl}, implements the core kademlia protocol with security checks, takes all its dependencies as constructor parameter (DependencyInversion).
 
 \begin{figure}[tbp]
 \begin{lstlisting}
