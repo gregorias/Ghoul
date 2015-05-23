@@ -1,6 +1,7 @@
 package me.gregorias.ghoul.kademlia;
 
 import java.net.InetSocketAddress;
+import java.security.KeyPair;
 import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,6 +39,7 @@ import me.gregorias.ghoul.kademlia.data.PingMessage;
 import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.CryptographyTools;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
 import me.gregorias.ghoul.security.SignedCertificate;
 import org.slf4j.Logger;
@@ -112,8 +114,10 @@ public class KademliaRoutingImpl implements KademliaRouting {
   private final Lock mWriteRunningLock;
 
   private final PersonalCertificateManager mPersonalCertificateManager;
-  private final Object mPersonalPrivateKey;
+  private final KeyPair mPersonalKeyPair;
   private final CertificateStorage mCertificateStorage;
+
+  private final CryptographyTools mTools;
 
   private boolean mIsRunning = false;
 
@@ -133,7 +137,8 @@ public class KademliaRoutingImpl implements KademliaRouting {
    * @param heartBeatDelayUnit heart beat delay unit
    * @param personalCertificateManager TODO
    * @param certificateStorage TODO
-   * @param personalPrivateKey TODO
+   * @param personalKeyPair TODO
+   * @param cryptographyTools TODO
    * @param scheduledExecutor  executor used for executing tasks
    * @param random             random number generator
    */
@@ -150,7 +155,8 @@ public class KademliaRoutingImpl implements KademliaRouting {
                       TimeUnit heartBeatDelayUnit,
                       PersonalCertificateManager personalCertificateManager,
                       CertificateStorage certificateStorage,
-                      Object personalPrivateKey,
+                      KeyPair personalKeyPair,
+                      CryptographyTools cryptographyTools,
                       ScheduledExecutorService scheduledExecutor,
                       Random random) {
     assert bucketSize > 0;
@@ -180,7 +186,9 @@ public class KademliaRoutingImpl implements KademliaRouting {
 
     mPersonalCertificateManager = personalCertificateManager;
     mCertificateStorage = certificateStorage;
-    mPersonalPrivateKey = personalPrivateKey;
+    mPersonalKeyPair = personalKeyPair;
+
+    mTools = cryptographyTools;
 
     mScheduledExecutor = scheduledExecutor;
 
@@ -503,7 +511,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
           new ArrayList<>(),
           mSearchedKey);
 
-      msg.signMessage(mPersonalPrivateKey);
+      msg.signMessage(mPersonalKeyPair.getPrivate(), mTools);
 
       mMessageSender.sendMessage(nodeInfoWithStatus.mInfo.getSocketAddress(), msg);
       mScheduledExecutor.schedule(() -> {
@@ -821,7 +829,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
           shouldRequestCertificate,
           new ArrayList<>());
 
-      pingMessage.signMessage(mPersonalPrivateKey);
+      pingMessage.signMessage(mPersonalKeyPair.getPrivate(), mTools);
       mMessageSender.sendMessage(targetNode.getSocketAddress(), pingMessage);
 
       mExpectedIds.addExpectedMessage(pingId, targetNode.getKey());
@@ -968,7 +976,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
           shouldRequireCertificates,
           personalCertificates,
           foundNodes);
-      replyMessage.signMessage(mPersonalPrivateKey);
+      replyMessage.signMessage(mPersonalKeyPair.getPrivate(), mTools);
       mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), replyMessage);
     }
 
@@ -985,9 +993,11 @@ public class KademliaRoutingImpl implements KademliaRouting {
         return;
       }
 
-      if (!msg.verifyMessage(pubKey.get())) {
-        LOGGER.info("receiveFindNodeReplyMessage({}): Received message has invalid signature.",
-            msg);
+      if (!msg.verifyMessage(pubKey.get(), mTools)) {
+        LOGGER.info("receiveFindNodeReplyMessage({}): Received message has invalid signature."
+                + " Public key: {}",
+            msg,
+            pubKey.get());
         return;
       }
 
@@ -999,7 +1009,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
             msg.getId(),
             false,
             mPersonalCertificateManager.getPersonalCertificates());
-        pongMessage.signMessage(mPersonalPrivateKey);
+        pongMessage.signMessage(mPersonalKeyPair.getPrivate(), mTools);
         mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
       }
     }
@@ -1019,7 +1029,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
           msg.getId(),
           shouldRequireCertificates,
           personalCertificates);
-      pongMessage.signMessage(mPersonalPrivateKey);
+      pongMessage.signMessage(mPersonalKeyPair.getPrivate(), mTools);
       mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
     }
 
@@ -1036,7 +1046,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
         return;
       }
 
-      if (!msg.verifyMessage(pubKey.get())) {
+      if (!msg.verifyMessage(pubKey.get(), mTools)) {
         LOGGER.info("receivePongMessage({}): Received message has invalid signature.", msg);
         return;
       }
@@ -1050,7 +1060,7 @@ public class KademliaRoutingImpl implements KademliaRouting {
             msg.getId(),
             false,
             mPersonalCertificateManager.getPersonalCertificates());
-        pongMessage.signMessage(mPersonalPrivateKey);
+        pongMessage.signMessage(mPersonalKeyPair.getPrivate(), mTools);
         mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), pongMessage);
       }
     }

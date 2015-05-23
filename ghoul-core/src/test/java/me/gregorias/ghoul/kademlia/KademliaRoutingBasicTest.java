@@ -528,6 +528,7 @@ public final class KademliaRoutingBasicTest {
         personalCertificates);
     mBuilder.setCertificateStorage(certificateStorage);
     mBuilder.setPersonalCertificateManager(certificateManager);
+    mBuilder.setPersonalKeyPair(pair);
     mBuilder.setKey(key);
     return mBuilder.createPeer();
   }

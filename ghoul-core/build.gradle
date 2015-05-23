@@ -36,7 +36,7 @@ compileTestJava {
 }
 
 test {
-  jvmArgs=['-Dorg.slf4j.simpleLogger.defaultLogLevel=info']
+  jvmArgs=['-Dorg.slf4j.simpleLogger.defaultLogLevel=trace']
   testLogging.showStandardStreams = true
 }
 

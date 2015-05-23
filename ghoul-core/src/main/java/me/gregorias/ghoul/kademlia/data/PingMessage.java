@@ -26,15 +26,13 @@ public final class PingMessage extends KademliaMessage {
   }
 
   public static PingMessage deserialize(ByteBuffer buffer) throws DeserializationException {
-    KademliaMessage coreMsg = KademliaMessage.deserialize(buffer);
+    KademliaMessage coreMsg = KademliaMessage.deserializeContent(buffer);
     PingMessage msg = new PingMessage(coreMsg.getSourceNodeInfo(),
         coreMsg.getDestinationNodeInfo(),
         coreMsg.getId(),
         coreMsg.isCertificateRequest(),
         coreMsg.getCertificates());
-    if (coreMsg.getSignature().isPresent()) {
-      msg.setSignature(coreMsg.getSignature().get());
-    }
+    msg.setSignature(KademliaMessage.deserializeSignature(buffer));
     return msg;
   }
 

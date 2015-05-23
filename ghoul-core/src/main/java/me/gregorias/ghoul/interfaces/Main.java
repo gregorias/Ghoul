@@ -7,7 +7,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.channels.DatagramChannel;
 import java.security.KeyPair;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -163,10 +162,9 @@ public class Main {
     CryptographyTools tools = CryptographyTools.getDefault();
     KeyPair localKeyPair = KeyGenerator.generateKeys();
 
-
+    builder.setPersonalKeyPair(localKeyPair);
     setUpSecurityExtensions(localKey,
-        localKeyPair.getPublic(),
-        localKeyPair.getPrivate(),
+        localKeyPair,
         tools,
         builder,
         config);
@@ -199,9 +197,9 @@ public class Main {
     LOGGER.info("main() -> void");
   }
 
-  private static Collection<SignedCertificate> joinDHT(Collection<RegistrarDescription> registrars)
+  private static Collection<SignedCertificate> joinDHT(Collection<RegistrarDescription> registrars,
+                                                       KeyPair keyPair)
       throws IOException, ClassNotFoundException, GhoulProtocolException {
-    KeyPair keyPair = KeyGenerator.generateKeys();
     RegistrarClient client = new RegistrarClient(
         registrars,
         keyPair,
@@ -211,8 +209,7 @@ public class Main {
 
   private static boolean setUpSecurityExtensions(
       Key localDHTKey,
-      PublicKey publicKey,
-      PrivateKey privateKey,
+      KeyPair localKeyPair,
       CryptographyTools tools,
       KademliaRoutingBuilder builder,
       HierarchicalConfiguration config) {
@@ -220,10 +217,12 @@ public class Main {
     CertificateStorage storage;
 
     if (config.containsKey(Main.XML_FIELD_USE_AND_ALLOW_SELF_SIGNED_CERTIFICATES)) {
-      Certificate personalCertificate = new CertificateImpl(publicKey, localDHTKey, localDHTKey,
+      Certificate personalCertificate = new CertificateImpl(localKeyPair.getPublic(),
+          localDHTKey,
+          localDHTKey,
           ZonedDateTime.now().plusDays(7));
       SignedCertificate signedCertificate = SignedCertificate.sign(personalCertificate,
-          privateKey,
+          localKeyPair.getPrivate(),
           tools);
 
       Collection<SignedCertificate> certificates = new ArrayList<>();
@@ -238,7 +237,7 @@ public class Main {
       Collection<SignedCertificate> personalCertificates;
       try {
         registrars = RegistrarMain.loadRegistrarDescriptions(registrarsConfig);
-        personalCertificates = joinDHT(registrars);
+        personalCertificates = joinDHT(registrars, localKeyPair);
         personalManager = new PersonalCertificateManager(personalCertificates);
       } catch (ClassNotFoundException | GhoulProtocolException | IOException e) {
         LOGGER.error("setUpSecurityExtension(): Could not get certificates.", e);

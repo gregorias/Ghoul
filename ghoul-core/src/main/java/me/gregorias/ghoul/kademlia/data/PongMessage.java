@@ -26,15 +26,13 @@ public final class PongMessage extends KademliaMessage {
   }
 
   public static PongMessage deserialize(ByteBuffer buffer) throws DeserializationException {
-    KademliaMessage coreMsg = KademliaMessage.deserialize(buffer);
+    KademliaMessage coreMsg = KademliaMessage.deserializeContent(buffer);
     PongMessage msg = new PongMessage(coreMsg.getSourceNodeInfo(),
         coreMsg.getDestinationNodeInfo(),
         coreMsg.getId(),
         coreMsg.isCertificateRequest(),
         coreMsg.getCertificates());
-    if (coreMsg.getSignature().isPresent()) {
-      msg.setSignature(coreMsg.getSignature().get());
-    }
+    msg.setSignature(KademliaMessage.deserializeSignature(buffer));
     return msg;
   }
 }

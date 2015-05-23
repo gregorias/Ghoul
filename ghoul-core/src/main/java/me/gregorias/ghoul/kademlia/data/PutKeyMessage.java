@@ -33,24 +33,8 @@ public class PutKeyMessage extends KademliaMessage {
     return mKey;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    getSourceNodeInfo().serialize(buffer);
-    getDestinationNodeInfo().serialize(buffer);
-    buffer.putInt(getId());
-    mKey.serialize(buffer);
-    buffer.putInt(mData.length);
-    buffer.put(mData);
-  }
-
   public static PutKeyMessage deserialize(ByteBuffer buffer) throws DeserializationException {
-    NodeInfo srcNodeInfo = NodeInfo.deserialize(buffer);
-    NodeInfo destNodeInfo = NodeInfo.deserialize(buffer);
-    int id;
-    try {
-      id = buffer.getInt();
-    } catch (BufferUnderflowException e) {
-      throw new DeserializationException(e);
-    }
+    KademliaMessage coreMsg = KademliaMessage.deserializeContent(buffer);
     Key key = Key.deserialize(buffer);
     int dataLength = buffer.getInt();
     byte[] data = new byte[dataLength];
@@ -59,7 +43,13 @@ public class PutKeyMessage extends KademliaMessage {
     } catch (BufferUnderflowException e) {
       throw new DeserializationException(e);
     }
-    return new PutKeyMessage(srcNodeInfo, destNodeInfo, id, key, data);
+    PutKeyMessage msg = new PutKeyMessage(coreMsg.getSourceNodeInfo(),
+        coreMsg.getDestinationNodeInfo(),
+        coreMsg.getId(),
+        key,
+        data);
+    msg.setSignature(KademliaMessage.deserializeSignature(buffer));
+    return msg;
   }
 
   @Override
@@ -70,5 +60,13 @@ public class PutKeyMessage extends KademliaMessage {
         getId(),
         mKey,
         mData.length);
+  }
+
+  @Override
+  protected void serializeContent(ByteBuffer buffer) {
+    super.serializeContent(buffer);
+    mKey.serialize(buffer);
+    buffer.putInt(mData.length);
+    buffer.put(mData);
   }
 }

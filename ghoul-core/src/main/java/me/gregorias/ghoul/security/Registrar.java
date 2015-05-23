@@ -261,7 +261,8 @@ public class Registrar implements Runnable {
         mExecutor.execute(() -> {
             Optional<Key> keyOptional = keyGenProtocol.call();
             if (keyOptional.isPresent()) {
-              SignedCertificate certificate = createCertificate(pubKey, keyOptional.get());
+              SignedCertificate certificate = createCertificate(startMsg.getClientPublicKey(),
+                  keyOptional.get());
               CertificateMessage msg = new CertificateMessage(mKey,
                   startMsg.getClientPublicKey(),
                   certificate);

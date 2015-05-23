@@ -3,7 +3,6 @@ package me.gregorias.ghoul.kademlia.data;
 import me.gregorias.ghoul.utils.DeserializationException;
 
 import javax.validation.constraints.NotNull;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 /**
@@ -25,24 +24,15 @@ public class GetKeyMessage extends KademliaMessage {
     return mKey;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    getSourceNodeInfo().serialize(buffer);
-    getDestinationNodeInfo().serialize(buffer);
-    buffer.putInt(getId());
-    mKey.serialize(buffer);
-  }
-
   public static GetKeyMessage deserialize(ByteBuffer buffer) throws DeserializationException {
-    NodeInfo srcNodeInfo = NodeInfo.deserialize(buffer);
-    NodeInfo destNodeInfo = NodeInfo.deserialize(buffer);
-    int id;
-    try {
-      id = buffer.getInt();
-    } catch (BufferUnderflowException e) {
-      throw new DeserializationException(e);
-    }
+    KademliaMessage coreMsg = KademliaMessage.deserializeContent(buffer);
     Key key = Key.deserialize(buffer);
-    return new GetKeyMessage(srcNodeInfo, destNodeInfo, id, key);
+    GetKeyMessage getKeyMessage = new GetKeyMessage(coreMsg.getSourceNodeInfo(),
+        coreMsg.getDestinationNodeInfo(),
+        coreMsg.getId(),
+        key);
+    getKeyMessage.setSignature(KademliaMessage.deserializeSignature(buffer));
+    return getKeyMessage;
   }
 
   @Override
@@ -52,5 +42,11 @@ public class GetKeyMessage extends KademliaMessage {
         getDestinationNodeInfo(),
         getId(),
         mKey);
+  }
+
+  @Override
+  protected void serializeContent(ByteBuffer buffer) {
+    super.serializeContent(buffer);
+    mKey.serialize(buffer);
   }
 }

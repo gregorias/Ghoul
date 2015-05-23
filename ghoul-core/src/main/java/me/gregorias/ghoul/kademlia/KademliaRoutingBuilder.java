@@ -1,5 +1,6 @@
 package me.gregorias.ghoul.kademlia;
 
+import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
@@ -14,6 +15,7 @@ import me.gregorias.ghoul.network.ByteListeningService;
 import me.gregorias.ghoul.network.ByteSender;
 import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import me.gregorias.ghoul.security.CertificateStorage;
+import me.gregorias.ghoul.security.CryptographyTools;
 import me.gregorias.ghoul.security.PersonalCertificateManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +39,7 @@ public class KademliaRoutingBuilder {
   private final Random mRandom;
   private static final int DEFAULT_BUCKET_SIZE = 10;
   private static final int DEFAULT_ALPHA = 5;
+  private static final CryptographyTools CRYPTOGRAPHY_TOOLS = CryptographyTools.getDefault();
 
   private long mMessageTimeout = 5000;
   private TimeUnit mMessageTimeoutUnit = TimeUnit.MILLISECONDS;
@@ -55,7 +58,7 @@ public class KademliaRoutingBuilder {
   private NetworkAddressDiscovery mNetworkAddressDiscovery;
   private PersonalCertificateManager mPersonalCertificateManager;
   private CertificateStorage mCertificateStorage;
-  private Object mPersonalPrivateKey;
+  private KeyPair mPersonalKeyPair;
 
   public KademliaRoutingBuilder(Random random) {
     mRandom = random;
@@ -74,6 +77,7 @@ public class KademliaRoutingBuilder {
     checkIfByteSenderIsSet();
     checkIfExecutorIsSet();
     checkIfNetworkAddressDiscoveryIsSet();
+    checkIfKeyPairIsSet();
 
     Key usedKey = getSetKeyOrCreateNew();
 
@@ -126,7 +130,8 @@ public class KademliaRoutingBuilder {
         mHeartBeatDelayUnit,
         mPersonalCertificateManager,
         mCertificateStorage,
-        null,
+        mPersonalKeyPair,
+        CRYPTOGRAPHY_TOOLS,
         mExecutor,
         mRandom);
   }
@@ -236,6 +241,12 @@ public class KademliaRoutingBuilder {
     return this;
   }
 
+
+  public KademliaRoutingBuilder setPersonalKeyPair(KeyPair keyPair) {
+    mPersonalKeyPair = keyPair;
+    return this;
+  }
+
   /**
    * A wrapper on top of {@link me.gregorias.ghoul.kademlia.ListeningService} which may
    * have multiple kademlia peers as its listeners.
@@ -300,6 +311,12 @@ public class KademliaRoutingBuilder {
   private void checkIfPersonalCertificateManagerIsSet() {
     if (mPersonalCertificateManager == null) {
       throw new IllegalStateException("Personal certificate manager is not set.");
+    }
+  }
+
+  private void checkIfKeyPairIsSet() {
+    if (mPersonalKeyPair == null) {
+      throw new IllegalStateException("Personal private key is not set.");
     }
   }
 

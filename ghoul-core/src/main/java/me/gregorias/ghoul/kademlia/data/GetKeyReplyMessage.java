@@ -7,9 +7,6 @@ import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
-/**
- * Created by grzesiek on 24.04.15.
- */
 public class GetKeyReplyMessage extends KademliaMessage {
   private static final long serialVersionUID = 1L;
   private final Key mKey;
@@ -41,26 +38,10 @@ public class GetKeyReplyMessage extends KademliaMessage {
     return mKey;
   }
 
-  public void serialize(ByteBuffer buffer) {
-    getSourceNodeInfo().serialize(buffer);
-    getDestinationNodeInfo().serialize(buffer);
-    buffer.putInt(getId());
-    mKey.serialize(buffer);
-    if (mData != null) {
-      buffer.put((byte) 1);
-      buffer.putInt(mData.length);
-      buffer.put(mData);
-    } else {
-      buffer.put((byte) 0);
-    }
-  }
 
   public static GetKeyReplyMessage deserialize(ByteBuffer buffer) throws DeserializationException {
-    NodeInfo srcNodeInfo = NodeInfo.deserialize(buffer);
-    NodeInfo destNodeInfo = NodeInfo.deserialize(buffer);
-    int id;
+    KademliaMessage msg = KademliaMessage.deserializeContent(buffer);
     try {
-      id = buffer.getInt();
       Key key = Key.deserialize(buffer);
       byte hasData = buffer.get();
       Optional<byte[]> data;
@@ -72,7 +53,14 @@ public class GetKeyReplyMessage extends KademliaMessage {
         buffer.get(dataArr);
         data = Optional.of(dataArr);
       }
-      return new GetKeyReplyMessage(srcNodeInfo, destNodeInfo, id, key, data);
+      GetKeyReplyMessage replyMsg = new GetKeyReplyMessage(
+          msg.getSourceNodeInfo(),
+          msg.getDestinationNodeInfo(),
+          msg.getId(),
+          key,
+          data);
+      replyMsg.setSignature(KademliaMessage.deserializeSignature(buffer));
+      return replyMsg;
     } catch (BufferUnderflowException e) {
       throw new DeserializationException(e);
     }
@@ -86,6 +74,19 @@ public class GetKeyReplyMessage extends KademliaMessage {
         getId(),
         mKey,
         mData == null ? null : mData.length);
+  }
+
+  @Override
+  protected void serializeContent(ByteBuffer buffer) {
+    super.serializeContent(buffer);
+    mKey.serialize(buffer);
+    if (mData != null) {
+      buffer.put((byte) 1);
+      buffer.putInt(mData.length);
+      buffer.put(mData);
+    } else {
+      buffer.put((byte) 0);
+    }
   }
 }
 

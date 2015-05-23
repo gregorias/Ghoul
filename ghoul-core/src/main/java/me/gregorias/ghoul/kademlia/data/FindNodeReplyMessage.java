@@ -36,22 +36,24 @@ public final class FindNodeReplyMessage extends KademliaMessage {
     mFoundNodes = new ArrayList<>(foundNodes);
   }
 
+  private FindNodeReplyMessage(@NotNull NodeInfo srcNodeInfo,
+                               @NotNull NodeInfo destNodeInfo,
+                               int id,
+                               boolean certificateRequest,
+                               Collection<SignedCertificate> certificates,
+                               Collection<NodeInfo> foundNodes,
+                               byte[] signature) {
+    super(srcNodeInfo, destNodeInfo, id, certificateRequest, certificates, signature);
+    mFoundNodes = new ArrayList<>(foundNodes);
+  }
+
   public Collection<NodeInfo> getFoundNodes() {
     return new ArrayList<>(mFoundNodes);
   }
 
-  public void serialize(ByteBuffer buffer) {
-    super.serialize(buffer);
-    byte size = (byte) mFoundNodes.size();
-    buffer.put(size);
-    for (NodeInfo nodeInfo : mFoundNodes) {
-      nodeInfo.serialize(buffer);
-    }
-  }
-
   public static FindNodeReplyMessage deserialize(ByteBuffer buffer)
       throws DeserializationException {
-    KademliaMessage coreMsg = KademliaMessage.deserialize(buffer);
+    KademliaMessage coreMsg = KademliaMessage.deserializeContent(buffer);
     byte size;
     try {
       size = buffer.get();
@@ -62,22 +64,34 @@ public final class FindNodeReplyMessage extends KademliaMessage {
     for (int i = 0; i < size; ++i) {
       foundNodes.add(NodeInfo.deserialize(buffer));
     }
-    FindNodeReplyMessage msg =  new FindNodeReplyMessage(coreMsg.getSourceNodeInfo(),
+    byte[] signature = KademliaMessage.deserializeSignature(buffer);
+    return new FindNodeReplyMessage(coreMsg.getSourceNodeInfo(),
         coreMsg.getDestinationNodeInfo(),
         coreMsg.getId(),
         coreMsg.isCertificateRequest(),
         coreMsg.getCertificates(),
-        foundNodes);
-    if (coreMsg.getSignature().isPresent()) {
-      msg.setSignature(coreMsg.getSignature().get());
-    }
-    return msg;
+        foundNodes,
+        signature);
   }
 
   @Override
   public String toString() {
-    return String.format("FindNodeReplyMessage{src:%s, foundNodes.size():%d}",
+    return String.format("FindNodeReplyMessage{src=%s, dest=%s, foundNodes.size()=%s,"
+            + " certificateRequest=%s, certificates.size()=%s}",
         getSourceNodeInfo().getKey(),
-        mFoundNodes.size());
+        getDestinationNodeInfo().getKey(),
+        mFoundNodes.size(),
+        isCertificateRequest(),
+        getCertificates().size());
+  }
+
+  @Override
+  protected void serializeContent(ByteBuffer buffer) {
+    super.serializeContent(buffer);
+    byte size = (byte) mFoundNodes.size();
+    buffer.put(size);
+    for (NodeInfo nodeInfo : mFoundNodes) {
+      nodeInfo.serialize(buffer);
+    }
   }
 }

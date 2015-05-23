@@ -10,6 +10,8 @@ import me.gregorias.ghoul.kademlia.data.PongMessage;
 import me.gregorias.ghoul.kademlia.data.PutKeyMessage;
 import me.gregorias.ghoul.utils.DeserializationException;
 import me.gregorias.ghoul.utils.Utils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
@@ -26,31 +28,32 @@ public class MessageSerializer {
   public static final byte PUT_TAG = 4;
   public static final byte GET_TAG = 5;
   public static final byte GET_REPLY_TAG = 6;
-  private static final int MAX_MESSAGE_SIZE = 1 << 15;
+  public static final int MAX_MESSAGE_SIZE = 1 << 15;
+  private static final Logger LOGGER = LoggerFactory.getLogger(MessageSerializer.class);
 
   public static byte[] serializeMessage(KademliaMessage msg) {
     ByteBuffer buffer = ByteBuffer.allocate(MAX_MESSAGE_SIZE);
     if (msg instanceof PingMessage) {
       buffer.put(PING_TAG);
-      ((PingMessage) msg).serialize(buffer);
+      msg.serialize(buffer);
     } else if (msg instanceof PongMessage) {
       buffer.put(PONG_TAG);
-      ((PongMessage) msg).serialize(buffer);
+      msg.serialize(buffer);
     } else if (msg instanceof FindNodeMessage) {
       buffer.put(FIND_NODE_TAG);
-      ((FindNodeMessage) msg).serialize(buffer);
+      msg.serialize(buffer);
     } else if (msg instanceof FindNodeReplyMessage) {
       buffer.put(FIND_NODE_REPLY_TAG);
-      ((FindNodeReplyMessage) msg).serialize(buffer);
+      msg.serialize(buffer);
     } else if (msg instanceof PutKeyMessage) {
       buffer.put(PUT_TAG);
-      ((PutKeyMessage) msg).serialize(buffer);
+      msg.serialize(buffer);
     } else if (msg instanceof GetKeyMessage) {
       buffer.put(GET_TAG);
-      ((GetKeyMessage) msg).serialize(buffer);
+      msg.serialize(buffer);
     } else if (msg instanceof GetKeyReplyMessage) {
       buffer.put(GET_REPLY_TAG);
-      ((GetKeyReplyMessage) msg).serialize(buffer);
+      msg.serialize(buffer);
     }
 
     buffer.flip();
@@ -61,6 +64,7 @@ public class MessageSerializer {
     ByteBuffer buffer = ByteBuffer.wrap(byteMsg);
     try {
       byte tag = buffer.get();
+      LOGGER.trace("deserializeByteMessage(): Deserializing message with tag: {}", tag);
       switch (tag) {
         case PING_TAG:
           return Optional.of(PingMessage.deserialize(buffer));
