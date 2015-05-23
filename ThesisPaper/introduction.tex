@@ -2,9 +2,10 @@
 
 Peer-to-Peer applications are applications which run on multiple computers in
 such a way that each instance is treated equally.
-This is in direct opposition to a client-server model, such as is used in for
-example web-browsing. In client-server model client instances (the client)
-request data from the server, which handles and serves the data.
+This is in direct opposition to a client-server model, such as is used in, for
+example, web-browsing.
+In client-server model client instances request data from the server, which
+stores and serves the data.
 Peer-to-Peer model is popular among applications that need to scale dynamically
 with the size of their user-base and applications for which users want privacy
 and independence from central authority.
@@ -14,7 +15,8 @@ A BitTorrent application, which wants to download a file, acquires a list of
 other computers that are interested in that file (either want to download it or
 have it).
 Next, the application downloads missing parts of the file from hosts that have
-it, while at the same time distributes parts of the file it has to other hosts.
+those parts, while at the same time distributes parts of the file it has to
+other hosts.
 This kind of sharing approach means that with the increase of an interest in a
 file the total bandwidth of hosts having the file also increases.
 Since there is no central-authority, no one may easily collect data about user
@@ -30,21 +32,24 @@ This problem may be compared the problem of sending a message to an unknown
 town.
 We are in a town X and want to find out what towns are present in the country
 and how to send a message to a different town.
-However we only how to reach our neighboring town and we do not know the entire
-map of the country.
-One of the roles of a Peer-to-Peer application is to define a protocol for
-creation of roads in the country (the entire map is called a topology) and
-establishment of routes between two non-neighboring towns.
-A popular approach is to use structured topologies created by Distributed Hash
-Tables (DHT). 
-Distributed Hash Tables define where roads are created and how two entities may
-find each other.
-DHTs provide constraints which nodes may be directly connected.
-The structure that they create has certain properties that guarantee that routes
-between non-neighboring nodes will be relatively short and easy to find.
+However, we only know how to reach neighboring towns and we do not know the
+entire map of the country.
 
-Unfortunately the structural nature of the topology created by the DHT and their
-Peer-to-Peer character make them vulnerable to attacks.
+One of the roles of a Peer-to-Peer application is to define a protocol for
+establishing a neighborhood relation between two nodes (equivalent to a road in
+our analogy; the entire map is called a topology) and establishment of routes
+between two non-neighboring nodes.
+A popular approach is to use structured topologies created by Distributed Hash
+Tables (DHT).
+A structural topology means that there are strict rules which nodes may be
+neighbors and how should messages propagate.
+Topology may also be unstructured, meaning lack of or soft rules.
+The benefit of the structural approach is that the structure that they create
+has certain properties that guarantee that routes between non-neighboring nodes
+will be relatively short and easy to find.
+
+Unfortunately, the structural nature of the topologies created by DHTs and
+their Peer-to-Peer character make them vulnerable to attacks.
 Since topology is the basis of a Peer-to-Peer application, a successful attack
 on it is often enough to shut it down entirely.
 One type of attack is a Sybil attack.
@@ -55,31 +60,35 @@ Another is an Eclipse attack.
 An honest host is surrounded by malicious hosts; whenever anyone wants to find
 the honest host then their queries are blocked by the adversary.
 
-Unfortunately Peer-to-Peer applications using DHTs often leave the DHT woefully
-unprotected.
-We'll show that Bittorent's DHT - MainlineDHT - is especially vulnerable to even
-a modest adversary.
-We think the mainly reasons for this lack of care.
+Peer-to-Peer applications using DHTs often leave the DHT woefully unprotected.
+We'll show that, for example, Bittorent's DHT - MainlineDHT - is especially
+vulnerable to even a modest adversary.
+We think there are two main reasons for this lack of care.
 First, DHT security mechanisms are seen as unpractical, either they require
-unreasonable resources (such as access to social network), or have significant
+unreasonable resources (such as access to a social network), or have significant
 performance overhead.
 Second, most security mechanisms are not backward compatible with existing
 implementations.
 In this thesis we design Ghoul as the answer to the first objection.
-We show that it is possible to have a reasonable DHT protocol, that is is secure
-against common types of attacks and do not require additional resources from the
-user (such as access to his or her social network) and whose message
-complexity of operations stays the same.
+We show that it is possible to have a reasonable DHT protocol, that is secure
+against common types of attacks, does not require additional resources from the
+user (such as access to his or her social network), and whose message complexity
+of common operations is at worst logarithmic with regard to the size of the
+network.
 We also argue that some backward compatible security extensions, such as those
 used in Kad DHT (a DHT used by eMule file-sharing application), are not
 bullet-proof and with incoming wide adoption of IPv6, they might be rendered
 void.
 
-Additionally, to ensure high-quality of the protoype, we designed and
-implemented a new 
+Additionally, to ensure high-quality of the prototype, we designed and
+implemented a framework distributed testing of Peer-to-Peer applications -
+dfuntest.
+Dfuntest was originally developed by the author to test Kademlia application in
+Planet-lab environment, but its design later proved to be flexible enough to be
+a general framework for any P2P application.
 
 \section{Overview}
-In chapter \ref{ch:threats} we present domain around the problem.
+In chapter \ref{ch:threats} we present the problem domain.
 We define what is a Distributed Hash Table (DHT) and evaluate its typical
 weaknesses.
 We show what are the main classes of security threats that DHTs are vulnerable
@@ -91,9 +100,6 @@ discuss its strength and weaknesses.
 
 In chapter \ref{ch:dfuntest} we present dfuntest - a framework for testing
 distributed peer-to-peer applications.
-Dfuntest was originally developed by the author to test Kademlia application in
-Planet-lab environment, but its design later proved to be flexible enough to be
-a general framework for any P2P application.
 
 In chapter \ref{ch:implementation} we explain how Ghoul is built and run as a
 stand-alone application.
@@ -105,7 +111,8 @@ plans towards the prototype we have developed.
 \section{Contributions}
 This thesis provides the following contributions:
 \begin{itemize}
-  \item Design of Ghoul - a 
+  \item Design of Ghoul - a security extension of the Kademlia protocol that
+    protects against common types of attacks.
   \item Ghoul's prototype - Java implementation of the Kademlia protocol with
     message extensions, certificate management, and registration mechanisms.
   \item Design and implementation of dfuntest - a framework for automation of
