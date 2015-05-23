@@ -60,10 +60,28 @@ public class CryptographyTools {
     }
   }
 
+  public byte[] signBytes(byte[] content, PrivateKey privKey)
+      throws InvalidKeyException, IOException, SignatureException {
+    synchronized (mSignature) {
+      mSignature.initSign(privKey);
+      mSignature.update(content);
+      return mSignature.sign();
+    }
+  }
+
   public SignedObject signObject(Serializable object, PrivateKey privKey)
       throws InvalidKeyException, IOException, SignatureException {
     synchronized (mSignature) {
       return new SignedObject(object, privKey, mSignature);
+    }
+  }
+
+  public boolean verifyBytes(byte[] content, byte[] signature, PublicKey pubKey)
+      throws InvalidKeyException, IOException, SignatureException {
+    synchronized (mSignature) {
+      mSignature.initVerify(pubKey);
+      mSignature.update(content);
+      return mSignature.verify(signature);
     }
   }
 
