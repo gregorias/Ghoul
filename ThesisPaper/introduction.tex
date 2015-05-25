@@ -81,7 +81,7 @@ bullet-proof and with incoming wide adoption of IPv6, they might be rendered
 void.
 
 Additionally, to ensure high-quality of the prototype, we designed and
-implemented a framework distributed testing of Peer-to-Peer applications -
+implemented a framework for distributed testing of Peer-to-Peer applications -
 dfuntest.
 Dfuntest was originally developed by the author to test Kademlia application in
 Planet-lab environment, but its design later proved to be flexible enough to be
@@ -91,12 +91,11 @@ a general framework for any P2P application.
 In chapter \ref{ch:threats} we present the problem domain.
 We define what is a Distributed Hash Table (DHT) and evaluate its typical
 weaknesses.
-We show what are the main classes of security threats that DHTs are vulnerable
-to.
-Finally we review proposed security mechanisms.
+We disucss the main types of security threats that DHTs are vulnerable to.
+Finally we review security mechanisms proposed in literature.
 
-In chapter \ref{ch:description} we describe the protocols used in Ghouls and
-discuss its strength and weaknesses.
+In chapter \ref{ch:description} we describe the protocols used in Ghoul and
+discuss Ghoul's strengths and weaknesses.
 
 In chapter \ref{ch:dfuntest} we present dfuntest - a framework for testing
 distributed peer-to-peer applications.
@@ -112,7 +111,7 @@ plans towards the prototype we have developed.
 This thesis provides the following contributions:
 \begin{itemize}
   \item Design of Ghoul - a security extension of the Kademlia protocol that
-    protects against common types of attacks.
+    protects against malicious attacks.
   \item Ghoul's prototype - Java implementation of the Kademlia protocol with
     message extensions, certificate management, and registration mechanisms.
   \item Design and implementation of dfuntest - a framework for automation of

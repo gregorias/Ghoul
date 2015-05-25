@@ -12,14 +12,24 @@ An up-to-date Ghoul's code is available for public audience at \url{https://gith
 \label{sec:build}
 
 \subsection{Gradle}
-Currently Ghoul's code contains around 8000 lines of code in 126 Java files (excluding dfuntest's project).
-To maintain this amount of code we use Gradle \footnote{\url{https://gradle.org/}} build automation framework.
-In Gradle, developers write configuration scripts called \texttt{build.gradle} in which they define code's properties --- e.g. name of the project, project's dependencies; and build tasks.
-Those configuration scripts are written in a functional, dynamically typed language.
-This allows for expressive and succinct definition of build tasks, which is an
-advantage over more traditional build framework - Maven \footnote{\url{https://maven.apache.org/}}.
-Next, Gradle performs, using provided information, typical task in Java's build ecosystem: compilation, packaging, dependency resolution, unit testing, software validation etc.
-Gradle allows developers to download and build Ghoul in two steps: Download the software from GitHub and run build task in Gradle (shown in figure \ref{fig:ghoul_build_process})
+Currently Ghoul's code contains around 8000 lines of code in 126 Java files
+(excluding dfuntest's project).
+To maintain this amount of code we use Gradle
+\footnote{\url{https://gradle.org/}} build automation framework.
+In Gradle, developers write configuration scripts called \texttt{build.gradle}
+in which they define code's properties --- e.g. name of the project, project's
+dependencies; and build tasks.
+Those configuration scripts are written in an imperative, Java-like, dynamically
+typed language.
+This language allows for expressive and succinct definition of build tasks,
+which is an advantage over more traditional build framework - Maven
+\footnote{\url{https://maven.apache.org/}}.
+Next, Gradle performs, using provided information, typical tasks in Java's build
+ecosystem: compilation, packaging, dependency resolution, unit testing, software
+validation etc.
+Gradle allows developers to download and build Ghoul in two simple steps:
+download the software from GitHub and run build task in Gradle (shown in figure
+\ref{fig:ghoul_build_process})
 
 \begin{figure}[tb]
 \begin{verbatim}
