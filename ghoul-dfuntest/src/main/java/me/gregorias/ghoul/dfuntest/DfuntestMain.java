@@ -141,6 +141,9 @@ public class DfuntestMain {
       //TODO thread pool should be created once.
       multiBinder.addBinding().toInstance(new KademliaConsistencyCheckTestScript(
           Executors.newScheduledThreadPool(100)));
+      multiBinder.addBinding().toInstance(new KademliaDataReplicationTestScript());
+      multiBinder.addBinding().toInstance(new KademliaChurnConsistencyCheckTestScript(
+          Executors.newScheduledThreadPool(100)));
       bind(TestRunner.class).to(new MultiTestRunnerTypeLiteral()).in(Singleton.class);
     }
 

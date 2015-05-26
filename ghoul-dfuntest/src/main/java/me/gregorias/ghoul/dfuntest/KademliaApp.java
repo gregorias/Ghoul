@@ -9,6 +9,7 @@ import java.util.List;
 import javax.ws.rs.ProcessingException;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -73,6 +74,35 @@ public class KademliaApp extends App<Environment> {
   @Override
   public Environment getEnvironment() {
     return mKademliaEnv;
+  }
+
+  public int get(Key key) throws IOException {
+    LOGGER.debug("get()");
+    Client client = ClientBuilder.newClient();
+    WebTarget target = client.target(mUri).path("get/" + key.toInt().toString(Key.HEX));
+
+    String keyStr;
+    try {
+      keyStr = target.request(MediaType.APPLICATION_JSON_TYPE).get(String.class);
+    } catch (ProcessingException e) {
+      LOGGER.error("get()", e);
+      throw new IOException("Could not get data.", e);
+    }
+    return keyStr.split(",").length + 1;
+  }
+
+  public void put(Key key, String data) throws IOException {
+    LOGGER.debug("put()");
+    Client client = ClientBuilder.newClient();
+    WebTarget target = client.target(mUri).path("put/" + key.toInt().toString(Key.HEX));
+
+    try {
+      target.request(MediaType.TEXT_PLAIN_TYPE)
+          .post(Entity.entity(data, MediaType.APPLICATION_OCTET_STREAM));
+    } catch (ProcessingException e) {
+      LOGGER.error("put()", e);
+      throw new IOException("Could not get data.", e);
+    }
   }
 
   public Key getKey() throws IOException {

@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -22,18 +23,12 @@ import me.gregorias.ghoul.kademlia.data.NodeInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Test Script which runs all kademlia and periodically checks whether their routing tables form a
- * a strongly connected graph.
- *
- * This test fails iff at least one check gives more than one component or an IOException happens.
- */
-public class KademliaConsistencyCheckTestScript implements TestScript<KademliaApp> {
+public class KademliaChurnConsistencyCheckTestScript implements TestScript<KademliaApp> {
   private static final Logger LOGGER = LoggerFactory
-      .getLogger(KademliaConsistencyCheckTestScript.class);
-  private static final int START_UP_DELAY = 60;
+      .getLogger(KademliaChurnConsistencyCheckTestScript.class);
+  private static final int START_UP_DELAY = 15;
   private static final TimeUnit START_UP_DELAY_UNIT = TimeUnit.SECONDS;
-  private static final long CHECK_DELAY = 20;
+  private static final long CHECK_DELAY = 3;
   private static final TimeUnit CHECK_DELAY_UNIT = TimeUnit.SECONDS;
 
   /**
@@ -45,7 +40,7 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
   private final AtomicBoolean mIsFinished;
   private TestResult mResult;
 
-  public KademliaConsistencyCheckTestScript(ScheduledExecutorService scheduledExecutor) {
+  public KademliaChurnConsistencyCheckTestScript(ScheduledExecutorService scheduledExecutor) {
     mScheduledExecutor = scheduledExecutor;
     mIsFinished = new AtomicBoolean(false);
   }
@@ -63,7 +58,7 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
       }
     } catch (IOException e) {
       return new TestResult(Type.FAILURE, "Could not start up applications due to: "
-        + e.getMessage() + ".");
+          + e.getMessage() + ".");
     }
 
     LOGGER.info("run(): Starting kademlias.");
@@ -72,7 +67,7 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
     } catch (KademliaException | IOException e) {
       shutDownApps(apps);
       return new TestResult(Type.FAILURE, "Could not start kademlias due to: " + e.getMessage()
-        + ".");
+          + ".");
     }
 
     mResult = new TestResult(Type.SUCCESS, "Connection graph was consistent the entire time.");
@@ -102,7 +97,7 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
 
   @Override
   public String toString() {
-    return "KademliaConsistencyCheckTestScript";
+    return "KademliaChurnConsistencyCheckTestScript";
   }
 
   /**
@@ -148,18 +143,37 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
         shutDown();
       }
 
+      try {
+        simulateChurn(mApps);
+      } catch (IOException | KademliaException e) {
+        mResult = new TestResult(Type.FAILURE, "Could not simulate churn correctly: " + e + ".");
+        shutDown();
+        LOGGER.info("ConsistencyChecker.run() -> failure");
+        return;
+      }
+
       LOGGER.info("ConsistencyChecker.run() -> success");
     }
 
     private void shutDown() {
       mScheduledExecutor.shutdown();
 
-      synchronized (KademliaConsistencyCheckTestScript.this) {
+      synchronized (KademliaChurnConsistencyCheckTestScript.this) {
         LOGGER.info("ConsistencyChecker.run(): Notifying that this is the last test.");
         mIsFinished.set(true);
-        KademliaConsistencyCheckTestScript.this.notifyAll();
+        KademliaChurnConsistencyCheckTestScript.this.notifyAll();
       }
 
+    }
+  }
+
+  private void simulateChurn(Collection<KademliaApp> apps) throws IOException, KademliaException {
+    Random random = new Random();
+    for (KademliaApp app : apps) {
+      if (app.getEnvironment().getId() != 0 && random.nextBoolean()) {
+        app.stop();
+        app.start();
+      }
     }
   }
 
@@ -411,3 +425,4 @@ public class KademliaConsistencyCheckTestScript implements TestScript<KademliaAp
     return reversedGraph;
   }
 }
+
