@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -19,7 +18,7 @@ import java.util.Optional;
  *
  * @author Grzegorz Milka
  */
-class MessageListeningServiceAdapter implements ListeningService {
+public class MessageListeningServiceAdapter implements ListeningService {
   private static final Logger LOGGER = LoggerFactory.getLogger(
       MessageListeningServiceAdapter.class);
   private final ByteListeningService mByteListeningService;
@@ -66,13 +65,8 @@ class MessageListeningServiceAdapter implements ListeningService {
           }
         }
         if (!hasMatched) {
-          if (mListeners.size() == 2) {
-            Iterator<MessageListener> listenerIter = mListeners.keySet().iterator();
-            listenerIter.next().receive(msg.get());
-            listenerIter.next().receive(msg.get());
-            return;
-          }
-          LOGGER.trace("Could not match message: {}", msg.get());
+          LOGGER.trace("Received unmatched message: {}.", msg.get());
+
         }
       } else {
         LOGGER.trace("Received undeserializable message of length: {}.", byteMsg.length);

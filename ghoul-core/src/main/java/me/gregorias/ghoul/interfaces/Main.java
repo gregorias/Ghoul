@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.channels.DatagramChannel;
 import java.security.KeyPair;
 import java.security.PublicKey;
@@ -14,19 +15,32 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import me.gregorias.ghoul.interfaces.rest.RESTApp;
+import me.gregorias.ghoul.kademlia.BlockingMessageListener;
 import me.gregorias.ghoul.kademlia.KademliaStore;
+import me.gregorias.ghoul.kademlia.MessageListener;
+import me.gregorias.ghoul.kademlia.MessageListeningServiceAdapter;
+import me.gregorias.ghoul.kademlia.MessageSender;
+import me.gregorias.ghoul.kademlia.MessageSenderAdapter;
+import me.gregorias.ghoul.kademlia.data.GetDHTKeyMessage;
+import me.gregorias.ghoul.kademlia.data.GetDHTKeyReplyMessage;
 import me.gregorias.ghoul.kademlia.data.KademliaException;
 import me.gregorias.ghoul.kademlia.KademliaRouting;
 import me.gregorias.ghoul.kademlia.KademliaRoutingBuilder;
+import me.gregorias.ghoul.kademlia.data.KademliaMessage;
 import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
+import me.gregorias.ghoul.network.ByteListeningService;
+import me.gregorias.ghoul.network.ByteSender;
 import me.gregorias.ghoul.network.NetworkAddressDiscovery;
 import me.gregorias.ghoul.network.UserGivenNetworkAddressDiscovery;
 import me.gregorias.ghoul.network.udp.UDPByteListeningService;
@@ -105,11 +119,7 @@ public class Main {
     final InetAddress localInetAddress = InetAddress.getByName(config
         .getString(XML_FIELD_LOCAL_ADDRESS));
     final int localPort = config.getInt(XML_FIELD_LOCAL_PORT);
-    final InetAddress hostZeroInetAddress = InetAddress.getByName(config
-        .getString(XML_FIELD_BOOTSTRAP_ADDRESS));
-    final int hostZeroPort = config.getInt(XML_FIELD_BOOTSTRAP_PORT);
     final Key localKey = new Key(config.getInt(XML_FIELD_LOCAL_KEY));
-    final Key bootstrapKey = new Key(config.getInt(XML_FIELD_BOOTSTRAP_KEY));
     final URI baseURI = URI.create(String.format("http://%s:%s/", localInetAddress.getHostName(),
         config.getString(XML_FIELD_REST_PORT)));
 
@@ -130,14 +140,9 @@ public class Main {
     }
 
     builder.setByteListeningService(ubls);
-    builder.setByteSender(new UDPByteSender(datagramChannel));
+    ByteSender byteSender = new UDPByteSender(datagramChannel);
+    builder.setByteSender(byteSender);
     builder.setExecutor(scheduledExecutor);
-    Collection<NodeInfo> peersWithKnownAddresses = new LinkedList<>();
-    if (!localKey.equals(bootstrapKey)) {
-      peersWithKnownAddresses.add(new NodeInfo(bootstrapKey, new InetSocketAddress(
-          hostZeroInetAddress, hostZeroPort)));
-    }
-    builder.setInitialPeersWithKeys(peersWithKnownAddresses);
     builder.setKey(localKey);
 
     if (config.containsKey(XML_FIELD_BUCKET_SIZE)) {
@@ -163,26 +168,45 @@ public class Main {
     KeyPair localKeyPair = KeyGenerator.generateKeys();
 
     builder.setPersonalKeyPair(localKeyPair);
-    setUpSecurityExtensions(localKey,
+    Optional<SecurityExtensions> securityExtensions = setUpSecurityExtensions(localKey,
         localKeyPair,
         tools,
         builder,
         config);
 
-    KademliaRouting kademlia = builder.createPeer();
-    KademliaStore store = builder.createStore(kademlia);
+    if (securityExtensions.isPresent()) {
+      boolean hasSetUp = setUpBootstrapHosts(
+          localKey,
+          localKeyPair,
+          securityExtensions.get().mManager.getPersonalCertificates(),
+          tools,
+          networkAddressDiscovery,
+          securityExtensions.get().mStorage,
+          builder,
+          config,
+          byteSender,
+          ubls);
 
-    RESTApp app = new RESTApp(kademlia, store, baseURI);
+      if (hasSetUp) {
+        KademliaRouting kademlia = builder.createPeer();
+        KademliaStore store = builder.createStore(kademlia);
 
-    app.run();
+        RESTApp app = new RESTApp(kademlia, store, baseURI);
 
-    if (kademlia.isRunning()) {
-      try {
-        kademlia.stop();
-      } catch (KademliaException e) {
-        LOGGER.error("main(): kademlia.stop()", e);
+        app.run();
+
+        if (kademlia.isRunning()) {
+          try {
+            kademlia.stop();
+          } catch (KademliaException e) {
+            LOGGER.error("main(): kademlia.stop()", e);
+          }
+        }
       }
+    } else {
+      LOGGER.error("main(): Could not join the DHT");
     }
+
     ubls.stop();
     try {
       LOGGER.debug("main(): executor.shutdown()");
@@ -197,6 +221,16 @@ public class Main {
     LOGGER.info("main() -> void");
   }
 
+  private static class SecurityExtensions {
+    public final CertificateStorage mStorage;
+    public final PersonalCertificateManager mManager;
+
+    public SecurityExtensions(CertificateStorage storage, PersonalCertificateManager manager) {
+      mStorage = storage;
+      mManager = manager;
+    }
+  }
+
   private static Collection<SignedCertificate> joinDHT(Collection<RegistrarDescription> registrars,
                                                        KeyPair keyPair)
       throws IOException, ClassNotFoundException, GhoulProtocolException {
@@ -204,10 +238,71 @@ public class Main {
         registrars,
         keyPair,
         CryptographyTools.getDefault());
+    LOGGER.info("joinDHT(): Joining the DHT.");
     return client.joinDHT();
   }
 
-  private static boolean setUpSecurityExtensions(
+  private static boolean setUpBootstrapHosts(
+      Key localKey,
+      KeyPair localKeyPair,
+      Collection<SignedCertificate> certificates,
+      CryptographyTools tools,
+      NetworkAddressDiscovery networkAddressDiscovery,
+      CertificateStorage certificateStorage,
+      KademliaRoutingBuilder builder,
+      XMLConfiguration config,
+      ByteSender byteSender,
+      ByteListeningService byteListeningService) throws UnknownHostException {
+    final InetAddress hostZeroInetAddress = InetAddress.getByName(
+        config.getString(XML_FIELD_BOOTSTRAP_ADDRESS));
+    final int hostZeroPort = config.getInt(XML_FIELD_BOOTSTRAP_PORT);
+    final InetSocketAddress bootstrapAddress = new InetSocketAddress(hostZeroInetAddress,
+        hostZeroPort);
+
+    Collection<NodeInfo> peersWithKnownAddresses = new LinkedList<>();
+    if (!config.containsKey(XML_FIELD_BOOTSTRAP_KEY)) {
+      if (certificates.size() > 0) {
+        localKey = certificates.iterator().next().getNodeDHTKey();
+      }
+      GetDHTKeyMessage requestMessage = new GetDHTKeyMessage(
+          new NodeInfo(localKey, networkAddressDiscovery.getNetworkAddress()),
+          new NodeInfo(localKey, bootstrapAddress),
+          0,
+          true,
+          certificates);
+      BlockingQueue<KademliaMessage> queue = new LinkedBlockingQueue<>();
+      MessageListener messageListener = new BlockingMessageListener(queue);
+      MessageListeningServiceAdapter messageListeningService =
+          new MessageListeningServiceAdapter(byteListeningService);
+      messageListeningService.registerListener(
+          message -> message instanceof GetDHTKeyReplyMessage,
+          messageListener);
+      MessageSender sender = new MessageSenderAdapter(byteSender);
+      sender.sendMessage(bootstrapAddress, requestMessage);
+      GetDHTKeyReplyMessage msg;
+      try {
+        msg = (GetDHTKeyReplyMessage) queue.poll(20, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        return false;
+      }
+      if (msg == null) {
+        return false;
+      }
+      peersWithKnownAddresses.add(new NodeInfo(msg.getKey(), bootstrapAddress));
+      for (SignedCertificate certificate : msg.getCertificates()) {
+        certificateStorage.addCertificate(certificate.getSignedObject());
+      }
+    } else {
+      final Key bootstrapKey = new Key(config.getInt(XML_FIELD_BOOTSTRAP_KEY));
+      if (!localKey.equals(bootstrapKey)) {
+        peersWithKnownAddresses.add(new NodeInfo(bootstrapKey, bootstrapAddress));
+      }
+    }
+    builder.setInitialPeersWithKeys(peersWithKnownAddresses);
+    return true;
+  }
+
+  private static Optional<SecurityExtensions> setUpSecurityExtensions(
       Key localDHTKey,
       KeyPair localKeyPair,
       CryptographyTools tools,
@@ -241,11 +336,11 @@ public class Main {
         personalManager = new PersonalCertificateManager(personalCertificates);
       } catch (ClassNotFoundException | GhoulProtocolException | IOException e) {
         LOGGER.error("setUpSecurityExtension(): Could not get certificates.", e);
-        return false;
+        return Optional.empty();
       }
 
       if (personalCertificates.size() == 0) {
-        return false;
+        return Optional.empty();
       }
       SignedCertificate certificate = personalCertificates.iterator().next();
       builder.setKey(certificate.getNodeDHTKey());
@@ -259,7 +354,6 @@ public class Main {
 
     builder.setPersonalCertificateManager(personalManager);
     builder.setCertificateStorage(storage);
-    return true;
+    return Optional.of(new SecurityExtensions(storage, personalManager));
   }
-
 }

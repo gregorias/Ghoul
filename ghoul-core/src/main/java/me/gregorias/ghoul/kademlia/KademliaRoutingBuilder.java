@@ -8,6 +8,7 @@ import java.util.Random;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import me.gregorias.ghoul.kademlia.data.GetDHTKeyMessage;
 import me.gregorias.ghoul.kademlia.data.KademliaMessage;
 import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.kademlia.data.NodeInfo;
@@ -265,9 +266,9 @@ public class KademliaRoutingBuilder {
       LOGGER.debug("DemultiplexingMessageListeningService.registerListener({}, {})",
           matcher,
           listener);
-      mBaseListeningService.registerListener((KademliaMessage msg) -> {
-          return matcher.match(msg) && msg.getDestinationNodeInfo().getKey().equals(mKey);
-        },
+      mBaseListeningService.registerListener((KademliaMessage msg) ->
+          matcher.match(msg) && (msg instanceof GetDHTKeyMessage
+              || msg.getDestinationNodeInfo().getKey().equals(mKey)),
           listener);
     }
 

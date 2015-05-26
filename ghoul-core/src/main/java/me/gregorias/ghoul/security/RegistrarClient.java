@@ -80,6 +80,8 @@ public class RegistrarClient {
         }
 
         JoinDHTReplyMessage reply = (JoinDHTReplyMessage) content;
+        LOGGER.trace("joinDHT() -> returning received certificates. Number of certificates: {}.",
+            reply.getCertificates().size());
         return reply.getCertificates();
       } catch (ClassNotFoundException e) {
         throw new GhoulProtocolException("Received response with invalid class.", e);

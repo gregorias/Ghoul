@@ -2,6 +2,8 @@ package me.gregorias.ghoul.kademlia;
 
 import me.gregorias.ghoul.kademlia.data.FindNodeMessage;
 import me.gregorias.ghoul.kademlia.data.FindNodeReplyMessage;
+import me.gregorias.ghoul.kademlia.data.GetDHTKeyMessage;
+import me.gregorias.ghoul.kademlia.data.GetDHTKeyReplyMessage;
 import me.gregorias.ghoul.kademlia.data.GetKeyMessage;
 import me.gregorias.ghoul.kademlia.data.GetKeyReplyMessage;
 import me.gregorias.ghoul.kademlia.data.KademliaMessage;
@@ -28,6 +30,8 @@ public class MessageSerializer {
   public static final byte PUT_TAG = 4;
   public static final byte GET_TAG = 5;
   public static final byte GET_REPLY_TAG = 6;
+  public static final byte GET_DHT_KEY_TAG = 7;
+  public static final byte GET_DHT_KEY_REPLY_TAG = 8;
   public static final int MAX_MESSAGE_SIZE = 1 << 15;
   private static final Logger LOGGER = LoggerFactory.getLogger(MessageSerializer.class);
 
@@ -53,6 +57,12 @@ public class MessageSerializer {
       msg.serialize(buffer);
     } else if (msg instanceof GetKeyReplyMessage) {
       buffer.put(GET_REPLY_TAG);
+      msg.serialize(buffer);
+    } else if (msg instanceof GetDHTKeyMessage) {
+      buffer.put(GET_DHT_KEY_TAG);
+      msg.serialize(buffer);
+    } else if (msg instanceof GetDHTKeyReplyMessage) {
+      buffer.put(GET_DHT_KEY_REPLY_TAG);
       msg.serialize(buffer);
     }
 
@@ -80,6 +90,10 @@ public class MessageSerializer {
           return Optional.of(GetKeyMessage.deserialize(buffer));
         case GET_REPLY_TAG:
           return Optional.of(GetKeyReplyMessage.deserialize(buffer));
+        case GET_DHT_KEY_TAG:
+          return Optional.of(GetDHTKeyMessage.deserialize(buffer));
+        case GET_DHT_KEY_REPLY_TAG:
+          return Optional.of(GetDHTKeyReplyMessage.deserialize(buffer));
         default:
           throw new DeserializationException("Unknown message tag.");
       }

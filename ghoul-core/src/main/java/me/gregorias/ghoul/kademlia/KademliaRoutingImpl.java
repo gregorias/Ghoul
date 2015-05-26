@@ -30,6 +30,8 @@ import java.util.stream.Collectors;
 
 import me.gregorias.ghoul.kademlia.data.FindNodeMessage;
 import me.gregorias.ghoul.kademlia.data.FindNodeReplyMessage;
+import me.gregorias.ghoul.kademlia.data.GetDHTKeyMessage;
+import me.gregorias.ghoul.kademlia.data.GetDHTKeyReplyMessage;
 import me.gregorias.ghoul.kademlia.data.KademliaException;
 import me.gregorias.ghoul.kademlia.data.KademliaMessage;
 import me.gregorias.ghoul.kademlia.data.Key;
@@ -908,9 +910,11 @@ public class KademliaRoutingImpl implements KademliaRouting {
 
     @Override
     public void receive(KademliaMessage msg) {
+      LOGGER.trace("MessageListenerImpl.receive({})", msg);
       if (isMessageFromValidHost(msg)) {
         addCandidate(msg.getSourceNodeInfo());
       }
+      LOGGER.trace("MessageListenerImpl.receive({})", msg);
       if (msg instanceof FindNodeMessage) {
         receiveFindNodeMessage((FindNodeMessage) msg);
       } else if (msg instanceof FindNodeReplyMessage) {
@@ -919,6 +923,8 @@ public class KademliaRoutingImpl implements KademliaRouting {
         receivePingMessage((PingMessage) msg);
       } else if (msg instanceof PongMessage) {
         receivePongMessage((PongMessage) msg);
+      } else if (msg instanceof GetDHTKeyMessage) {
+        receiveGetDHTKeyMessage((GetDHTKeyMessage) msg);
       } else {
         LOGGER.error("Received unknown message.");
       }
@@ -1014,6 +1020,26 @@ public class KademliaRoutingImpl implements KademliaRouting {
       }
     }
 
+    private void receiveGetDHTKeyMessage(GetDHTKeyMessage msg) {
+      LOGGER.trace("receiveGetDHTKeyMessage({})", msg);
+      Key destinationKey = msg.getSourceNodeInfo().getKey();
+      boolean shouldRequireCertificates = !mCertificateStorage.isNodeValid(destinationKey)
+          || mCertificateStorage.isNodeCloseToExpiration(destinationKey);
+      Collection<SignedCertificate> personalCertificates = new ArrayList<>();
+      if (msg.isCertificateRequest()) {
+        personalCertificates.addAll(mPersonalCertificateManager.getPersonalCertificates());
+      }
+
+      GetDHTKeyReplyMessage reply = new GetDHTKeyReplyMessage(getLocalNodeInfo(),
+          msg.getSourceNodeInfo(),
+          msg.getId(),
+          shouldRequireCertificates,
+          personalCertificates,
+          mLocalKey);
+      reply.signMessage(mPersonalKeyPair.getPrivate(), mTools);
+      mMessageSender.sendMessage(msg.getSourceNodeInfo().getSocketAddress(), reply);
+    }
+
     private void receivePingMessage(PingMessage msg) {
       LOGGER.trace("receivePingMessage({})", msg);
       Key destinationKey = msg.getSourceNodeInfo().getKey();
@@ -1077,10 +1103,12 @@ public class KademliaRoutingImpl implements KademliaRouting {
   private static class KademliaRoutingMessageMatcher implements MessageMatcher {
     @Override
     public boolean match(KademliaMessage msg) {
+      LOGGER.info("{}", msg);
       return msg instanceof PingMessage
           || msg instanceof PongMessage
           || msg instanceof FindNodeMessage
-          || msg instanceof FindNodeReplyMessage;
+          || msg instanceof FindNodeReplyMessage
+          || msg instanceof GetDHTKeyMessage;
     }
   }
 
