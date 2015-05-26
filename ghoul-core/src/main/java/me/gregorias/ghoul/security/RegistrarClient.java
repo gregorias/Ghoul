@@ -1,5 +1,6 @@
 package me.gregorias.ghoul.security;
 
+import me.gregorias.ghoul.kademlia.data.Key;
 import me.gregorias.ghoul.network.tcp.TCPMessageChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,6 +10,7 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.SignatureException;
 import java.security.SignedObject;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -89,16 +91,84 @@ public class RegistrarClient {
     }
   }
 
-  public boolean refreshCertificate(Certificate certificate) {
-    // send refresh to given registrar.
-    // receive refreshed certificate.
-    // Check signature
-    // TODO
-    return true;
+  public SignedCertificate refreshCertificate(SignedCertificate certificate)
+      throws GhoulProtocolException, IOException {
+    LOGGER.debug("refreshCertificate({}): Starting protocol for refreshing the certificate.",
+        certificate);
+    RegistrarDescription registrar = getRegistrar(certificate.getIssuerKey());
+
+    LOGGER.trace("refreshCertificate(): creating TCP channel to: {}", registrar.getAddress());
+    TCPMessageChannel channel = TCPMessageChannel.create(registrar.getAddress());
+    try {
+      RefreshCertificateMessage refreshMessage = new RefreshCertificateMessage(certificate);
+
+      SignedObject signedRefreshMessage;
+      try {
+        signedRefreshMessage = new SignedObject(refreshMessage,
+            mKeyPair.getPrivate(),
+            mCryptoTools.getSignature());
+      } catch (InvalidKeyException | SignatureException e) {
+        throw new IllegalStateException(e);
+      }
+
+      LOGGER.trace("refreshCertificate(): Sending refresh message to registrar.");
+      channel.sendMessage(signedRefreshMessage);
+
+      try {
+        Optional<Object> response = channel.receiveMessage(1, TimeUnit.MINUTES);
+        if (!response.isPresent()) {
+          throw new GhoulProtocolException("Refresh operation has timed out.");
+        }
+
+        if (!(response.get() instanceof SignedObject)) {
+          throw new GhoulProtocolException("Received unsigned object.");
+        }
+
+        SignedObject signedObject = (SignedObject) response.get();
+        boolean isVerified = signedObject.verify(registrar.getPublicKey(),
+            mCryptoTools.getSignature());
+        if (!isVerified) {
+          throw new GhoulProtocolException("Received response with invalid signature.");
+        }
+
+        Object content = signedObject.getObject();
+
+        if (!(content instanceof RefreshCertificateReplyMessage)) {
+          throw new GhoulProtocolException("Received signed content is not a reply.");
+        }
+
+        RefreshCertificateReplyMessage reply = (RefreshCertificateReplyMessage) content;
+        SignedCertificate newCertificate = reply.getCertificate();
+        if (!newCertificate.getIssuerKey().equals(certificate.getIssuerKey())
+            || !newCertificate.getNodeDHTKey().equals(certificate.getNodeDHTKey())
+            || newCertificate.getExpirationDateTime().isBefore(ZonedDateTime.now())
+            || !newCertificate.getNodePublicKey().equals(certificate.getNodePublicKey())) {
+          throw new GhoulProtocolException("Received invalid certificate");
+        }
+
+        return newCertificate;
+      } catch (ClassNotFoundException e) {
+        throw new GhoulProtocolException("Received response with invalid class.", e);
+      } catch (SignatureException | InvalidKeyException e) {
+        throw new GhoulProtocolException("Received response with invalid signature.", e);
+      }
+    } finally {
+      channel.close();
+    }
   }
 
   private RegistrarDescription chooseRandomRegistrar() {
     int idx = mCryptoTools.getSecureRandom().nextInt(mRegistrars.size());
     return mRegistrars.get(idx);
+  }
+
+  private RegistrarDescription getRegistrar(Key issuerKey) {
+    Optional<RegistrarDescription> registrarOptional = mRegistrars.stream()
+        .filter(reg -> reg.getKey().equals(issuerKey)).findAny();
+    if (registrarOptional.isPresent()) {
+      return registrarOptional.get();
+    } else {
+      throw new IllegalArgumentException("Received key to unknown registrar.");
+    }
   }
 }

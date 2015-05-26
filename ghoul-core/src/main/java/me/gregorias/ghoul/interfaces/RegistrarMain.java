@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.security.KeyPair;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
@@ -99,6 +100,8 @@ public class RegistrarMain {
       final Key registrarKey = new Key(config.getInt(XML_FIELD_REGISTRAR_KEY));
       final int port = config.getInt(XML_FIELD_REGISTRAR_PORT);
 
+      KeyPair keyPair = new KeyPair(pubKey, privKey);
+
       final RegistrarDescription description =
           new RegistrarDescription(pubKey, registrarKey, new InetSocketAddress(port));
 
@@ -112,7 +115,7 @@ public class RegistrarMain {
           new SecureRandom());
 
       return Optional.of(new Registrar(description,
-          privKey,
+          keyPair,
           allRegistrars,
           sender,
           executor,

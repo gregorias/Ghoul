@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidKeyException;
+import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
@@ -29,6 +30,7 @@ public class Registrar implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(Registrar.class);
   private final Key mKey;
   private final PrivateKey mPrivateKey;
+  private final PublicKey mPublicKey;
   //private final Map<Key, PublicKey> mRegistrarMap;
   private final RegistrarDescription mMyDescription;
   private final Collection<RegistrarDescription> mRegistrars;
@@ -44,7 +46,7 @@ public class Registrar implements Runnable {
 
   public Registrar(
       RegistrarDescription myself,
-      PrivateKey privateKey,
+      KeyPair keyPair,
       Collection<RegistrarDescription> registrars,
       RegistrarMessageSender sender,
       ScheduledExecutorService executor,
@@ -52,7 +54,8 @@ public class Registrar implements Runnable {
       int localPort) {
     mMyDescription = myself;
     mKey = myself.getKey();
-    mPrivateKey = privateKey;
+    mPrivateKey = keyPair.getPrivate();
+    mPublicKey = keyPair.getPublic();
     mRegistrars = registrars;
     mRegistrarMessageSender = sender;
     mExecutor = executor;
@@ -111,12 +114,16 @@ public class Registrar implements Runnable {
         Object content = signedObject.getObject();
 
         if (content instanceof RegistrarMessage) {
-          LOGGER.trace("Worker.run(): Received registrar message: {}", content);
+          LOGGER.debug("Worker.run(): Received registrar message: {}", content);
           handleRegistrar(mMsgChannel, signedObject, (RegistrarMessage) content);
         } else if (content instanceof JoinDHTMessage) {
-          LOGGER.trace("Worker.run(): Received join message: {}", content);
+          LOGGER.debug("Worker.run(): Received join message: {}", content);
           JoinDHTMessage joinMsg = (JoinDHTMessage) content;
           handleClient(mMsgChannel, signedObject, joinMsg);
+        } else if (content instanceof RefreshCertificateMessage) {
+          LOGGER.debug("Worker.run(): Received refresh message: {}", content);
+          RefreshCertificateMessage message = (RefreshCertificateMessage) content;
+          handleRefresh(mMsgChannel, signedObject, message);
         } else {
           LOGGER.warn("Worker.run(): Received unknown type of message: {}.", content);
         }
@@ -191,7 +198,41 @@ public class Registrar implements Runnable {
         destroyKGPID(joinMsg.getPublicKey());
       }
     }
+  }
 
+  private void handleRefresh(
+      TCPMessageChannel channel,
+      SignedObject signedObject,
+      RefreshCertificateMessage message) throws GhoulProtocolException, IOException {
+    try {
+      boolean isVerified = mCryptoTools.verifyObject(signedObject,
+          message.getCertificate().getNodePublicKey());
+      if (!isVerified) {
+        LOGGER.warn("handleRefresh(): Received message with wrong signature.");
+        return;
+      }
+
+      SignedCertificate oldCertificate = message.getCertificate();
+      if (!oldCertificate.getIssuerKey().equals(mKey)
+          || !mCryptoTools.verifyObject(oldCertificate.getSignedObject(), mPublicKey)) {
+        LOGGER.warn("handleRefresh(): Received message with wrong certificate.");
+        return;
+      }
+
+      SignedCertificate newCertificate = createCertificate(oldCertificate.getNodePublicKey(),
+          oldCertificate.getNodeDHTKey());
+
+      SignedObject signedReply;
+      try {
+        signedReply = mCryptoTools.signObject(new RefreshCertificateReplyMessage(newCertificate),
+            mPrivateKey);
+      } catch (InvalidKeyException | SignatureException e) {
+        throw new IllegalStateException("Unexpected signature exception.", e);
+      }
+      channel.sendMessage(signedReply);
+    } catch (InvalidKeyException | SignatureException e) {
+      throw new GhoulProtocolException(e);
+    }
   }
 
   public void handleRegistrar(
