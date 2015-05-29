@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-SVG_FILES="dfuntest_bw2 dfuntest_deployment KademliaClassDiagram SecurityClassDiagram"
+SVG_FILES="dfuntest_bw2 dfuntest_deployment KademliaClassDiagram SecurityClassDiagram regtest"
 
 for SVG_FILE in ${SVG_FILES}
 do
