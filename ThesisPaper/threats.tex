@@ -1,12 +1,17 @@
 \chapter{DHT, its weaknesses, and defense mechanisms}
 \label{ch:threats}
 \section{Chapter overview}
-  In this chapter I define what is a Distributed Hash Table and specify Kademlia
-  DHT protocol, describe reasons and methods of attacks on DHT, and present
-  examples of different classes of protection mechanisms. Finally examples of
-  effectiveness of described attacks on popular, real-world DHT deployments are
-  provided. Those examples show that securing DHT is still an open problem in
-  practice.
+  In this chapter we define what is a Distributed Hash Table and specify
+  Kademlia DHT protocol, describe reasons and methods of attacks on DHT, and
+  present examples of different classes of protection mechanisms.
+  Finally examples of effectiveness of described attacks on popular, real-world
+  DHT deployments are provided.
+  Those examples show that securing DHT is still an open problem in practice.
+
+  This chapter serves also as a survey of related work for Ghoul.
+  Since our another contribution is dfuntest, but it touches a different field 
+  (testing automation), therefore dfuntest's related work will be presented in
+  chapter \ref{ch:dfuntest}.
 
 \section{DHT overview}
 
@@ -181,7 +186,6 @@
       knowledge about global state and history.  Sometimes even that is not
       enough, for example verification whether a given key was chosen randomly
       is unverifiable without specialized cryptographical techniques. 
-     \footnote{TODO tutaj Krzysiek napisal, ze za szybko, do czego to sie odnosi?}
 
    \item  Key generation is not verifiable. There is no way for a node to verify
      whether given key has been generated randomly. It is possible to use a

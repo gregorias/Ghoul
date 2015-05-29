@@ -1,0 +1,327 @@
+\chapter{Experimental evaluation}
+\label{ch:evaluation}
+
+We use dfuntest to test and verify correctness of our implementation
+(Section~\ref{sec:exampl-test-kademl}): in particular, we show how to verify
+that the implementation maintains the correct DHT topology.
+
+Dfuntest was initially built for our bare Kademlia implementation.
+Ghoul extends Kademlia with additional background security protocols, therefore distributed tests for Kademlia are also tests for Ghoul (with small adjusments in environment preparation).
+For this historical reason the name Kademlia is used in examples in section~\ref{sec:exampl-test-kademl}.
+\section{Testing Ghoul DHT with dfuntest}\label{sec:exampl-test-kademl}
+In this section we will present how we have prepared dfuntests for Ghoul.
+
+The core Kademlia submodule uses UDP messages for internal communication between instances.
+The application exposes an external RPC over HTTP.
+This interface allows the user to control and to query Ghoul for typical DHT operations (put/get).
+We show a subset of available external RPC in Table~\ref{tab:http_rpc}.
+
+\begin{table}[tbp]
+  \begin{tabular}{|c|p{3cm}|p{3.6cm}|p{3.4cm}|}
+    \hline
+    HTTP-RPC & Arguments & Response & Description \\
+    \hline
+    \texttt{START} & None & Plain HTTP & Start Kademlia service.\\
+    \hline
+    \texttt{STOP} & None & Plain HTTP  & Stop Kademlia service.\\
+    \hline
+    \texttt{SHUT\_DOWN} & None & Plain HTTP &
+      Shutdown the entire application after returning this call.\\
+    \hline
+    \texttt{FIND\_NODES} & Kademlia key & JSON list of key-ip pairs &
+      Find Kademlia's neighbors close to given key.\\
+    \hline
+    \texttt{GET\_ROUTING\_TABLE} & None & JSON list of key-ip pairs & Return
+      Kademlia node's neighbors present in its routing table.\\
+    \hline
+    \texttt{GET\_KEY} & None & String representing the key & Return callee's
+      Kademlia ke.y\\
+    \hline
+    \texttt{GET} & Kademlia key  & JSON list of binary data & Get instances of
+    data stored under given key. \\
+    \hline
+    \texttt{PUT} & Kademlia key and binary data  & Plain HTTP & Store given
+    key-data pair in Kademlia. \\
+    \hline
+  \end{tabular}
+  \caption{RPC-over-HTTP interface of Ghoul application}
+  \label{tab:http_rpc}
+\end{table}
+
+\subsection{Preparation}
+We need to provide to dfuntest information on how to start and use our
+application. This is done only once and does not need to be rewritten as long as
+the Ghoul API and its requirements remain the same.
+
+\paragraph{\texttt{App}} 
+\texttt{KademliaApp} extends the proxy \texttt{App} class with Ghoul's interface methods.
+\texttt{KademliaApp}'s main responsibility is to translate Java method calls into the RPC-over-HTTP interface of the Ghoul application.
+An example code of those methods is shown in \ref{fig:app_example}.
+\texttt{KademliaApp} is parametrized by the base \texttt{Environment}, as we use only standard operations.
+To construct, \texttt{KademliaApp} requires the URI address of the external
+application's interface; and the environment on which it works.
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public synchronized void startUp() throws IOException {
+  List<String> runCommand = new LinkedList<>();
+  runCommand.add(mJavaCommand);
+  runCommand.add("-Dorg.slf4j.simpleLogger.logFile=" + LOG_FILE);
+  runCommand.add("-Dorg.slf4j.simpleLogger.defaultLogLevel=trace");
+  runCommand.add("-cp");
+  runCommand.add("lib/*:Kademlia.jar");
+  runCommand.add("me.gregorias.Kademlia.interfaces.Main");
+  runCommand.add("Kademlia.xml");
+  mProcess = mKademliaEnv.runCommandAsynchronously(runCommand);
+}
+
+public Collection<NodeInfo> findNodes(Key key) throws IOException {
+  Client client = ClientBuilder.newClient();
+  WebTarget target = client.target(mUri).path("find_nodes/" + key.toInt());
+
+  NodeInfoCollectionBean beanColl;
+  try {
+    beanColl = target.request(MediaType.APPLICATION_JSON_TYPE)
+        .get(NodeInfoCollectionBean.class);
+  } catch (ProcessingException e) {
+    throw new IOException("Could not find node.", e);
+  }
+  NodeInfoBean[] beans = beanColl.getNodeInfo();
+  Collection<NodeInfo> infos = new LinkedList<>();
+  for (NodeInfoBean bean : beans) {
+    infos.add(bean.toNodeInfo());
+  }
+  return infos;
+}
+\end{lstlisting}
+\caption{\texttt{KademliaApp}: start a remote Ghoul instance; and use
+HTTP-RPC to find neighboring nodes of the instance.}
+\label{fig:app_example}
+\end{figure}
+
+\paragraph{\texttt{KademliaEnvironmentPreparator}} (Figure~\ref{fig:prepare})
+\texttt{KademliaEnvironmentPreparator} copies Kademlia's dependency jar files and configuration
+files to to the target environment.
+
+\texttt{KademliaEnvironmentPreparator} uses methods of \texttt{Environment} to deploy the application.
+graph;
+\begin{figure}[tbp]
+\begin{lstlisting}
+public void prepare(Collection<Environment> envs)
+    throws IOException {
+  Collection<Environment> preparedEnvs = new LinkedList<>();
+  Environment firstEnv = findFirstEnvironment(envs);
+  for (Environment env : envs) {
+    XMLConfiguration xmlConfig = prepareXMLConfiguration(env, firstEnv);
+    try {
+      xmlConfig.save(XML_CONFIG_FILENAME);
+      Path localConfigPath = FileSystems.getDefault().getPath(LOCAL_CONFIG_PATH).toAbsolutePath();
+      env.copyFilesFromLocalDisk(localConfigPath, ".");
+      env.copyFilesFromLocalDisk(LOCAL_JAR_PATH.toAbsolutePath(), ".");
+      env.copyFilesFromLocalDisk(LOCAL_LIBS_PATH.toAbsolutePath(), ".");
+      preparedEnvs.add(env);
+    } catch (ConfigurationException | IOException e) {
+      clean(preparedEnvs);
+      throw new IOException(e);
+    }
+  }
+}
+\end{lstlisting}
+\caption{\texttt{KademliaEnvironmentPreparator} (fragment): prepare remote environments by copying jars and configuration files. Methods \texttt{restore}, \texttt{collectOutput}, \texttt{cleanOutput} and \texttt{cleanAll} are similar.}
+\label{fig:prepare}
+\end{figure}
+
+
+\paragraph{Main and \texttt{KademliaAppFactory}} To glue those we also need to
+define a simple factory which instantiates \texttt{KademliaApp}s given prepared
+\texttt{Environments}. Also the entry point to dfuntest application - the main
+method - needs to be defined.
+
+\subsection{Test script}
+
+We show how to check whether the topology graph induced by Kademlia routing
+tables is connected (consistent).
+
+To define the testing scenario, the tester writes the \texttt{run} method defined by the
+\texttt{TestScript} interface (Figure~\ref{fig:core}).
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public TestResult run(Collection<KademliaApp> apps) {
+  try {
+    startUpApps(apps); // Call startUp method of each KademliaApp.
+    Thread.sleep(START_UP_DELAY_UNIT.toMillis(START_UP_DELAY));
+  } catch (IOException e) {
+    return new TestResult(Type.FAILURE,
+        "Could not start up applications.", e);
+  }
+  try {
+    startKademlias(apps); // Send start HTTP-RPC to each interface
+  } catch (KademliaException | IOException e) {
+    shutDownApps(apps);
+    return new TestResult(Type.FAILURE, "Could not start Kademlias.", e);
+  }
+  mResult = new TestResult(Type.SUCCESS,
+      "Connection graph was consistent the entire time.");
+  scheduleCheckerToRunPeriodically(new ConsistencyChecker(apps))
+  waitTillCheckerFinished();
+  stopKademlias(apps);
+  shutDownApps(apps);
+  return mResult;
+}
+
+private class ConsistencyChecker implements Runnable {
+  @Override
+  public void run() {
+    Map<Key, Collection<Key>> graph;
+    try {
+      // Call GET_ROUTING_TABLE RPC of each node
+      graph = getConnectionGraph(mApps);
+      ConsistencyResult result = checkConsistency(graph);
+      if (result.getType() == ConsistencyResult.Type.INCONSISTENT) {
+        mResult = new TestResult(Type.FAILURE,
+            "Graph is not consistent starting from: " + result.getStartVert()
+            + " could only reach " + result.getReachableVerts().size());
+        shutDown();
+        return;
+      }
+    } catch (IOException e) {
+      mResult = new TestResult(Type.FAILURE,
+          "Could not get connection graph: " + e + ".");
+      shutDown();
+      return;
+    }
+    --mCheckCount;
+    if (mCheckCount == 0) {
+      shutDown();
+    }
+  }
+  ...
+}
+\end{lstlisting}
+\caption{\texttt{KadmliaConsistencyTestScript} (fragment) periodically checks consistency of the induced Kademlia graph.}
+\label{fig:core}
+\end{figure}
+
+\subsection{Dfuntest validation tests}
+
+We configured Ghoul build system to create a separate .jar package with the above dfuntest.
+The tests are executed as a standard Java application.
+The main method expects an XML configuration file as its argument.
+This configuration file contains all pertinent parameters for setting up
+environments and controlling test execution.
+For example to start a test suite on 7 remote hosts we provide an XML
+configuration file with following information:
+
+\begin{verbatim}
+<SSHEnvironmentFactory>
+  <hosts>
+    roti.mimuw.edu.pl,
+    prata.mimuw.edu.pl,
+    planetlab2.wiwi.hu-berlin.de,
+    planetlab2.s3.kth.se,
+    planetlab1.u-strasbg.fr,
+    planetlab01.tkn.tu-berlin.de,
+    pl1.uni-rostock.de
+  </hosts>
+  <username>
+    mimuw_user
+  </username>
+  <privateKeyPath>
+    /home/mimuw_user/.ssh/id_rsa
+  </privateKeyPath>
+</SSHEnvironmentFactory>
+\end{verbatim}
+
+The rest is handled by the dfuntest application and at the end a human-readable
+report directory is produced. This report directory contains a separate
+directory for each executed TestScript test with logs and summary report.
+Additionally there's a summary for all the executed tests
+(Figure~\ref{fig:sumrep}).
+
+\begin{figure}[tbp]
+\begin{verbatim}
+[SUCCESS] KademliaChurnConsistencyCheckTestScript
+[SUCCESS] KademliaConsistencyCheckTestScript
+[SUCCESS] KademliaDataReplicationTestScript
+\end{verbatim}
+\caption{A summary report for the test in which all \texttt{TestScript}s passed}
+\label{fig:sumrep}
+\end{figure}
+
+We have already explained \texttt{KademliaConsistencyCheckTestScript}. 
+A variation of that test is:
+\texttt{KademliaChurnConsistencyCheckTestScript}. 
+The churn version additionally simulates churn in-between consistency checks by
+restarting nodes with 50\% probability.\\
+\texttt{KademliaDataReplicationTestScript} makes each node put a key-value pair
+into distributed storage and checks whether on \texttt{GET} request the data is
+replicated.
+
+Because a successful result is uninteresting we'll show what happens on failure.
+At the same time we verify that our tests actually test and not just display
+success.
+To inject a failure into Ghoul, we used a too small bucket size (1, compared
+with a usual value of 5).
+Such a small bucket should make the graph inconsistent, because node finding
+messages will have too little diversity.
+This set up led to failure of all tests (occassionally data replication works
+fine in that scenario).
+The summary for all tests (\ref{fig:sumrep_failure}) shows failure in all
+tests.
+The summary for consistency check (Figure~\ref{fig:conrep}) clearly points to a
+misbehaving node (19). 
+This points the tester where to look to the source of this error.
+
+\begin{figure}[tbp]
+\begin{verbatim}
+[FAILURE] KademliaChurnConsistencyCheckTestScript
+[FAILURE] KademliaConsistencyCheckTestScript
+[FAILURE] KademliaDataReplicationTestScript
+\end{verbatim}
+\caption{A summary report for the test in which all \texttt{TestScript}s have
+failed}
+\label{fig:sumrep_failure}
+\end{figure}
+
+\begin{figure}[tbp]
+\begin{verbatim}
+[FAILURE] Found inconsistent graph.
+The connection graph was:
+18: [16, 20, 24, 0]
+19: [16, 20, 24, 0]
+16: [17, 18, 20, 24, 0]
+17: [16, 18, 20, 24, 0]
+22: [23, 20, 16, 24, 0]
+23: [22, 20, 16, 24, 0]
+20: [21, 23, 16, 24, 0]
+21: [20, 23, 16, 24, 0]
+24: [16, 0]
+2: [3, 0, 4, 11, 16]
+3: [2, 0, 4, 9, 16]
+0: [1, 2, 4, 8, 16]
+1: [0, 2, 4, 8, 16]
+6: [7, 4, 0, 11, 16]
+7: [6, 4, 0, 9, 16]
+4: [5, 6, 0, 9, 16]
+5: [4, 6, 0, 8, 16]
+10: [8, 12, 0, 16]
+11: [8, 12, 0, 16]
+8: [9, 10, 12, 0, 16]
+9: [8, 10, 12, 0, 16]
+14: [15, 12, 8, 0, 16]
+15: [14, 12, 8, 0, 16]
+12: [13, 14, 8, 0, 16]
+13: [12, 14, 8, 0, 16]
+
+It's strongly connected components are:
+[19]
+[18, 16, 17, 22, 23, 20, 21, 24, 2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13]
+\end{verbatim}
+\caption{A report generated after KademliaConsistencyCheckTestScript fails.}
+\label{fig:conrep}
+\end{figure}
+
+In case an error requires a debugging process the developer may easily change
+the testing environment and test parameters by changing the configuration file
+to facilitate the bug triage.

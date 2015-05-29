@@ -3,4 +3,4 @@
  *
  * @author Grzegorz Milka
  */
-package me.gregorias.kademlia.interfaces.rest;
+package me.gregorias.ghoul.interfaces.rest;
