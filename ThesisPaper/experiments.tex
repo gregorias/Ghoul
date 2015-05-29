@@ -11,43 +11,6 @@ For this historical reason the name Kademlia is used in examples in section~\ref
 \section{Testing Ghoul DHT with dfuntest}\label{sec:exampl-test-kademl}
 In this section we will present how we have prepared dfuntests for Ghoul.
 
-The core Kademlia submodule uses UDP messages for internal communication between instances.
-The application exposes an external RPC over HTTP.
-This interface allows the user to control and to query Ghoul for typical DHT operations (put/get).
-We show a subset of available external RPC in Table~\ref{tab:http_rpc}.
-
-\begin{table}[tbp]
-  \begin{tabular}{|c|p{3cm}|p{3.6cm}|p{3.4cm}|}
-    \hline
-    HTTP-RPC & Arguments & Response & Description \\
-    \hline
-    \texttt{START} & None & Plain HTTP & Start Kademlia service.\\
-    \hline
-    \texttt{STOP} & None & Plain HTTP  & Stop Kademlia service.\\
-    \hline
-    \texttt{SHUT\_DOWN} & None & Plain HTTP &
-      Shutdown the entire application after returning this call.\\
-    \hline
-    \texttt{FIND\_NODES} & Kademlia key & JSON list of key-ip pairs &
-      Find Kademlia's neighbors close to given key.\\
-    \hline
-    \texttt{GET\_ROUTING\_TABLE} & None & JSON list of key-ip pairs & Return
-      Kademlia node's neighbors present in its routing table.\\
-    \hline
-    \texttt{GET\_KEY} & None & String representing the key & Return callee's
-      Kademlia ke.y\\
-    \hline
-    \texttt{GET} & Kademlia key  & JSON list of binary data & Get instances of
-    data stored under given key. \\
-    \hline
-    \texttt{PUT} & Kademlia key and binary data  & Plain HTTP & Store given
-    key-data pair in Kademlia. \\
-    \hline
-  \end{tabular}
-  \caption{RPC-over-HTTP interface of Ghoul application}
-  \label{tab:http_rpc}
-\end{table}
-
 \subsection{Preparation}
 We need to provide to dfuntest information on how to start and use our
 application. This is done only once and does not need to be rewritten as long as

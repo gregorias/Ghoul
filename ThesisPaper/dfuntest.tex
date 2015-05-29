@@ -254,7 +254,9 @@ environments in-between. Finally it produces a report directory.
 \section{Related work}
 The reader may suspect by now that the author might suffer from the "Not Invented Here" syndrome \footnote{\url{https://en.wikipedia.org/wiki/Not\_invented\_here}} (the author certainly asks himself this question from time to time).
 After all, secure DHT and distributed testing of peer-to-peer applications should be solved problems.
-Although several frameworks for testing distributed applications have been proposed, we found none that would have dfuntest scope and we would be able to use.
+Although several frameworks for testing distributed applications have been
+proposed, we found none that would have dfuntest scope and that we would be able
+to use.
 In this section we review research articles as well as available software that falls into dfuntest's scope
 
 \cite{ulr99}~proposes a decentralized testing architecture and presents a tool for distributed monitoring and assessment of test events. This tool does not facilitate deployment automation.
@@ -272,19 +274,26 @@ however, dfuntest centralization helps to check assertions on whole state of the
 To our best knowledge, frameworks described above are not publicly available. In addition to described differences, they do not abstract the remote environment (dfuntest's \texttt{Environment} and \texttt{EnvironmentPreparator}), thus they do not facilitate deployment, nor porting tests between user credentials or testing infrastructures.
 
 We continue with the available software for distributed testing.
-The Software Testing Automation Framework (STAF) \footnote{\url{http://staf.sourceforge.net}} is an open source
-project that creates cross-platform, distributed software test environments. It
-uses services to provide an uniform interface to environment's resources, such
-as file system, process management etc. From an architectural point of view its
-services correspond to \texttt{Environment} abstraction layer in dfuntest.
-If needed, it is possible to extend \texttt{Environment} interface with STAF facilities and provide its features.
+The Software Testing Automation Framework
+(STAF)\footnote{\url{http://staf.sourceforge.net}} is an open source project
+that creates cross-platform, distributed software test environments.
+It uses services to provide an uniform interface to environment's resources,
+such as file system, process management etc.
+From an architectural point of view its services correspond to
+\texttt{Environment} abstraction layer in dfuntest.
+If needed, it is possible to extend \texttt{Environment} interface with STAF
+facilities and provide its features.
 
-SmartBear TestComplete \footnote{\url{http://smartbear.com/product/testcomplete/overview}} proprietary product has distributed testing functionality.
+SmartBear
+TestComplete\footnote{\url{http://smartbear.com/product/testcomplete/overview}}
+proprietary product has distributed testing functionality.
 The framework allows definition of arbitrary environments and runs jobs sequentially.
 SmartBear does not provide any particular mechanism for running a testing scenario or generating a testing report.
 Additionally the software requires that the environment has the TestComplete software installed and running and the application uses TestComplete bindings.
 
-Robot Framework \footnote{\url{http://robotframework.org}} is a generic test automation framework for acceptance testing and acceptance test-driven development.
+Robot Framework\footnote{\url{http://robotframework.org}} is a generic test
+automation framework for acceptance testing and acceptance test-driven
+development.
 Users can define their testing scenarios in a high-level language resembling natural language.
 Robot Framework then automates running and generating a testing report.
 Robot does not provide any mechanisms for distributed test control and flexible distributed environment preparation.

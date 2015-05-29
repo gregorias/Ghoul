@@ -15,7 +15,7 @@ with Ghoul.
 \section{Implementation}
 \label{sec:implementation}
 
-The core interface of the protocol is \texttt{KademliaRouting} (shown in figure
+The core interface of the protocol is \texttt{KademliaRouting} (shown in Figure
 \ref{fig:routing_interface}).
 Implementations of this interface should implement the Kademlia protocol with
 Ghoul extensions.
@@ -89,7 +89,8 @@ public interface KademliaRouting {
 \label{fig:routing_interface}
 \end{figure}
 
-{\texttt{KademliaRoutingImpl}'s constructor} is shown in figure \ref{fig:routing_constr_header}.
+{\texttt{KademliaRoutingImpl}'s constructor} is shown in Figure
+\ref{fig:routing_constr_header}.
 This constructor shows dependencies of \texttt{KademliaRoutingImpl}.
 Functions such as: discovering current internet address
 (\texttt{NetworkAddressDiscovery}), sending messages to given network address
@@ -148,11 +149,11 @@ typed language.
 This language allows for expressive and succinct definition of build tasks,
 which is an advantage over more traditional build framework --- Maven
 \footnote{\url{https://maven.apache.org/}}.
-Next, Gradle performs, using provided information, typical tasks in Java's build
+Next, using provided information, Gradle performs, typical tasks in Java's build
 ecosystem: compilation, packaging, dependency resolution, unit testing, software
 validation etc.
 Gradle allows developers to download and build Ghoul in two simple steps:
-download the software from GitHub and run build task in Gradle (shown in figure
+download the software from GitHub and run build task in Gradle (shown in Figure
 \ref{fig:ghoul_build_process})
 
 \begin{figure}[tb]
@@ -199,49 +200,89 @@ We have added additional automatic code quality checking tools to Ghoul's automa
     It finds common programming flaws like unused variables, empty catch blocks, unnecessary object creation etc.
   \item{\textbf{Findbugs}\footnote{\url{http://findbugs.sourceforge.net/}}}
     Findbugs is a static analysis tools which looks for bugs in Java's code.
-    It can detect such bugs are code smells as: unused variables, null value dereference, use of \texttt{AtomicBoolean} for comparison etc.
+    It can detect such bugs and code smells as: unused variables, null value
+    dereference, use of \texttt{AtomicBoolean} for comparison etc.
     
 \end{description}
 
-We haven't included dfuntest's test into the automatic build, because this is a long task.
-However dfuntest's testing suite is always run manually to confirm code's correctness.
+We haven't included dfuntest's test into the automatic build, because this is a
+long task.
+However dfuntest's testing suite is always run manually before commiting to git
+repository to confirm code's correctness.
 
 \subsection{Usage}
 
-Although Ghoul is mainly designed to be used as a library, it is also possible to run it as a standalone application.
-In standalone mode Ghoul additionally exposes an RPC-over-HTTP interface over which it is possible to query and manipulate the DHT node (shown in table \ref{tab:http_rpc}).
+Although Ghoul is mainly designed to be used as a library, it is also possible
+to run it as a standalone application.
+In standalone mode Ghoul additionally exposes an RPC-over-HTTP interface over
+which it is possible to query and manipulate the DHT node (shown in Table
+\ref{tab:http_rpc}).
 
-An example session which runs 2 registrars and 3 DHT nodes is shown in figures 
+\begin{table}[tbp]
+  \begin{tabular}{|c|p{3cm}|p{3.6cm}|p{3.4cm}|}
+    \hline
+    HTTP-RPC & Arguments & Response & Description \\
+    \hline
+    \texttt{START} & None & Plain HTTP & Start Kademlia service.\\
+    \hline
+    \texttt{STOP} & None & Plain HTTP  & Stop Kademlia service.\\
+    \hline
+    \texttt{SHUT\_DOWN} & None & Plain HTTP &
+      Shutdown the entire application after returning this call.\\
+    \hline
+    \texttt{FIND\_NODES} & Kademlia key & JSON list of key-ip pairs &
+      Find Kademlia's neighbors close to given key.\\
+    \hline
+    \texttt{GET\_ROUTING\_TABLE} & None & JSON list of key-ip pairs & Return
+      Kademlia node's neighbors present in its routing table.\\
+    \hline
+    \texttt{GET\_KEY} & None & String representing the key & Return callee's
+      Kademlia ke.y\\
+    \hline
+    \texttt{GET} & Kademlia key  & JSON list of binary data & Get instances of
+    data stored under given key. \\
+    \hline
+    \texttt{PUT} & Kademlia key and binary data  & Plain HTTP & Store given
+    key-data pair in Kademlia. \\
+    \hline
+  \end{tabular}
+  \caption{RPC-over-HTTP interface of Ghoul application}
+  \label{tab:http_rpc}
+\end{table}
+
+An example session which runs 2 registrars and 3 DHT nodes is shown in Figures 
 \ref{fig:ghoul_manual_run} and \ref{fig:ghoul_manipulation}.
 In the session we use curl to send RPC-over-HTTP queries to DHT nodes.
-First we start registrars and then DHT nodes.
-Afterwards we get routing tables of the second DHT node.
-Then we put \texttt{DATA} string under the key \texttt{100}.
-Later we ask the third node get all replicas of the data under key \texttt{100}.
+First, we start registrars (Lines 1--2) and then DHT nodes (Lines 3--8).
+Afterwards we get routing tables of the second DHT node (Line 9).
+Then we contact the first to node to put \texttt{DATA} string under the key
+\texttt{100} (Line 10).
+Later, we ask the third node to get all values of the data under key
+\texttt{100} stored by replicas (Line 11).
 The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 
 \begin{figure}[tbp]
 \begin{verbatim}
-> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.RegistrarMain\
-  registrar0.xml > /dev/null &
+1 > java -cp ghoul-core-0.1.jar:lib/* \
+    me.gregorias.ghoul.interfaces.RegistrarMain registrar0.xml > /dev/null &
 
-> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.RegistrarMain\
-  registrar1.xml > /dev/null &
+2 > java -cp ghoul-core-0.1.jar:lib/* \
+    me.gregorias.ghoul.interfaces.RegistrarMain registrar1.xml > /dev/null &
 
-> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
-  kademlia0.xml >/dev/null &
+3 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+    kademlia0.xml >/dev/null &
 
-> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
-  kademlia1.xml >/dev/null &
+4 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+    kademlia1.xml >/dev/null &
 
-> java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
-  kademlia2.xml >/dev/null &
+5 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+    kademlia2.xml >/dev/null &
 
-> curl -X POST 127.0.0.1:10000/start
+6 > curl -X POST 127.0.0.1:10000/start
 
-> curl -X POST 127.0.0.1:10001/start
+7 > curl -X POST 127.0.0.1:10001/start
 
-> curl -X POST 127.0.0.1:10002/start
+8 > curl -X POST 127.0.0.1:10002/start
 \end{verbatim}
 \caption{Ghoul's starting commands}
 \label{fig:ghoul_manual_run}
@@ -249,17 +290,17 @@ The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 
 \begin{figure}[tbp]
 \begin{verbatim}
-> curl -X GET 127.0.0.1:10001/get_routing_table
-{"nodeInfo":[{"inetAddress":"localhost","port":9000,
-    "key":"15624f385826cae60bef58da5b53b4dc1cf070bd"},
-{"inetAddress":"localhost","port":9002,
-    "key":"2d1386c9c601676189faa7790b60dbeda3ed3e9b"}]}
+9 > curl -X GET 127.0.0.1:10001/get_routing_table
+  {"nodeInfo":[{"inetAddress":"localhost","port":9000,
+      "key":"15624f385826cae60bef58da5b53b4dc1cf070bd"},
+  {"inetAddress":"localhost","port":9002,
+      "key":"2d1386c9c601676189faa7790b60dbeda3ed3e9b"}]}
 
-> curl -X POST --header "Content-Type:application/octet-stream" \ 
---data-binary DATA 127.0.0.1:10000/put/100
+10 > curl -X POST --header "Content-Type:application/octet-stream" \ 
+   --data-binary DATA 127.0.0.1:10000/put/100
 
-> curl -X GET 127.0.0.1:10002/get/100
-["REFUQQ==","REFUQQ==","REFUQQ=="]
+11 > curl -X GET 127.0.0.1:10002/get/100
+   ["REFUQQ==","REFUQQ==","REFUQQ=="]
 \end{verbatim}
 \caption{Ghoul's status query and DHT manipulation}
 \label{fig:ghoul_manipulation}
