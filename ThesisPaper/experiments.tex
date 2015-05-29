@@ -7,8 +7,10 @@ that the implementation maintains the correct DHT topology.
 
 Dfuntest was initially built for our bare Kademlia implementation.
 Ghoul extends Kademlia with additional background security protocols, therefore distributed tests for Kademlia are also tests for Ghoul (with small adjusments in environment preparation).
-For this historical reason the name Kademlia is used in examples in section~\ref{sec:exampl-test-kademl}.
-\section{Testing Ghoul DHT with dfuntest}\label{sec:exampl-test-kademl}
+For this historical reason the name Kademlia is used in examples in
+Section~\ref{sec:exampl-test-kademl}.
+\section{Testing Ghoul DHT with dfuntest}
+\label{sec:exampl-test-kademl}
 In this section we will present how we have prepared dfuntests for Ghoul.
 
 \subsection{Preparation}
@@ -288,3 +290,6 @@ It's strongly connected components are:
 In case an error requires a debugging process the developer may easily change
 the testing environment and test parameters by changing the configuration file
 to facilitate the bug triage.
+
+\section{Performance evaluation}
+\label{sec:performance}
