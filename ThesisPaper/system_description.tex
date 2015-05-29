@@ -10,7 +10,7 @@ Ghoul.
 Sections \ref{sec:ghoul_data} and \ref{sec:ghoul_protocols} describe in detail
 Ghoul's mechanisms (certificate generation and proof-of-work validation), its
 data structures and protocols.
-The final section \ref{sec:ghoul_summary} describes Ghoul's strengths and
+The final Section \ref{sec:ghoul_summary} describes Ghoul's strengths and
 weaknesses.
 
 \section{Goals}
@@ -341,7 +341,7 @@ Which is the reason why it has its non-malleability properties.
   \label{alg:key_gen_alg}
 \end{algorithm}
 
-An example of this protocol for 3 registrars is shown in figure
+An example of this protocol for 3 registrars is shown in Figure
 \ref{fig:key_gen_example}.
 
 \begin{figure}[tbp]
@@ -412,7 +412,7 @@ Formally the protocol satisfies the following theorem:
   \label{th:robust_distributed_key_generation}
 \end{theorem}
 
-\subsubsection{Proof of theorem \ref{th:robust_distributed_key_generation}}
+\subsubsection{Proof of Theorem \ref{th:robust_distributed_key_generation}}
 
 If node $A$ has reached phase 3, then every node had completed phase 1
 and all messages from phase 1 had been received. Indeed, in line 10 the node $A$
@@ -483,7 +483,7 @@ Then the registrar chooses $m$ other registrars and generates random number with
 them.
 At the end all participating registrars send their certificates.
 
-In figure~\ref{fig:node_join_prot} an example of the node join protocol is shown
+In Figure~\ref{fig:node_join_prot} an example of the node join protocol is shown
 for $m=1$.
 
 \begin{figure}[tbp]
@@ -564,7 +564,7 @@ copy.
 Certificate revocations are destroyed after the certificate they revoke is no
 longer valid, i. e. the expiration date.
 
-\subsection{SybilControl - Limiting number of Sybil nodes with computational
+\subsection{SybilControl --- Limiting number of Sybil nodes with computational
 puzzles}
 \subsubsection{Goals}
   Verifiable random key generation in Kademlia is a defense against eclipse
@@ -787,7 +787,7 @@ puzzles}
   of $O(\log n)$ and requires sending larger messages. This exacerbates effects
   of churn and the network will take longer time to adapt to topology changes.
   A more detailed analysis of SybilControl's impact on DHT behavior may be
-  found in \cite{li12}..
+  found in \cite{li12}.
 
   Since Ghoul uses computational resources for proof-of-work verification
   therefore this parameter requires careful tuning.

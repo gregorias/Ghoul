@@ -1,18 +1,142 @@
 \chapter{Ghoul implementation}
 \label{ch:implementation}
-In this chapter we present Ghoul's implementation.
-We focus on general techniques used in Ghoul's development to produce high-quality code.
-In section \ref{sec:build} we present build tools used and an example session with Ghoul.
-In section \ref{sec:implementation} we show, as an example of our design principles, the interface of \texttt{KademliaRouting} - the core class in the protocol.
+In this chapter we present Ghoul's prototype implementation.
+This prototype includes the Kademlia protocol, registration, and certificate
+security mechanism.
+The prototype does not include SybilControl protocol.
+We focus on general techniques used in Ghoul's development to produce high
+quality code.
+In Section \ref{sec:implementation} we show, as an example of our design
+principles, the interface of \texttt{KademliaRouting} --- the core class in the
+protocol.
+In Section \ref{sec:build} we present build tools used and an example session
+with Ghoul.
 
-Ghoul is an open-source project.
-An up-to-date Ghoul's code is available for public audience at \url{https://github.com/gregorias/ghoul}.
+\section{Implementation}
+\label{sec:implementation}
 
-\section{Build system and running}
+The core interface of the protocol is \texttt{KademliaRouting} (shown in figure
+\ref{fig:routing_interface}).
+Implementations of this interface should implement the Kademlia protocol with
+Ghoul extensions.
+One of the focus of Ghoul's code is modularizabilty and \texttt{KademliaRouting}
+is an example of that focus.
+First, \texttt{KademliaRouting} is an interface, although there is only one
+implementation of it in the public part of the library's code.
+However, because it is an interface it is possible to easily mock it in
+unit-tests.
+\texttt{KademliaRouting} has another implementations in unit-testing code, e.g.
+\texttt{StaticKademliaRouting}, which has static routing table.
+This allows creation of proper, isolated unit-tests that test non-trivial
+scenarios and do not depend on complex, error-prone dependencies.
+Second, \texttt{KademliaRouting} does not implement storage functionality.
+Storage is done by \texttt{KademliaStore} class.
+Such division of responsibilities is also an example of Single Responsibility
+Principle --- one class should have only one responsibility.
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+public interface KademliaRouting {
+  /**
+   * Find size number of nodes closest to given {@link Key}.
+   *
+   * @param key key to look up
+   * @param size number of nodes to find
+   * @return up to size found nodes
+   */
+  Collection<NodeInfo> findClosestNodes(Key key, int size) throws InterruptedException,
+      KademliaException;
+
+  /**
+   * @return hosts present in the local routing table.
+   */
+  Collection<NodeInfo> getFlatRoutingTable();
+
+  /**
+   * @return Key representing this peer
+   */
+  Key getLocalKey();
+
+  /**
+   * @return is kademlia running.
+   */
+  boolean isRunning();
+
+  /**
+   * Registers neighbour listener which will receive notifications about newly added nodes.
+   *
+   * @param listener listener to register
+   */
+  void registerNeighbourListener(NeighbourListener listener);
+
+  /**
+   * Unregisters neighbour listener if any is present.
+   */
+  void unregisterNeighbourListener();
+
+  /**
+   * Connect and initialize this peer.
+   */
+  void start() throws KademliaException;
+
+  /**
+   * Disconnects peer from network.
+   */
+  void stop() throws KademliaException;
+}
+\end{lstlisting}
+\caption{\texttt{KademliaRouting} interface}
+\label{fig:routing_interface}
+\end{figure}
+
+{\texttt{KademliaRoutingImpl}'s constructor} is shown in figure \ref{fig:routing_constr_header}.
+This constructor shows dependencies of \texttt{KademliaRoutingImpl}.
+Functions such as: discovering current internet address
+(\texttt{NetworkAddressDiscovery}), sending messages to given network address
+(\texttt{MessageSender}), background thread execution
+(\texttt{ScheduledExecutorService}), are realized by interfaces.
+This allows custom definition of those functionalities by the user.
+This is realization of yet another principle called dependency inversion ---
+dependencies of classes should be provided to the classes not created by it.
+Again, the biggest strength of such approach is mostly visible in unit tests.
+Since network code is abstracted by interfaces, unit-tests may use fake
+implementations which transmit messages in memory and inject failures
+arbitrarily.
+Additionally, users of the Ghoul library may, for example, connect
+\texttt{KademliaRoutingImpl} with their own network code.
+Large number of parameters is sometimes considered a code smell, but dependency
+inversion is a more important consideration in this case.
+Additionally a builder design pattern is used for creating instances of
+\texttt{KademliaRouting}.
+
+\begin{figure}[tbp]
+\begin{lstlisting}
+KademliaRoutingImpl(Key localKey,
+                    NetworkAddressDiscovery networkAddressDiscovery,
+                    MessageSender sender,
+                    ListeningService listeningService,
+                    int bucketSize,
+                    int alpha,
+                    Collection<NodeInfo> initialKnownPeers,
+                    long messageTimeout,
+                    TimeUnit messageTimeoutUnit,
+                    long heartBeatDelay,
+                    TimeUnit heartBeatDelayUnit,
+                    PersonalCertificateManager personalCertificateManager,
+                    CertificateStorage certificateStorage,
+                    PrivateKey personalPrivateKey,
+                    ScheduledExecutorService scheduledExecutor,
+                    Random random);
+\end{lstlisting}
+\caption{\texttt{KademliaRoutingImpl}'s constructor}
+\label{fig:routing_constr_header}
+\end{figure}
+
+\section{Building and running}
 \label{sec:build}
 
 \subsection{Gradle}
-Currently Ghoul's code contains around 8000 lines of code in 126 Java files
+Currently Ghoul's code contains around 9000 lines of code in 126 Java files
 (excluding dfuntest's project).
 To maintain this amount of code we use Gradle
 \footnote{\url{https://gradle.org/}} build automation framework.
@@ -22,7 +146,7 @@ dependencies; and build tasks.
 Those configuration scripts are written in an imperative, Java-like, dynamically
 typed language.
 This language allows for expressive and succinct definition of build tasks,
-which is an advantage over more traditional build framework - Maven
+which is an advantage over more traditional build framework --- Maven
 \footnote{\url{https://maven.apache.org/}}.
 Next, Gradle performs, using provided information, typical tasks in Java's build
 ecosystem: compilation, packaging, dependency resolution, unit testing, software
@@ -139,111 +263,4 @@ The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 \end{verbatim}
 \caption{Ghoul's status query and DHT manipulation}
 \label{fig:ghoul_manipulation}
-\end{figure}
-
-\section{Implementation}
-\label{sec:implementation}
-
-The core interface of the protocol is \texttt{KademliaRouting} (shown in figure \ref{fig:routing_interface}).
-Implementations of this interface should implement the Kademlia protocol with Ghoul extensions.
-One of the focus of Ghoul's code is modularizabilty and \texttt{KademliaRouting} is an example of that focus.
-First, \texttt{KademliaRouting} is an interface, although there is only one implementation of it in the public part of the library's code.
-However, because it is an interface it is possible to easily mock it in unit-tests.
-\texttt{KademliaRouting} has another implementations in unit-testing code, e.g. \texttt{StaticKademliaRouting}, which has static routing table.
-This allows creation of proper, isolated unit-tests that test non-trivial scenarios and do not depend on complex, error-prone dependencies.
-Second, \texttt{KademliaRouting} does not implement storage functionality.
-Storage is done by \texttt{KademliaStore} class.
-Such division of responsibilities is also an example of Single Responsibility
-Principle - one class should have only one responsibility.
-
-\begin{figure}[tbp]
-\begin{lstlisting}
-public interface KademliaRouting {
-  /**
-   * Find size number of nodes closest to given {@link Key}.
-   *
-   * @param key key to look up
-   * @param size number of nodes to find
-   * @return up to size found nodes
-   */
-  Collection<NodeInfo> findClosestNodes(Key key, int size) throws InterruptedException,
-      KademliaException;
-
-  /**
-   * @return hosts present in the local routing table.
-   */
-  Collection<NodeInfo> getFlatRoutingTable();
-
-  /**
-   * @return Key representing this peer
-   */
-  Key getLocalKey();
-
-  /**
-   * @return is kademlia running.
-   */
-  boolean isRunning();
-
-  /**
-   * Registers neighbour listener which will receive notifications about newly added nodes.
-   *
-   * @param listener listener to register
-   */
-  void registerNeighbourListener(NeighbourListener listener);
-
-  /**
-   * Unregisters neighbour listener if any is present.
-   */
-  void unregisterNeighbourListener();
-
-  /**
-   * Connect and initialize this peer.
-   */
-  void start() throws KademliaException;
-
-  /**
-   * Disconnects peer from network.
-   */
-  void stop() throws KademliaException;
-}
-\end{lstlisting}
-\caption{\texttt{KademliaRouting} interface}
-\label{fig:routing_interface}
-\end{figure}
-
-{\texttt{KademliaRoutingImpl}'s constructor} is shown in figure \ref{fig:routing_constr_header}.
-This constructor shows dependencies of \texttt{KademliaRoutingImpl}.
-Functions such as: discovering current internet address
-(\texttt{NetworkAddressDiscovery}), sending messages to given network address
-(\texttt{MessageSender}), background thread execution
-(\texttt{ScheduledExecutorService}), are realized by interfaces.
-This allows custom definition of those functionalities by the user.
-This is realization of yet another principle called dependency inversion - dependencies of classes should be provided to the classes not created by it.
-Again, the biggest strength of such approach is mostly visible in unit tests.
-Since network code is abstracted by interfaces, unit-tests may use fake implementations which transmit messages in memory and inject failures arbitrarily.
-Additionally, users of the Ghoul library may, for example, connect \texttt{KademliaRoutingImpl} with their own network code.
-Large number of parameters is sometimes considered a code smell, but dependency inversion is a more important consideration in this case.
-Additionally a builder design pattern is used for creating instances of \texttt{KademliaRouting}.
-
-\begin{figure}[tbp]
-\begin{lstlisting}
-KademliaRoutingImpl(Key localKey,
-                    NetworkAddressDiscovery networkAddressDiscovery,
-                    MessageSender sender,
-                    ListeningService listeningService,
-                    int bucketSize,
-                    int alpha,
-                    Collection<NodeInfo> initialKnownPeers,
-                    long messageTimeout,
-                    TimeUnit messageTimeoutUnit,
-                    long heartBeatDelay,
-                    TimeUnit heartBeatDelayUnit,
-                    PersonalCertificateManager personalCertificateManager,
-                    CertificateStorage certificateStorage,
-                    PrivateKey personalPrivateKey,
-                    ScheduledExecutorService scheduledExecutor,
-                    Random random);
-\end{lstlisting}
-\caption{\texttt{KademliaRoutingImpl}'s constructor}
-\label{fig:routing_constr_header}
 \end{figure}
