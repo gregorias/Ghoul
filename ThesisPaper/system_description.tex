@@ -120,7 +120,7 @@ on its first entry. The private key is always kept private. The public key will
 be propagated. Additionally, public keys of registration nodes are known by all
 nodes.
 
-To participate in the network a DHT node requires a \textbf{certificate}.
+To participate in the DHT network, a node requires a \emph{certificate}.
 A certificate is a tuple consisting of:
 (\texttt{NODE\_PUB\_KEY},~\texttt{NODE\_DHT\_KEY},~\texttt{EXPIRATION\_DATETIME})
 signed with a registration node's private key such that it is known which node
@@ -144,12 +144,13 @@ certificate of a Kademlia's neighbor is close to expiration then a
 \texttt{PING} should be sent to get an updated certificate.
 
 \subsection{Messages}
-Ghoul extends each DHT message with following fields:
+Ghoul extends each DHT message with the following fields:
 \begin{description}
   \item{\texttt{certificateRequest}} Signifies that a response to this message
-    should contain a list of certificates. This field is set when the recipient
-    is considered to be a neighbor or potential neighbor and either its
-    certificates are not present, not valid, or close to expiration.
+    should contain a list of certificates certifying the sender's validity.
+    This field is set when the recipient is considered to be a neighbor or a
+    potential neighbor and either its certificates are not present, not valid,
+    or close to expiration.
   \item{\texttt{certificates}} A list of valid certificates provided by the
     registration authority.
   \item{\texttt{signature}} A message signature signed with the sender's private
@@ -163,11 +164,12 @@ size of $\approx$ 1KB. Fortunately, the list of certificates is sent
 sporadically.
 
 Each one of those additional fields is optional. If the signature field is not
-provided it means that the node is not interested in being part of the network
-and instead just uses it to find information. That is considered normal
-behavior. Such node is not added to its interlocutor's routing table as such a
-node doesn't even have to provide its DHT key. Such signatureless queries
-will only be responded with requested information.
+provided it means that the node is not interested in being part of the DHT
+network and instead just uses it to find information.
+That is considered normal behavior.
+Such node is not added to its interlocutor's routing table as such a node
+doesn't even have to provide its DHT key.
+Such signatureless queries will only be responded with requested information.
 Otherwise every node should always sign its messages.
 
 The \texttt{certificateRequest} field is set if all of the following conditions
@@ -191,7 +193,7 @@ a valid list of certificates then it is discarded.
 \subsection{Challenge protocol}
 In some neuralgical and vulnerable points in the protocol we may intent to limit
 the number of requests a node can make using cryptographic challenges. This
-limit achieves two goals: It significantly increases the cost of an attack which
+limit achieves two goals: it significantly increases the cost of an attack which
 relies on number of queries, such as a Sybil attack; it provides a throttle
 mechanism to prevent a node overload.
 
@@ -256,48 +258,33 @@ queries per second this variant may provide a denial-of-service vulnerability.
 
 \subsection{Robust distributed random key generation}
 
-In Ghoul honesty of registrars is not assumed. A single centralized
-registrar would greatly facilitate an eclipse attack by assigning to colluding
-nodes keys close to a target. This vulnerability  calls for a verifiable
-distributed scheme of key generation.
+Ghoul does not assume that registrars are honest.
+A single centralized registrar would greatly facilitate an eclipse attack by
+assigning to colluding nodes keys close to a target.
+This vulnerability  calls for a verifiable distributed scheme of key generation.
 
-Here we will present a distributed protocol which generates a random key that is
-unbiased if at least one node is honest. More formally:
+In Algorithm \ref{alg:key_gen_alg} we present a distributed protocol which
+generates a random key that is unbiased if at least one node is honest.
 
-\begin{theorem}
-  Let $R = \langle r_1, \ldots, r_n \rangle$ of $n \geq 2$ be a list of nodes
-  participating in the random key generation protocol. All nodes in $R$ know
-  $R$. 
-  If all nodes respond according to the protocol in a timely manner and at least
-  one node is honest, then the protocol generates one, unbiased, random key known
-  to all participants.
-  If some nodes exhibit byzantine failure, but at least one non-failing node is
-  honest, then all nodes that generate a key generate the same, unbiased key.
-
-  The chance that a malicious participant manipulates the protocol so that this
-  theorem does not hold is cryptographically negligible.
-  \label{th:robust_distributed_key_generation}
-\end{theorem}
-
-The protocol that satisfies those properties is defined in
-\ref{alg:key_gen_alg}.  It uses bit-commitment scheme which is defined as
-follows:
+The protocol uses bit-commitment scheme which is defined as follows:
 
 \begin{defin*}[Bit-commitment]
   Bit-commitment \cite[p.220]{gol08} is a cryptographic protocol that allows one
-  to commit a value such that it is hidden and the commitment may be shared with
-  each participant. Later the commiter may reveal the commited value to
-  participants in such a way that they can verify that it is indeed hidden in
-  the commitment shared earlier .
+  to commit to a value such that the value is hidden and the commitment may be
+  shared with each participant.
+  Later the commiter may reveal the commited value to participants in such a way
+  that they can verify that the revealed commitment value was indeed hidden in
+  the commitment shared earlier.
 
   Typical bit-commitment use is split into two phases:
   \begin{description}
-    \item{\textbf{Hiding phase}} Commiter chooses a value and creates a
-      commitment which hides the value. The commiter sends the commitment to
+    \item{\textbf{The hiding phase}} Commiter chooses a value and creates a
+      commitment which hides the value. The commiter sends the commitment to the
       interested parties.
-    \item{\textbf{Reveal phase}} The value and the key used to create the
-      commitment are revealed. Interested parties may check that they are
-      consistent with earlier commitments.
+    \item{\textbf{The reveal phase}} The value and the key used to create the
+      commitment are revealed.
+      The interested parties may check that they are consistent with earlier
+      commitments.
   \end{description}
 
   Bit-commitment protocols belong to two disjoint sets: unconditionally binding
@@ -318,14 +305,14 @@ The random number generation protocol consists of 3 phases:
     commitment key. This step ensures that every honest node has received the
     same set of messages and will generate the same key. If any node has sent
     inconsistent messages to honest
-    nodes, then this will be detected in this stage.
+    nodes, then this will be detected in this phase.
   \item (Lines 10-16) Verify correctness of messages and output the generated
     key.
 \end{enumerate}
 
 One may recognize that this protocol consist of the first two phases of a
-3-phase byzantine failure protection protocol. Which is the reason why it has
-its non-malleability properties.
+3-phase byzantine failure protection protocol\cite{cas99}.
+Which is the reason why it has its non-malleability properties.
 
 \begin{algorithm}[tb]
   \begin{algorithmic}[1]
@@ -342,7 +329,7 @@ its non-malleability properties.
   \ENDFOR
   \STATE Wait $T$ seconds till all messages of the above form are received
   from other nodes. If timeout happens then abort. If any message is not
-  coherent to the rest then abort.
+  coherent with the rest then abort.
   \FOR{$j := 1$ \TO $n$, $j \neq i$}
     \IF{$b_j$ is not a bit commitment of $k_j$}
       \STATE Abort protocol.
@@ -402,41 +389,59 @@ An example of this protocol for 3 registrars is shown in figure
 \end{figure}
 
 The protocol uses $O\left(n^2\right)$ messages and is vulnerable to an attack in
-which an adversary simply does not participate in it. However in the large scope
-of the system it's not an issue, because we assume that introducing a registrar
-requires an organizational approval which is a nontrivial barrier of entry and
-later any malicious nodes may be easily detected and removed from the
-centralized lists should it become compromised.
+which an adversary simply does not participate in it.
+However in the larger scope of the system it's not an issue, because we assume
+that introducing a registrar requires an organizational approval which is a
+nontrivial barrier of entry and later any malicious nodes may be easily detected
+and removed from the registrars' lists should it become compromised.
+
+Formally the protocol satisfies the following theorem:
+
+\begin{theorem}
+  Let $R = \langle r_1, \ldots, r_n \rangle$ of $n \geq 2$ be a list of nodes
+  participating in the random key generation protocol. All nodes in $R$ know
+  $R$. 
+  If all nodes respond according to the protocol in a timely manner and at least
+  one node is honest, then the protocol generates one, unbiased, random key known
+  to all participants.
+  If some nodes exhibit byzantine failure, but at least one non-failing node is
+  honest, then all nodes that generate a key generate the same, unbiased key.
+
+  The chance that a malicious participant manipulates the protocol so that this
+  theorem does not hold is cryptographically negligible.
+  \label{th:robust_distributed_key_generation}
+\end{theorem}
 
 \subsubsection{Proof of theorem \ref{th:robust_distributed_key_generation}}
 
-If node $A$ has reached stage 3 that means that every node had completed stage 1
-and all messages from stage 1 had been received. Indeed, in line 10 the node $A$
-had waited for all stage 2 broadcast messages, which can only be received if
-the sender has received all messages from stage 1.
+If node $A$ has reached phase 3, then every node had completed phase 1
+and all messages from phase 1 had been received. Indeed, in line 10 the node $A$
+had waited for all phase 2 broadcast messages, which can only be received if
+the sender has received all messages from phase 1.
 Therefore, if any node generates a key, then all nodes have successfully passed
-stage 1.
+phase 1.
 
 Careful reader will notice that we need to prove that the protocol is resistant
 to a replay attack. An adversary $A$ may remember messages sent by an honest
 node $B$ in earlier runs of the protocol. $A$ may try to replace the message
 sent by $B$, $\left(h_B\right)_B$, with an older message: $\left(h_B'\right)_B$.
 However if that happens then the adversary will also have to generate a valid
-stage 2 message signed with $B$'s private key: 
+phase 2 message signed with $B$'s private key: 
 $\left(\left(h_1\right)_1, \ldots, \left(h_B'\right)_B, \ldots,
 \left(h_n\right)_n\right)_B$
 Since the adversary tries to fool an honest node and $h_i$ values are
 effectively random (if $i$ is honest), therefore the adversary won't be able to
 do so.
-Notice that if we would try to save bandwith and not include
-$\left(h_i\right)_i$ in the stage 2 message sent to $i$, then the replay attack
+Notice that if we would try to save bandwidth and not include
+$\left(h_i\right)_i$ in the phase 2 message sent to $i$, then the replay attack
 would work.
 
 If a key is generated from values $\left(k_i\right)_{1 \leq i \leq n}$, then the
 key is unbiased. Indeed, if $r$ is uniformly random variable and $s$ is any
 random variable, then the function: $r \oplus s$ is also a uniformly random
-variable. So ,if at least one value $k_j$ has been chosen randomly, then $k$ is
-an unbiased random key.
+variable.
+So, if at least one value $k_j$ has been chosen randomly, then $k$ is an
+unbiased random key.
 
 Finally, we have to prove that all keys produced by honest nodes are the same.
 This means that the view $k_1, \ldots, k_n$ of each of those honest nodes is the
@@ -444,10 +449,11 @@ same. The view might be different only if an adversary manages to send different
 (but consistent) messages to different nodes.Since we have already proven that the
 adversary may not replace a message from an honest node, therefore the adversary
 may only manipulate its own messages. So assume that honest nodes $B$
-and $C$ have received respectively: $\left(h_A\right)_A, \left(h_A'\right)_A,
-h_A \neq h_A'$ from the adversary $A$.
-This situation will be discovered in stage $2$ when $B$ and $C$ share their view
+and $C$ have received from the adversary $A$ respectively:
+$\left(h_A\right)_A, \left(h_A'\right)_A$, where $h_A \neq h_A'$.
+This situation will be discovered in phase $2$ when $B$ and $C$ share their view
 of commitments and they will abort their execution of the protocol.
+$\hfill\square$
 
 \subsection{Node join protocol}
 
@@ -459,7 +465,7 @@ join the DHT.
 
 The node join protocol is started by a node that wants to join the network.
 Upon its successful completion the node acquires a DHT key generated by
-registrars and a collection of certifcates tying that DHT key to the node's
+registrars and a collection of certificates tying that DHT key to the node's
 public key.
 
 The system's threat model allows some registration authorities to be malicious
@@ -469,11 +475,13 @@ parameter indicating maximal number of malicious registrars. The node join
 protocol requires that at least $m+1$ certificates are present for the node to
 be considered valid.
 
-The protocol is a combination of the challenge protocol and then distributed
-random number generation protocol. The joining node contacts any registrar
-requesting a challenge and combines its solution with a join request. Then the
-registrar chooses $m$ other registrars and generates random number with them. At
-the end all participating registrars send their certificates.
+The protocol combines the challenge protocol with the distributed random number
+generation protocol.
+The joining node contacts any registrar requesting a challenge and combines its
+solution with a join request.
+Then the registrar chooses $m$ other registrars and generates random number with
+them.
+At the end all participating registrars send their certificates.
 
 In figure~\ref{fig:node_join_prot} an example of the node join protocol is shown
 for $m=1$.
@@ -487,7 +495,7 @@ for $m=1$.
 \declinst{ra}{RA}{Registrar A}
 \declinst{rb}{RB}{Registrar B}
 \nextlevel
-\referencestart{c}{challenge protocol}{client}{ra}
+\referencestart{c}{the challenge protocol}{client}{ra}
 \nextlevel[5]
 \mess{send solution and request join}{client}{ra}
 \nextlevel
@@ -508,7 +516,6 @@ for $m=1$.
 
 \referencestart{r}{robust key-generation protocol}{ra}{rb}
 \nextlevel[2]
-\gate[r][b]{out}{rleft}
 \mess{\parbox{4cm}{node certificates \\ signed by A and B\\}}{rleft}{client}
 \nextlevel[1]
 \referenceend{r}
@@ -519,7 +526,7 @@ for $m=1$.
 
 \paragraph{Certificate refresh} Once a certificate has been generated it is
 valid only for some time. Every node that has a valid certificate that has not
-been revoked may request a new certificate for the same (public key, dht key)
+been revoked may request a new certificate for the same (public key, DHT key)
 pair.
 To do this it contacts the registrar which has issued given certificate,
 solves a challenge, and then sends a request for certificate update.
@@ -528,8 +535,8 @@ registrar sends an updated certificate if it is still valid.
 
 Certificate refresh is a necessary part of the protocol, since without it each
 node would have to join the network again upon certificate expiration.
-Fresh reentry unnecessarily induces churn and provides a vulnerability for an
-eclipse attack. 
+Fresh reentry results in unnecessary churn and, moreover, provides a
+vulnerability for an eclipse attack. 
 In Kademlia it is hard to flush out an old, active node from the routing table.
 This behavior is used in KAD to prevent an attacker, who might even have large
 number of IDs, to overwrite data that is stored in the table by spamming the
@@ -547,8 +554,8 @@ nodes. With revocation it is possible to eliminate offenders globally,
 drastically increasing the cost of an attack.
 
 A certificate revocation has the same syntax as a certificate. It is a
-tuple:\\
-(\texttt{NODE\_PUB\_KEY},~\texttt{NODE\_DHT\_KEY},~\texttt{EXPIRATION\_DATETIME})
+tuple:
+\texttt{(NODE\_PUB\_KEY, NODE\_DHT\_KEY, EXPIRATION\_DATETIME)}
 signed by a registrar. This tuple means that the certificate for given ID pair
 is no longer valid. The revoked node should be removed from routing tables and
 its messages should be discarded. Each registrar maintains its own revocation
@@ -565,7 +572,9 @@ puzzles}
   DHTs, such as Chord, due to non-strict routing tables and redundant, iterative
   routing algorithm.
   Unless an attacker has access to a large number of nodes, it is difficult to
-  launch an successful eclipse attack \cite{mac09}.
+  launch a successful large-scale eclipse attack that is meant to poison
+  routing tables of a significant portion of the DHT nodes' routing tables
+  \cite{mac09}.
 
   For Ghoul to be secure a protection scheme against a Sybil attack is
   necessary.
@@ -575,21 +584,23 @@ puzzles}
   It is still possible to accumulate Sybil nodes over time.
 
   The centralized authority allows for implementation of various anti-Sybil
-  check schemes, but such a scheme would increase responsibilities of those
-  authority nodes which we might want to keep as simple as possible.
+  check schemes.
+  Such a scheme would increase responsibilities of the authority nodes which we
+  might want to keep as simple as possible.
   So in order to provide a defense against Sybil attack Ghoul incorporates
   SybilControl into its mechanisms.
 
 \subsubsection{SybilControl mechanism}
-  SybilControl is fully described in \cite{li12}. Here we will describe the core
-  mechanism as it is used in Ghoul. 
+  SybilControl is fully described in \cite{li12}.
+  Here we will describe the core mechanism as it is used in Ghoul. 
 
   To limit the number of Sybil nodes SybilControl requires that nodes
   periodically generate a cryptographic puzzle and solve it. To verify that
-  this puzzle is generated honestly it includes similarly generated puzzles
-  propagated from its neighbors. Let's call the puzzle string for node $A$ as
-  $C_{A-new}$. Assuming $A$ has received puzzles $C_{B_i}$ from its neighbors
-  $B_{i}$, then $C_{A-new}$ is:
+  a puzzle has been generated honestly the puzzle includes similarly generated
+  puzzles propagated from the node's neighbors.
+  Let's call the puzzle string for node $A$ as $C_{A-new}$.
+  Assuming $A$ has received puzzles $C_{B_i}$ from its neighbors $B_{i}$, then
+  $C_{A-new}$ is generated from a record string $R_{A-new}$ as follows:
 
   \begin{eqnarray*}
       R_{A-new} &=& B_1||C_{B_1}||\ldots||B_n||C_{B_n}||r_A||C_{A-old}\\
@@ -636,17 +647,16 @@ puzzles}
   among them.
 
 \subsubsection{SybilControl vulnerabilities}
-  The SybilControl paper doesn't consider some pernicious vulnerabilities, which
-  may break the protocol.
-  Here we will describe what they are and how does Ghoul
-  deal with them.
+  The SybilControl, as defined in \cite{li12}, doesn't consider some pernicious
+  vulnerabilities, which may break the protocol.
+  Here we will describe what they are and how does Ghoul deal with them.
 
-  First, the protocol loosely defines what constitutes a neighbor. An
-  uncareful implementation of SybilControl in which every cryptographic puzzle
-  propagation is included in the generation of the next puzzle may increase the
-  size of the puzzle size considerably. This kind of behavior may be used to
-  slow down the DHT by nodes which gratuitously send challenge updates to all
-  nodes in the DHT.
+  First, the protocol loosely defines what constitutes a neighbor. A careless
+  implementation of SybilControl in which every cryptographic puzzle propagation
+  is included in the generation of the next puzzle may increase the size of the
+  puzzle size considerably.
+  This kind of behavior may be used to slow down the DHT by nodes which
+  gratuitously send challenge updates to all nodes in the DHT.
   This can be prevented by including only challenges received from verified
   nodes, such as nodes in the routing table, and additionally limiting the
   number of included challenges to those that have been received in the last
@@ -672,8 +682,8 @@ puzzles}
   discards all the other information.
   Non-direct check uses the found key for subsequent find node operations and
   also the history for SybilControl verification.
-  In fact in this scheme there's no need for distinguishing direct and
-  non-direct verification from the point of view of the verifier.
+  In fact in this scheme the verifier does not need to distinguish between
+  direct and non-direct verification.
 
 \subsubsection{SybilControl in Ghoul}
   SybilControl requires additional consideration as to how it integrates with
@@ -698,21 +708,22 @@ puzzles}
   32$ bytes, that is around 200 bytes.
   Which forces us to consider at most $6,400/200 = 32$ neighbor challenges when
   building a puzzle.
-  The actual value of neighbor challenges should be less than $32$ to accomodate
+  The actual value of neighbor challenges should be less than $32$ to accommodate
   metadata.
-\section{Evaluation}
+\section{Theoretical evaluation}
 \label{sec:ghoul_summary}
   This section concludes the specification of Ghoul. Here we will evaluate its
   strengths and weaknesses.
   
   \subsection{Security}
-  The core advantage of this design is that it secures the DHT from Sybil and
+  The core advantage of Ghoul's design is that it secures the DHT from Sybil and
   eclipse attacks while at the same time it does not take any additional
-  assumptions about available resources apart from computing power. Ghoul does
-  not assume anything about security properties of IP address or other network
-  characteristics or require a Social network, or establishment of symmetric key
-  architecture.  This means that setting up Ghoul does not require any more work
-  than setting up a bare Kademlia implementation.
+  assumptions about available resources apart from computing power.
+  Ghoul does not assume anything about security properties of IP addresses or
+  other network characteristics or require a Social network, or establishment of
+  symmetric key architecture.
+  This means that setting up Ghoul does not require any more effort than setting
+  up a bare Kademlia implementation.
 
   Keeping the completely abstract nature of identification makes it possible to
   augment this scheme with other security protocols. Application programmer may
@@ -724,17 +735,19 @@ puzzles}
   with natural redundancy of Kademlia protocol also make launching an eclipse
   attack much harder.
 
-  Ghoul, however is not invulnerable and we are aware of two weaknesses of
-  bare Ghoul protocol:
+  Ghoul, however is not invulnerable.
+  We are aware of two weaknesses of the bare Ghoul protocol:
 
   \begin{description}
-    \item{\textbf{anonymization}} Lack of anonymization (adversiaries may easily
+    \item{\textbf{anonymization}} Lack of anonymization (adversaries may easily
       associate requests with sending nodes) gives a snooping attacker a
       possibility to acquire information about node's behavior and use it to
       augment the attacker's attack.
       For example if an attacker can predict whether node verification in the
       SybilControl scheme is direct or not then this whole scheme is rendered
       void.
+      The prediction may be done by snooping the target's communication
+      channels and using timing of messages to guess their purpose.
     \item{\textbf{denial of service}} Additional security mechanisms increase
       amount of work a node needs to perform.
       If nodes do not limit their workload a crafty attacker may congest a node
@@ -753,61 +766,64 @@ puzzles}
 
   \subsection{Performance}
 
-  Ghoul changed jst node join and neighbor additions protocol and as
+  Ghoul changed just node join and neighbor additions protocols and as
   such does not change anything else.
   In particular a typical use of Kademlia for finding nodes or data does not
   incur any performance penalty.
 
-  Node join protocol changes an instantaneous operation into an inexpensive
+  The node join protocol changes an instantaneous operation into an inexpensive
   distributed protocol with some proof-of-work.
-  Since this happens only once its cost is negligible.
+  Since this happens only once per node's entry into the DHT, its cost is
+  negligible.
   For the central authority the node join protocol requires the ability to
   generate and save nonces, and perform the distributed key generation
   algorithm.
   Since node's join happens only once in node's existence and those operations
-  are lightweight then it means that the central authority can be a simple
-  machine and should not be a performance bottleneck.
+  are lightweight then it means that the central authority can use common
+  hardware and should not be a performance bottleneck.
 
   The biggest performance overhead happens during neighbor addition when
   verification is performed. The verification message complexity is in the order
   of $O(\log n)$ and requires sending larger messages. This exacerbates effects
   of churn and the network will take longer time to adapt to topology changes.
-  A more detailed analysis of SybilControl's impact on DHT behavior can be
+  A more detailed analysis of SybilControl's impact on DHT behavior may be
   found in \cite{li12}..
 
   Since Ghoul uses computational resources for proof-of-work verification
-  therefore this parameter requires careful tuning. Application designer needs
-  to consider the weakest node that should be able to join the DHT and also be
-  aware that a Sybil attacker may create as many identities as is the factor
-  of his computing power compared to the weakest node. Therefore tests with
-  small hardness may prove to be ineffective in blocking an attack. On the other
-  hand a weak node may still query without performing any additional work,
-  so we can only consider more powerful ones for creating the DHT.
+  therefore this parameter requires careful tuning.
+  The application designer needs to consider the weakest node that should be
+  able to join the DHT and also be aware that a Sybil attacker may create as
+  many identities as is the factor of his computing power compared to the
+  weakest node.
+  Therefore tests with small hardness may prove to be ineffective in blocking an
+  attack.
+  On the other hand a weak node may still query without performing any
+  additional work, so we may only consider more powerful nodes for maintaining
+  and keeping data in the DHT.
 
-  \subsection{Centralized key-generation}
+  \subsection{Centralized key generation}
   
   The inclusion of centralized authority looks like a step in the wrong
   direction. Central points of responsibility usually mean greater chance of
-  systematic failure, lesser security, and non-scalable performance. I'd like to
-  adress those three points.
+  systematic failure, lesser security, and non-scalable performance.
+  We would like to adress those three points.
 
   Successful Peer-to-Peer applications, like BitTorrent or Bitcoin, are not
   fully distributed, but use centralized services to provide a functional
-  ecosystem. The file-sharing part of BitTorrent is distributed, but for 
-  torrent search and metadata download users still use trackers. Those
-  centralized servers are set up by a third-party and have total authority over
-  their behavior. The reason why this set up works seamlessly is that
-  there is not one central server, but multiple independent authorities. If a
-  tracker starts behaving maliciously then it is noticed and search browsers do
-  not return links to the malicious tracker. Similar set up is done in Ghoul.
+  ecosystem. The file-sharing part of BitTorrent is distributed, but users still
+  use trackers for torrent search and metadata download.
+  Those centralized servers are set up by a third-party and have total authority
+  over server's behavior.
+  The reason why this set up works seamlessly is that there is not one central
+  server, but rather multiple independent authorities.
+  If a tracker starts behaving maliciously then it is noticed and search
+  browsers do not return links to the malicious tracker.
+  Similar set up is recommended for Ghoul's registration servers.
 
-  Tor anynomizing network \cite{syv04}, which is used worldwide by, for example,
+  Tor anonymizing network \cite{syv04}, which is used worldwide by, for example,
   political dissidents and whistleblowers to protect against government
   surveillance, also relies on central authority. Tor currently uses 9 directory
-  authorities\footnote{
-  \url{https://www.torproject.org/docs/faq\#KeyManagement}}\footnote{
-  \url{https://atlas.torproject.org/\#search/flag:authority}}
-  which keep a signed list of active Tor nodes.
+  authorities\cite{tor1,tor2} which keep a signed list of active Tor nodes.
   A Tor client contacts all directory authorities to download this list and
   trusts relays that are confirmed by a consensus of directory authorities.
   If an adversary were to shut down directory authorities (through for example a
@@ -815,13 +831,14 @@ puzzles}
   In contrast, in Ghoul, compromise of the central authority would stop new
   nodes from joining the network.
 
-  Introduction of central authority is necessary for efficient security.
+  Introduction of the central authority is necessary for efficient and secure
+  implementation.
   Gatekeeper servers ensure that distributed keys are truly random, something
-  that would be inefficient in a distributed setting. Centralized cetrification
-  system allows adding extensions and boost security mechanism which can
-  recognize malicious nodes.
+  that would be inefficient to guarantee in a distributed setting.
+  The centralized certification system allows adding extensions and boost
+  security mechanism which can recognize malicious nodes.
 
   The gatekeeper functionality in Ghoul is only used for node join and doesn't
   require any complex computational power. Even if node join fails or becomes
-  congested the network is still usable. Already certfied nodes may still
+  congested the network is still usable. Already certified nodes may still
   operate normally and external nodes may use it for node-search.
