@@ -4,8 +4,8 @@
   In this chapter we define what is a Distributed Hash Table and specify
   Kademlia DHT protocol, describe reasons and methods of attacks on DHT, and
   present examples of different classes of protection mechanisms.
-  Finally examples of effectiveness of described attacks on popular, real-world
-  DHT deployments are provided.
+  Finally, we provide examples of effectiveness of described attacks on popular,
+  real-world DHT deployments.
   Those examples show that securing DHT is still an open problem in practice.
 
   This chapter serves also as a survey of related work for Ghoul.
@@ -15,26 +15,28 @@
 
 \section{DHT overview}
 
-  Distributed hash table is a type of peer-to-peer system providing topology
-  creation and maintenance protocols. They are typically designed for and
-  tightly coupled with data storage protocols for key-value pairs, hence the
-  hash table part in the name. Popular DHT designs include: Chord~\cite{sto03},
-  Pastry \cite{row01}, Kademlia \cite{may02}.
+  Distributed hash table is a type of a Peer-To-Peer system providing topology
+  creation and maintenance protocols.
+  They are typically designed for (and tightly coupled) with data storage
+  protocols for key-value pairs, hence the hash table part in the name.
+  Popular DHT designs include: Chord~\cite{sto03}, Pastry \cite{row01}, Kademlia
+  \cite{may02}.
 
-  A structure of a typical DHT consists of a three main components. First is a
-  key space, a collection of identifiers such as 160-bit bitstrings. Those keys
-  are an abstract identification of a node and serve to partition the key space
-  into ownership ranges over the network. Second is an overlay network - a
-  topology induced by routing tables. Routing tables contain pairings between
-  abstract keys and network addresses. Neighborhood tables are kept and
-  maintained by each node. The final component of DHT specification are
-  protocols for routing table maintenance and search of nodes that are not
-  neighbors.
+  A structure of a typical DHT consists of a three main components. The first is
+  the key space, a collection of identifiers such as 160-bit bitstrings.
+  Those keys are an abstract identification of a node and serve to partition the
+  key space into ownership ranges over the network.
+  The second is an overlay network --- a topology induced by routing tables.
+  Routing tables contain pairings between abstract keys and network addresses.
+  Neighborhood tables are kept and maintained by each node.
+  The third component of DHT specification are protocols for routing table
+  maintenance and search of nodes that are not neighbors.
 
   This kind of structure has certain desirable properties. Firstly, a DHT is
   completely decentralized. Every peer plays the same role and the protocol does
-  not require any form of central coordinator. Secondly, DHTs are scalable. In
-  most protocols the size of a routing table is on the order of $O(\log n)$,
+  not require any form of central coordination.
+  Secondly, DHTs are scalable.
+  In most protocols the size of a routing table is in the order of $O(\log n)$,
   where $n$ is size of the network. Message count complexity of node search
   protocol is logarithmic as well. Thirdly, DHTs are fault tolerant. In fact
   their protocols are designed to be resilient to even significant churn in the
@@ -42,7 +44,7 @@
   phenomena the routing table should be updated often enough.
  
   \subsection{Kademlia}
-  Kademlia \cite{may02} is a popular choice among many peer-to-peer
+  Kademlia \cite{may02} is a popular choice among many Peer-to-Peer
   applications. It is well-known for its use in BitTorrent and eDonkey
   file-sharing applications. Wang and Kangasharju \cite{wan13} measure the size
   of Kademlia used in BitTorrent to peak at almost 25 million users.
@@ -54,11 +56,9 @@
   \[ d(x, y) = x \oplus y\]
 
   The routing table is a collection of $n$ buckets, where each bucket has
-  maximum size $k$ -~a~\mbox{system-wide} constant. 
-  $i$'th bucket holds active and recently seen nodes such that the first most
-  significant bit that is different from routing table's owner is at position
-  $i$. More formally: the $i$'th bucket of node's with key $x$ holds nodes with
-  keys $y$ such that $2^i \leq d(x, y) < 2^{i+1}$.
+  maximum size $k$~---~a~\mbox{system-wide} constant. 
+  The $i$'th bucket of node with key $x$ holds active and recently seen nodes
+  with keys $y$ such that $2^i \leq d(x, y) < 2^{i+1}$.
 
   Kademlia node implements 4 remote procedure call (RPC) queries. In this
   context RPC is an inter-process communication protocol that defines a query
@@ -83,18 +83,13 @@
   The main protocol in Kademlia is the node search protocol shown in
   algorithm~\ref{alg:node_search_alg}. Its distinctive feature is that it is
   iterative and performs parallel queries. This form of natural redundancy is
-  well suited for preventing attacks \cite{sit02}.
-
-  [TODO no nie wiem czy ten algorytm teraz wygląda lepiej. Wydaje mi się mniej
-    czytelny (przede wszystkim ze względu na długie zdania) a nie chcę schodzić
-    na poziom ściśłego języka. Zapomniałem już co było nie tak w poprzednim
-  opr{\'o}cz mniejszej ścisłości.]
+  well suited for preventing some attacks \cite{sit02}.
 
   \begin{algorithm}
     \begin{algorithmic}[1]
     \STATE \texttt{candidates} $\leftarrow$ empty priority queue for candidate
     nodes ordered by closeness to key $y$
-    \STATE Add all nodes from the routing table and this node to
+    \STATE Add all nodes from the routing table and the current node to
     \texttt{candidates}
     \STATE Set added nodes' state to \texttt{unqueried}
     \WHILE {$|$nodes whose state isn't \texttt{responded} among top $k$
@@ -128,25 +123,28 @@
   \end{algorithm}
 
   The protocol for finding stored data associated with a key is structurally the
-  same. Only, instead of \texttt{FIND\_NODE}, \texttt{GET\_KEY} is sent and the
-  reply additionally contains stored data if any exists.
+  same.
+  Only, instead of \texttt{FIND\_NODE}, \texttt{GET\_KEY} is sent and the reply
+  additionally contains stored data if any exists.
 
-  Because the distance metric is symmetric Kademlia does not require specialized
-  routing table maintenance messages. With every message receipt the recipient
-  node adds the sender to its routing table if there is space in the appropriate
-  bucket. If there is no space then it sends a \texttt{PING} message to the
-  least recently seen node in the given bucket. If the intended recipient of the
-  \texttt{PING} message times out then it is replaced by the candidate.
+  Because the distance metric is symmetric, Kademlia does not require
+  specialized routing table maintenance messages.
+  With every message receipt the recipient node adds the sender to its routing
+  table if there is space in the appropriate bucket.
+  If there is no space then it sends a \texttt{PING} message to the least
+  recently seen node in the given bucket.
+  If the intended recipient of the \texttt{PING} message times out then it is
+  replaced by the candidate.
 
 \section{Attacks}
 
-  Attacks on DHT can have 3 different goals:
+  Attacks on a DHT can have three different goals:
   \begin{description}
-    \item{\textbf{denial of service}} The attacker aims to either stop the
-      entire system from functioning or deny access to a part of it,
-    \item{\textbf{spoofing}} The attacker wants to provide false data to other
-      nodes or control them
-    \item{\textbf{information}} The attacker wants to gather information about
+    \item{\textbf{Denial of service:}} the attacker aims to either stop the
+      entire system from functioning or deny access to a part of it.
+    \item{\textbf{Spoofing:}} the attacker wants to provide false data to other
+      nodes or control them.
+    \item{\textbf{Information:}} the attacker wants to gather information about
       participants' activity.
   \end{description}
 
@@ -158,18 +156,20 @@
   Firstly, if an attacker controls routing tables of other nodes then it is easy
   to control information flow and therefore the system. An attack which poisons
   routing tables of other nodes by disproportionately filling them with entries
-  to colluding malicious nodes is called an \textbf{eclipse attack}. The name
-  comes from one of its effects: if a node's routing table is filled with
-  malicious nodes it is effectively partitioned from the rest of the network.
+  to colluding malicious nodes is called an \textbf{eclipse attack}.
+  The name comes from one of its effects: if a node's routing table is filled
+  with malicious nodes the node is effectively partitioned from the rest of the
+  network.
 
   Secondly, DHTs operate on an ephemeral sense of identity represented by a key.
   A \textbf{Sybil attack} happens when an attacker uses a single physical
-  computer to represent multiple DHT nodes increasing his power without
-  incurring additional cost \cite{dou02}. Since most protocols rely on honest
-  nodes having a majority (especially eclipse protection mechanisms), a Sybil
-  attack can shut down the system by even a modest attacker.
+  computer to represent multiple DHT nodes, therefore increasing his power
+  without incurring additional cost \cite{dou02}.
+  Since most protocols rely on honest nodes having a majority (especially
+  eclipse protection mechanisms), a Sybil attack can shut down the system by
+  even a modest attacker.
 
-  One can recognize three main vulnerabilities which are responsible for the
+  We recognize three main vulnerabilities which are responsible for the
   easiness with witch those methods can be used:
 
   \begin{enumerate}
@@ -181,16 +181,19 @@
       or get as many nodes as the attacker wants (Sybil attack).
 
     \item Each node only maintains a local view over the network, which does not
-      provide enough context to detect and prevent any malicious behavior. Often
-      malicious behavior is indistinguishable from honest one unless we have
-      knowledge about global state and history.  Sometimes even that is not
-      enough, for example verification whether a given key was chosen randomly
-      is unverifiable without specialized cryptographical techniques. 
+      provide enough context to detect and prevent some types of malicious
+      behavior.
+      Malicious behavior is often indistinguishable from honest one unless we
+      have knowledge about global state and history.
+      Sometimes even that is not enough: for example, randomness of an
+      independent node's key is unverifiable without specialized cryptographical
+      techniques.
 
    \item  Key generation is not verifiable. There is no way for a node to verify
-     whether given key has been generated randomly. It is possible to use a
-     statistical test to verify uniformity constraints, but they are often not
-     enough to accuse specific node of malicious behavior.
+     whether given key has been generated randomly.
+     It is possible to use a statistical tests to verify uniformity constraints,
+     but they are often not enough to accuse specific node of malicious
+     behavior.
   \end{enumerate}
 
 \subsection{Other forms of attack}
@@ -205,14 +208,15 @@
   information the system needs to use replication and redundant routing
   \cite{dou02}. 
 
-  Replication against malicious opponents is trickier than without them. There
-  are two main strategies for replication: Place given resource at nodes with
-  key close to the key of the resource or spread it over the network \cite[p.
-  38]{urd11}. The first strategy allows for more efficient retrieval in DHTs
-  such as Kademlia or Pastry, but is also more vulnerable to localized eclipse
-  attack. Both strategies are easy to attack if an attacker has ability to
-  choose her identifier arbitrarily and therefore a secure DHT requires secure
-  node id assignment.
+  Replication against malicious opponents is trickier than without them.
+  There are two main strategies for replication: place given resource at nodes
+  with key close to the key of the resource; or spread it over the network
+  \cite[p.  38]{urd11}.
+  The first strategy allows for more efficient retrieval in DHTs such as
+  Kademlia or Pastry, but is also more vulnerable to a localized eclipse attack.
+  Both strategies are easy to attack if an attacker has ability to choose her
+  identifier arbitrarily and therefore a secure DHT requires secure node id
+  assignment.
 
 \section{Prevention mechanisms}
 \subsection{Eclipse attack prevention mechanisms}
@@ -220,7 +224,7 @@
   Sit and Morris \cite{sit02} have been among the first to discuss general
   guidelines against preventing attacks in DHT networks. They advise designing
   the system with verifiable constraints so that a node can distinguish
-  malicious behavior from honest one and provide a proof to other nodes.
+  malicious behavior from the honest one and provide a proof to other nodes.
   Mechanisms, mainly data and node look up, should have a built-in redundancy so
   that a malicious node presence can be avoided in at least one path of
   execution. The lookup itself should be interactive and allow for clear view of
@@ -231,11 +235,14 @@
   \subsubsection{Constrained routing table}
   Castro et al. \cite{cas02} have modified Pastry with additional constrained
   routing table and back up routing mechanism to protect against eclipse
-  attacks. It is difficult for an attacker to inject malicious entries if node
-  key assignment is truly random and routing table entries are strictly
-  specified, that is there exists only one node in the system that may fill
-  given routing table entry.  DHTs such as Kademlia and Pastry are therefore
-  more vulnerable than Chord in that regard.
+  attacks.
+  It is difficult for an attacker to inject malicious entries if node key
+  assignment is truly random and routing table entries are strictly specified;
+  if there exists only one node in the system that may fill given routing table
+  entry then key randomness prevents a malicious node from injecting itself into
+  that entry without generating large number of keys.
+  DHTs such as Kademlia and Pastry are therefore more vulnerable than Chord in
+  that regard.
 
   \subsubsection{Node scrambling}
   A different method to mitigate an eclipse attack is to constantly move node
@@ -252,14 +259,16 @@
   nodes makes the network resilient to join-leave attacks.
 
   \subsubsection{Topology graph analysis}
-  Singh et al. \cite{sin06} observe that if malicious nodes form only a
-  fraction of the network then during an Eclipse attack their in-degree in the
-  graph induced by the DHT's topology must be higher than average in-degree of
-  honest nodes. Therefore they propose a protocol which limits in-degree of
-  nodes. Each node $x$ maintains an additional backpointer table, which contains
-  nodes having $x$ in their routing tables. Every node $y$ periodically checks
-  backpointer tables of their neighbors and if they are larger than a global
-  constant or does not contain $y$ then it removes $x$ from its routing table.
+  Singh et al. \cite{sin06} observe that if malicious nodes are only a fraction
+  of the network then during an Eclipse attack their in-degree in the graph
+  induced by the DHT's topology must be higher than average in-degree of honest
+  nodes.
+  Therefore they propose a protocol which limits in-degree of nodes.
+  Each node $x$ maintains an additional backpointer table, which contains nodes
+  having $x$ in their routing tables.
+  Every node $y$ periodically checks backpointer tables of their neighbors and
+  if they are larger than a global constant or does not contain $y$ then it
+  removes $x$ from its routing table.
 
   This scheme requires the backpointer check to be anonymous, therefore the
   scheme uses a common technique of onion routing using anonymizer network to
@@ -272,11 +281,14 @@
 
 \subsection{Sybil attack prevention mechanisms}
   Preventing a Sybil attack requires a gatekeeper or, more accurately, a
-  bouncer. A protocol which prevents a single physical node to enter more than
-  once and a way to throw out offenders. Achieving that in a fully distributed
-  way is difficult. It is hard to achieve adequate security if nodes only have
-  access to their immediate surroundings.  Such a limited view lacks necessary
-  information to distinguish between benign and malicious behavior.
+  bouncer.
+  A protocol which prevents a single physical node to enter more than once and a
+  way to throw out offenders.
+  Creating such a protocol in a fully distributed way is difficult.
+  It is hard to achieve adequate security if nodes only have access to their
+  immediate surroundings.
+  Such a limited view lacks necessary information to distinguish between benign
+  and malicious behavior.
   Additionally it's much easier to simply eclipse a node. Protocols that
   overcome this obstacle by sharing information globally (\cite{cas02},
   \cite{wan05}) do so at the cost of performance and scalability. Such cost
@@ -286,19 +298,22 @@
   checks global constraints.
 
   Central authority has well-known drawbacks. Most of them stem from the fact
-  that such authority represents a single point of failure. A failure of this
-  authority may cause shut down of the network. Compromised authority is a
-  security risk. It also acts negatively on scalability of the solution.
+  that such authority represents a single point of failure.
+  A failure of this authority may cause shutdown of the network.
+  Compromised authority is a security risk.
+  It also acts negatively on scalability of the solution.
   
-  Apart from technological disadvantages central authority is often an
-  organizational problem. It forces an agent to maintain it in order to provide
-  a service. This is done reluctantly since it makes the agent responsible for
-  maintaining the service and Peer-to-Peer user community may be distrustful
-  over centralized solution.
+  Apart from technological disadvantages the central authority is often an
+  organizational problem.
+  It forces an agent to maintain it in order to provide a service.
+  This is done reluctantly since it makes the agent responsible for maintaining
+  the service and Peer-to-Peer user community may be distrustful over
+  centralized solution.
 
   The conclusion that only central authority solutions are practical for
-  prevention of Sybil attacks was first deduced by \cite{dou02}, which also is
-  the first paper studying this class of attacks \cite{urd11}.
+  prevention of Sybil attacks was first deduced by \cite{dou02}.
+  \cite{dou02} is the first paper studying Sybil class of attacks
+  (\cite{urd11}).
 
   \subsubsection{Centralized gatekeeper}
   Castro et. al. \cite{cas02} agree with \cite{dou02} conclusion and propose
@@ -306,40 +321,42 @@
   key pair. They suggest adding an IP address to the certificate, so that the
   certificate would be binded to physical host. Unfortunately this solution is
   known to be problematic. Firstly, IP address can be spoofed and with IPv6
-  privacy extensions 
-  \footnote{IPv6 privacy extensions allow the host to combine the assigned
-    network prefix with random identifier. This increases available pool of
-    addresses and make it more difficult to track the device.
-  \cite{nar01}}
+  privacy extensions\footnote{IPv6 privacy extensions allow the host to combine
+    the assigned network prefix with a random identifier.
+    This combination increases the available pool of addresses and makes it more
+    difficult to track the device.  \cite{nar01}}
   changed all together, rendering this solution completely
   insecure in the future.
   
-  Secondly, using IP for identification causes a problem
-  for users behind NAT or with moving IP address. Thirdly, it hinders privacy
-  protection mechanisms. Nevertheless using IP address is very easy to implement
-  and practical for many current DHT networks.
+  Secondly, using IP for identification causes a problem for users behind NAT or
+  with a changing IP address.
+  Thirdly, it hinders privacy protection mechanisms.
+  Nevertheless using IP address is easy to implement and practical for many
+  current DHT networks.
 
-  Centralized gatekeeper gives much flexibility in implementing an
+  A centralized gatekeeper gives much flexibility in implementing an
   authentication and Sybil attack prevention scheme. For example there may be
   required a small monetary payment for entry into the DHT network or a
   computational puzzle may have to be solved.
 
-  \subsubsection{Distinction based on network footprint}
+  \subsubsection{Distinction based on a network footprint}
 
   Without centralized authority network peers would have to register new nodes
   in a distributed way. To distinguish distinct identities from Sybil copies
-  they may use network characteristics. Such characteristics are usually easy to
-  check in the sense that any node may do it, giving low barrier of entry to the
-  network, but it carries an assumption that they are unfalsifiable, which is
-  not always the case.
+  they may use network characteristics.
+  Such characteristics are usually easy to check (any node may do the check),
+  giving low barrier of entry to the network, but it carries an
+  assumption that footprints are unfalsifiable, which is not always the case.
 
-  A simple ID calculation based on IP address and port number is proposed by
-  Dinger and Hartensteing \cite{din06}. They propose that a node would
-  register at $r$ Chord registration nodes whose position is calculated from
-  hash of node's ID. If majority of registration nodes accept the new node then
-  it is said to be accepted. A node registration fails if the number of nodes
-  with given IP address exceeds a constant $a$. This solution requires all nodes
-  to confirm validity of their neighbors.
+  A simple ID calculation based on the IP address and the port number is
+  proposed by Dinger and Hartensteing \cite{din06}.
+  They propose that a node would register at $r$ Chord registration nodes whose
+  position is calculated from hash of node's ID.
+  If majority of registration nodes accept the new node then
+  it is said to be accepted.
+  A node registration fails if the number of nodes with given IP address exceeds
+  a constant $a$.
+  This solution requires all nodes to confirm validity of their neighbors.
 
   IP addresses may be spoofed and cause a problem for NAT users.
   Wang~et.~al.~\cite{wan05} proposed adding router's IP and MAC address
@@ -348,10 +365,11 @@
   into $d$-dimensional space based on physical location of a node. Nodes are
   said to be distinct if their coordinates are far away enough.
 
-  \subsubsection{Distinction based on social network}
+  \subsubsection{Distinction based on a social network}
 
   Another class of defenses uses a social network, a graph of trust
-  relationships established by humans, to discover or mitigate a Sybil attack.
+  relationships established by humans, to discover or mitigate a Sybil attack
+  \cite{urd11}.
   In such defenses it is assumed that each node can verifiably identify itself
   as a node in the social network and that each edge forms a trust relationship
   which means that two people are friends and that they trust each other not to
@@ -412,8 +430,9 @@ any other. The attack is split into two phases:
 
 Authors show that with just 100Mbps bandwidth they were able to successfully
 deny 80\% of keyword queries after 1-hour long preparation phase with a
-network with 16000 nodes. Unfortunately, for the attacker, this cost is ongoing
-since the attacking node needs to be responsive.
+network with 16000 nodes.
+Unfortunately for the attacker, this cost is ongoing since the attacking node
+needs to be responsive.
 
 Authors also provide a version of this attack where, instead of providing
 attacker's IP, the IP of the attacked node is used. eMule at the time did not
@@ -450,10 +469,11 @@ It is very easy to launch a Sybil attack in Mainline DHT and such attacks have
 distinctive footprint. Wang \cite{wan12a} has set up honeypots in the Mainline
 DHT to detect and analyze possible Sybil attackers. He discovered an attacker
 using a hijacking method described earlier running on Amazon's cloud who
-maintains over 300000 thousand Sybil nodes. This attacker didn't seem to do much
+maintains over 300.000 Sybil nodes. This attacker didn't seem to do much
 and might have been just monitoring the network. A different attacker was
-impersonating specific key space ranges and had distinctive IP address belonging
-to international ISP service. He was redirecting queries from inside its domain
+impersonating specific key space ranges and had a distinctive IP address
+belonging to an international ISP service.
+The attacker was redirecting queries from inside its domain
 to other nodes inside it, localizing the traffic.
 
 Authors conclude that although those attacks didn't seem to do much global harm,
