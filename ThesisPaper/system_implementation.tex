@@ -3,36 +3,51 @@
 In this chapter we present Ghoul's prototype implementation.
 This prototype includes the Kademlia protocol, registration, and certificate
 security mechanism.
-The prototype does not include SybilControl protocol.
+The prototype does not include the SybilControl protocol.
 We focus on general techniques used in Ghoul's development to produce high
 quality code.
-In Section \ref{sec:implementation} we show, as an example of our design
-principles, the interface of \texttt{KademliaRouting} --- the core class in the
-protocol.
+In Section \ref{sec:implementation} we present main classes and architecture.
+As an example of our design principles, we present the interface of
+\texttt{KademliaRouting} --- the core interface in the protocol --- in more
+detail.
 In Section \ref{sec:build} we present build tools used and an example session
 with Ghoul.
 
 \section{Implementation}
 \label{sec:implementation}
 
-The core interface of the protocol is \texttt{KademliaRouting} (shown in Figure
-\ref{fig:routing_interface}).
+\subsection{DHT part}
+
+An UML class diagram showing core classes of the DHT part of Ghoul is shown in
+Figure \ref{fig:dht_class_diagram}.
+
+\begin{figure}[tbp]
+  \centering
+\resizebox{\columnwidth}{!}{\input{KademliaClassDiagram.pdf_tex}}
+\caption{UML Class Diagram of core classes of the DHT part of Ghoul}
+\label{fig:dht_class_diagram}.
+\end{figure}
+
+The core interface of the protocol is \texttt{KademliaRouting} (whose code is
+shown in Figure \ref{fig:routing_interface}).
 Implementations of this interface should implement the Kademlia protocol with
 Ghoul extensions.
 One of the focus of Ghoul's code is modularizabilty and \texttt{KademliaRouting}
 is an example of that focus.
 First, \texttt{KademliaRouting} is an interface, although there is only one
-implementation of it in the public part of the library's code.
+implementation of it in the public part of the library's code
+(\texttt{KademliaRoutingImpl} shown in Figure \ref{fig:dht_class_diagram}).
 However, because it is an interface it is possible to easily mock it in
 unit-tests.
 \texttt{KademliaRouting} has another implementations in unit-testing code, e.g.
-\texttt{StaticKademliaRouting}, which has static routing table.
+\texttt{StaticKademliaRouting}, which has a static routing table.
 This allows creation of proper, isolated unit-tests that test non-trivial
 scenarios and do not depend on complex, error-prone dependencies.
 Second, \texttt{KademliaRouting} does not implement storage functionality.
-Storage is done by \texttt{KademliaStore} class.
-Such division of responsibilities is also an example of Single Responsibility
-Principle --- one class should have only one responsibility.
+Storage is done by the \texttt{KademliaStore} class, which depends on
+\texttt{KademliaRouting}.
+Such division of responsibilities is also an example of the single
+responsibility principle --- one class should have only one responsibility.
 
 \begin{figure}[tbp]
 \begin{lstlisting}
@@ -96,19 +111,39 @@ Functions such as: discovering current internet address
 (\texttt{NetworkAddressDiscovery}), sending messages to given network address
 (\texttt{MessageSender}), background thread execution
 (\texttt{ScheduledExecutorService}), are realized by interfaces.
-This allows custom definition of those functionalities by the user.
-This is realization of yet another principle called dependency inversion ---
-dependencies of classes should be provided to the classes not created by it.
+Dependence on interfaces allows custom definition of those functionalities by
+the user.
+Providing all dependencies in class' constructor is a realization of yet another
+principle called dependency inversion --- dependencies of objects should be
+provided to those objects not created by them.
 Again, the biggest strength of such approach is mostly visible in unit tests.
 Since network code is abstracted by interfaces, unit-tests may use fake
 implementations which transmit messages in memory and inject failures
 arbitrarily.
 Additionally, users of the Ghoul library may, for example, connect
 \texttt{KademliaRoutingImpl} with their own network code.
+Both \texttt{KademliaRoutingImpl} and \texttt{KademliaStore} rely on abstract
+interfaces: \texttt{MessageSender} and \texttt{MessageListener}, which are used
+to send and receive messages (objects that are subclasses of
+the \texttt{KademliaMessage} class).
+Implementations of those message communication classes rely on more basic
+interfaces, respectively: \texttt{ByteSender} and \texttt{ByteListeningService},
+which operate on packets of bytes.
+Ghoul provides an UDP-based implementation, but if a library's user wants a
+different protocol, then the user may easily provide her own implementation, as
+long as the protocol can send byte messages. 
+\texttt{NetworkAddressDiscovery} is used for discovering current node's
+external address.
+As this is tricky to do (a common example is a user behind NAT), implementation
+of the address discovery interface may be changed to suit particular use-case.
+
 Large number of parameters is sometimes considered a code smell, but dependency
 inversion is a more important consideration in this case.
-Additionally a builder design pattern is used for creating instances of
+Additionally, a builder design pattern is used for creating instances of
 \texttt{KademliaRouting}.
+Implemented by \texttt{KademliaRoutingBuilder}, the builder allows for iterative
+creation of \texttt{KademliaRoutingImpl} by using fluid setter methods, e.g.
+\texttt{builder.setBucketSize(size).setCertificateStorage(storage).build()}.
 
 \begin{figure}[tbp]
 \begin{lstlisting}
@@ -133,14 +168,60 @@ KademliaRoutingImpl(Key localKey,
 \label{fig:routing_constr_header}
 \end{figure}
 
+\subsection{Security part}
+
+An UML class diagram showing core classes of the security part of Ghoul is shown
+in Figure \ref{fig:dht_class_diagram}.
+
+\begin{figure}[tbp]
+  \centering
+  \resizebox{\columnwidth}{!}{\input{SecurityClassDiagram.pdf_tex}}
+\caption{UML Class Diagram of core classes of the security part of Ghoul}
+\label{fig:sec_class_diagram}
+\end{figure}
+
+The \texttt{Registrar} class implements the registration authority
+responsibilities.
+Objects of this class depend on the list of other registrar's.
+Public information about a registrar is enclosed in the
+\texttt{RegistrarDescription} class, which contains the public key and the IP
+address of the registrar.
+A \texttt{Registrar} listens for TCP connections and starts the key generation
+protocol if a client node wants to join the network (the join protocol itself is
+done by the \texttt{KeyGenerationProtocol} class), or relays messages from other
+registrars.
+The registrar contacted by a client sends a collection
+\texttt{SignedCertificate}s upon successful execution of the key generation
+protocol.
+The \texttt{SignedCertificate} class is a decorator of the \texttt{Certificate}
+class that adds a signature to otherwise unsigned certificate.
+The \texttt{Certificate} itself is just a collection of node's public key,
+node's DHT key, and issuing registrar's identification.
+
+\texttt{CertificateStorage} is responsible for managing other nodes'
+certificates.
+That is, it keeps track of known certificates, especially their validity and
+expiration date.
+Objects which use \texttt{CertificateStorage} may check whether given node
+is still valid or get a node's public key.
+\texttt{PersonalCertificateManager} manager is responsible for keeping current
+node's certificates valid.
+
+\texttt{RegistrarClient} implements the join protocol from the client's node
+perspective, returning signed certificates on success.
+
+\texttt{KeyGenerator} generates public-key cryptography keys. 
+Current implementation of \texttt{KeyGenerator} uses hard-coded SHA256WithDSA
+algorithm, but we plan to make it configurable in the official public release.
+
 \section{Building and running}
 \label{sec:build}
 
 \subsection{Gradle}
 Currently Ghoul's code contains around 9000 lines of code in 126 Java files
 (excluding dfuntest's project).
-To maintain this amount of code we use Gradle
-\footnote{\url{https://gradle.org/}} build automation framework.
+To maintain this amount of code we use
+Gradle\footnote{\url{https://gradle.org/}} build automation framework.
 In Gradle, developers write configuration scripts called \texttt{build.gradle}
 in which they define code's properties --- e.g. name of the project, project's
 dependencies; and build tasks.

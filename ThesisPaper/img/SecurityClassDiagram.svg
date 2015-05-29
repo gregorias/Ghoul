@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg height="300" version="1.1" width="625" xmlns="http://www.w3.org/2000/svg">
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="176" x="430" y="123"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="176" x="430" y="123"/>
+<text font-family="Dialog" font-size="12" x="431" y="136">
+PersonalCertificateManager</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="119" x="459" y="30"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="119" x="459" y="30"/>
+<text font-family="Dialog" font-size="12" x="462" y="43">
+CertificateStorage</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="67" x="134" y="242"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="67" x="134" y="242"/>
+<text font-family="Dialog" font-size="12" x="139" y="255">
+Registrar</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="102" x="390" y="242"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="102" x="390" y="242"/>
+<text font-family="Dialog" font-size="12" x="395" y="255">
+RegistrarClient</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="148" x="54" y="170"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="148" x="54" y="170"/>
+<text font-family="Dialog" font-size="12" x="57" y="183">
+KeyGenerationProtocol</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="93" x="518" y="242"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="93" x="518" y="242"/>
+<text font-family="Dialog" font-size="12" x="522" y="255">
+KeyGenerator</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="117" x="222" y="123"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="117" x="222" y="123"/>
+<text font-family="Dialog" font-size="12" x="227" y="136">
+SignedCertificate</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="99" x="30" y="123"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="99" x="30" y="123"/>
+<text font-family="Dialog" font-size="12" x="35" y="136">
+CertificateImpl</text>
+<rect fill="#ffffff" height="43" stroke="#ffffff" stroke-width="1" width="102" x="158" y="21"/>
+<rect fill="none" height="43" stroke="#000000" stroke-width="1" width="102" x="158" y="21"/>
+<text font-family="Dialog" font-size="12" x="177" y="53">
+Certificate</text>
+<text font-family="Dialog" font-size="12" x="161" y="35">
+&lt;&lt;interface&gt;&gt;</text>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="238" x2="238" y1="123" y2="118"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="238" x2="238" y1="113" y2="108"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="238" x2="238" y1="103" y2="98"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="238" x2="238" y1="93" y2="88"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="238" x2="238" y1="83" y2="78"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="238" x2="238" y1="73" y2="68"/>
+<polygon fill="#ffffff" points="238,63 245,75 231,75" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="238,63 245,75 231,75" stroke="#000000" stroke-width="1"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="123" y2="118"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="113" y2="108"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="103" y2="98"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="93" y2="88"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="83" y2="78"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="73" y2="68"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="63" y2="58"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="53" y2="48"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="70" y1="43" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="70" x2="75" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="80" x2="85" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="90" x2="95" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="100" x2="105" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="110" x2="115" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="120" x2="125" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="130" x2="135" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="140" x2="145" y1="42" y2="42"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="150" x2="155" y1="42" y2="42"/>
+<polygon fill="#ffffff" points="158,42 146,49 146,35" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="158,42 146,49 146,35" stroke="#000000" stroke-width="1"/>
+<polyline fill="none" points="222,134 128,134" stroke="#000000" stroke-width="1"/>
+<polygon fill="#ffffff" points="222,134 212,139 202,134 212,129" stroke="#ffffff" stroke-width="1"/>
+<polygon fill="none" points="222,134 212,139 202,134 212,129" stroke="#000000" stroke-width="1"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="140" x2="128" y1="127" y2="134"/>
+<line fill="#000000" stroke="#000000" stroke-width="1" x1="140" x2="128" y1="141" y2="134"/>
+<text font-family="Dialog" font-size="12" x="203" y="129">
+1</text>
+<text font-family="Dialog" font-size="12" x="139" y="129">
+1</text>
+<polyline fill="none" points="459,42 259,42" stroke="#000000" stroke-width="1"/>
+<polygon fill="#000000" points="459,42 449,47 439,42 449,37" stroke="#000000" stroke-width="1"/>
+<polygon fill="none" points="459,42 449,47 439,42 449,37" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="299" y="32">
+Validates and stores</text>
+<text font-family="Dialog" font-size="12" x="440" y="37">
+1</text>
+<text font-family="Dialog" font-size="12" x="263" y="37">
+0..*</text>
+<polyline fill="none" points="430,134 338,134" stroke="#000000" stroke-width="1"/>
+<polygon fill="#000000" points="430,134 420,139 410,134 420,129" stroke="#000000" stroke-width="1"/>
+<polygon fill="none" points="430,134 420,139 410,134 420,129" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="349" y="150">
+Keeps valid</text>
+<text font-family="Dialog" font-size="12" x="411" y="129">
+1</text>
+<text font-family="Dialog" font-size="12" x="342" y="129">
+0..*</text>
+<polyline fill="none" points="134,250 94,250 94,193" stroke="#000000" stroke-width="1"/>
+<polygon fill="#000000" points="134,250 124,255 114,250 124,245" stroke="#000000" stroke-width="1"/>
+<polygon fill="none" points="134,250 124,255 114,250 124,245" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="97" y="233">
+Launches</text>
+<text font-family="Dialog" font-size="12" x="106" y="264">
+1</text>
+<text font-family="Dialog" font-size="12" x="100" y="209">
+0..*</text>
+<rect fill="#ffffff" height="24" stroke="#ffffff" stroke-width="1" width="133" x="254" y="170"/>
+<rect fill="none" height="24" stroke="#000000" stroke-width="1" width="133" x="254" y="170"/>
+<text font-family="Dialog" font-size="12" x="257" y="183">
+RegistrarDescription</text>
+<polyline fill="none" points="200,250 302,250 302,193" stroke="#000000" stroke-width="1"/>
+<polygon fill="#000000" points="200,250 210,245 220,250 210,255" stroke="#000000" stroke-width="1"/>
+<polygon fill="none" points="200,250 210,245 220,250 210,255" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="202" y="269">
+Other registrar authorities</text>
+<text font-family="Dialog" font-size="12" x="204" y="245">
+0..*</text>
+<text font-family="Dialog" font-size="12" x="274" y="209">
+0..*</text>
+<polyline fill="none" points="390,250 342,250 342,193" stroke="#000000" stroke-width="1"/>
+<polygon fill="#000000" points="390,250 380,255 370,250 380,245" stroke="#000000" stroke-width="1"/>
+<polygon fill="none" points="390,250 380,255 370,250 380,245" stroke="#000000" stroke-width="1"/>
+<text font-family="Dialog" font-size="12" x="344" y="231">
+Registrar authorities</text>
+<text font-family="Dialog" font-size="12" x="366" y="269">
+0..*</text>
+<text font-family="Dialog" font-size="12" x="348" y="208">
+0..*</text>
+</svg>
