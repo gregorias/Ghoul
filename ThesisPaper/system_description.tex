@@ -1,18 +1,23 @@
 \chapter{Ghoul system description}
 \label{ch:description}
 
-In this chapter I present Ghoul's design. Section \ref{sec:ghoul_goals}
-describes the problem that Ghoul solves and its assumptions. Section
-\ref{sec:ghoul_overview} provides an overview of the protocols used in Ghoul.
+In this chapter we present Ghoul's design.
+Section \ref{sec:ghoul_goals} describes the problem --- lack of adequate
+implementations of secure DHT protocols --- that Ghoul solves and its
+assumptions.
+Section \ref{sec:ghoul_overview} provides an overview of the protocols used in
+Ghoul.
 Sections \ref{sec:ghoul_data} and \ref{sec:ghoul_protocols} describe in detail
-Ghoul's mechanisms - its data structures and protocols. The final section
-\ref{sec:ghoul_summary} describes Ghoul's strengths and weaknesses..
+Ghoul's mechanisms (certificate generation and proof-of-work validation), its
+data structures and protocols.
+The final section \ref{sec:ghoul_summary} describes Ghoul's strengths and
+weaknesses.
 
 \section{Goals}
 \label{sec:ghoul_goals}
-I decided to build Ghoul to fill a niche of secure open-source DHT network
-implementation. In my experience it is difficult to find a satisfactory
-open-source implementation of Kademlia DHT. By satisfactory I mean one that
+We decided to build Ghoul to fill a niche of secure open-source DHT network
+implementation. In our experience it is difficult to find a satisfactory
+open-source implementation of Kademlia DHT. By satisfactory we mean one that
 satisfies all of the following criterias:
 
 \begin{description}
@@ -27,26 +32,28 @@ satisfies all of the following criterias:
     for 1 hour on a small network consisting of a hundred nodes.
 \end{description}
 
-I couldn't find an implementation that satisfies all of the above in Java and
-none that would satisfiably claim to be secure in any language. Some examples
-that I have considered are:
+We couldn't find an implementation that satisfies all of the above in Java and
+none that would be satisfiably secure in any programming language.
+Some examples that we have considered are:
 openkad\footnote{\url{https://code.google.com/p/openkad/}}, which does not
 implement DHT storage operations, TomP2P\footnote{\url{http://tomp2p.net/}},
-which never worked without a failure, even after a few bug patches, and
-JoshuaKissoon/Kademlia
-\footnote{\url{https://github.com/JoshuaKissoon/Kademlia}}, which is not
-extensible.
+which never worked without a failure, even after we submitted a few bug patches,
+and JoshuaKissoon/Kademlia\footnote{
+\url{https://github.com/JoshuaKissoon/Kademlia}}, which is not extensible.
 
 Solutions used in KAD network and designed for Mainline DHT use IP addresses to
 prevent Sybil attack and arbitrary ID choice. This approach works against
-unsophisticated attacker, but has problems stemming from the fact that IP was
-not designed for that use case. IP spoofing, IPv6 privacy extensions and lack of
-anonymity are serious concerns that either neutralize such solution or introduce
-a serious flaw. I feel that lack of adoption of security measures that are
-present in the research literature stems from the stereotype that such measures
-are either hard to implement, slow, hard to satisfy their dependencies, or
-needlessly complicate use of the application. With Ghoul I show that it is
-possible to design and build a DHT that satisfies following constraints:
+an unsophisticated attacker, but has problems stemming from the fact that IP was
+not designed for that use case.
+IP spoofing, IPv6 privacy extensions and lack of anonymity are serious concerns
+that either neutralize such solution or introduce a serious flaw
+(see Subsection \ref{subsubsec:centralized_gatekeeper}).
+We feel that lack of adoption of security measures that are
+present in the research literature (see Section \ref{sec:prevention_mechanisms})
+stems from the stereotype that such measures are either hard to implement, slow,
+hard to satisfy their dependencies, or needlessly complicate use of the
+application. With Ghoul we show that it is possible to design and build a DHT
+that satisfies following constraints:
 
 \begin{description}
   \item{\textbf{Security}} The DHT should be resistant to Sybil and
@@ -67,7 +74,7 @@ possible to design and build a DHT that satisfies following constraints:
     anonymity.
 \end{description}
 
-I assume standard threats and network conditions that is:
+We assume standard threats and network conditions that is:
 
 \begin{itemize}
   \item An attacker may introduce colluding nodes into the system, but has
@@ -79,9 +86,9 @@ I assume standard threats and network conditions that is:
 
 \section{Overview}
 \label{sec:ghoul_overview}
-Ghoul is extends the Kademlia DHT protocol. Each node in the system is an
-independent agent which acts as a Ghoul node and communicates with other nodes
-using messages sent over a network.
+Ghoul extends the Kademlia DHT protocol.
+Each node in the system is an independent agent which acts as a Ghoul node and
+communicates with other nodes using messages sent over a network.
 
 There are two kinds of nodes in the system: a DHT node and a registration
 authority. A DHT node is a Kademlia node extended with security measures.
@@ -92,7 +99,8 @@ security certificate, and responding to security queries.
 
 A small set of nodes, called registration nodes, is responsible for facilitating
 node’s join into the network by using distributed random key generation and
-certificate issuance. Registration nodes are a distributed version of central
+issuing certificates.
+Registration nodes are a distributed version of central
 authority, with a twist that a few of them might be malicious. Their existence
 is motivated by the fact that it is very hard to guarantee random key generation
 and verification in a fully distributed setting. On the other, it is desirable
@@ -100,7 +108,7 @@ for the system to have at least administrative scalability. Application's owner
 should be able to allow other parties to provide their registration nodes for
 the protocol. Users should not worry whether registration nodes have
 non-malicious intentions. The registration protocol works correctly as long as a
-single node is honest.
+single registration node is honest.
 
 \section{Data structures}
 \label{sec:ghoul_data}
@@ -253,7 +261,7 @@ registrar would greatly facilitate an eclipse attack by assigning to colluding
 nodes keys close to a target. This vulnerability  calls for a verifiable
 distributed scheme of key generation.
 
-Here I will present a distributed protocol which generates a random key that is
+Here we will present a distributed protocol which generates a random key that is
 unbiased if at least one node is honest. More formally:
 
 \begin{theorem}
@@ -573,7 +581,7 @@ puzzles}
   SybilControl into its mechanisms.
 
 \subsubsection{SybilControl mechanism}
-  SybilControl is fully described in \cite{li12}. Here I will describe the core
+  SybilControl is fully described in \cite{li12}. Here we will describe the core
   mechanism as it is used in Ghoul. 
 
   To limit the number of Sybil nodes SybilControl requires that nodes
@@ -630,7 +638,7 @@ puzzles}
 \subsubsection{SybilControl vulnerabilities}
   The SybilControl paper doesn't consider some pernicious vulnerabilities, which
   may break the protocol.
-  Here I will describe what they are and how does Ghoul
+  Here we will describe what they are and how does Ghoul
   deal with them.
 
   First, the protocol loosely defines what constitutes a neighbor. An
@@ -694,7 +702,7 @@ puzzles}
   metadata.
 \section{Evaluation}
 \label{sec:ghoul_summary}
-  This section concludes the specification of Ghoul. Here I will evaluate its
+  This section concludes the specification of Ghoul. Here we will evaluate its
   strengths and weaknesses.
   
   \subsection{Security}
@@ -796,9 +804,9 @@ puzzles}
   Tor anynomizing network \cite{syv04}, which is used worldwide by, for example,
   political dissidents and whistleblowers to protect against government
   surveillance, also relies on central authority. Tor currently uses 9 directory
-  authorities
-  \footnote{\url{https://www.torproject.org/docs/faq\#KeyManagement}}
-    \footnote{\url{https://atlas.torproject.org/\#search/flag:authority}}
+  authorities\footnote{
+  \url{https://www.torproject.org/docs/faq\#KeyManagement}}\footnote{
+  \url{https://atlas.torproject.org/\#search/flag:authority}}
   which keep a signed list of active Tor nodes.
   A Tor client contacts all directory authorities to download this list and
   trusts relays that are confirmed by a consensus of directory authorities.
