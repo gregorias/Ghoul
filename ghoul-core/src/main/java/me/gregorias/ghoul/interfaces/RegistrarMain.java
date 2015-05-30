@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.security.KeyPair;
 import java.security.MessageDigest;
@@ -81,18 +82,17 @@ public class RegistrarMain {
           sub.getString(XML_FIELD_REGISTRAR_PUB_KEY_FILE));
       String address = sub.getString(XML_FIELD_REGISTRAR_ADDRESS);
       int port = sub.getInt(XML_FIELD_REGISTRAR_PORT);
+      LOGGER.trace("loadRegistrarDescription(): Loading host at {}:{}", address, port);
 
-      descriptions.add(new RegistrarDescription(pubKey, key, new InetSocketAddress(address, port)));
+      InetAddress inetAddress = InetAddress.getByName(address);
+      descriptions.add(
+          new RegistrarDescription(pubKey, key, new InetSocketAddress(inetAddress, port)));
     }
     return descriptions;
   }
 
   private static Optional<Registrar> createRegistrar(XMLConfiguration config) {
     try {
-      if (!config.getBoolean(XML_FIELD_IS_REGISTRAR)) {
-        return Optional.empty();
-      }
-
       final PublicKey pubKey = (PublicKey) Utils.loadObjectFromFile(
           config.getString(XML_FIELD_REGISTRAR_PUB_KEY_FILE));
       final PrivateKey privKey = (PrivateKey) Utils.loadObjectFromFile(
@@ -108,8 +108,9 @@ public class RegistrarMain {
       final Collection<RegistrarDescription> allRegistrars =
           loadRegistrarDescriptions(config.configurationAt(XML_FIELD_REGISTRARS_INFO));
 
-      RegistrarMessageSender sender = new RegistrarMessageSenderImpl(allRegistrars);
-      ScheduledExecutorService executor = Executors.newScheduledThreadPool(4);
+      RegistrarMessageSender sender = new RegistrarMessageSenderImpl(allRegistrars,
+          Executors.newCachedThreadPool());
+      ScheduledExecutorService executor = Executors.newScheduledThreadPool(40);
       CryptographyTools tools = new CryptographyTools(Signature.getInstance("Sha256WithDSA"),
           MessageDigest.getInstance("SHA-256"),
           new SecureRandom());
@@ -122,6 +123,7 @@ public class RegistrarMain {
           tools,
           port));
     } catch (ClassNotFoundException | IOException | NoSuchAlgorithmException e) {
+      LOGGER.error("createRegistrar(): Could not create the registrar.", e);
       return Optional.empty();
     }
   }

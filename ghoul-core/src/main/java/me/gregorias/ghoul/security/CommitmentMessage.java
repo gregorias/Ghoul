@@ -40,4 +40,9 @@ public final class CommitmentMessage extends RegistrarMessage {
   public byte[] getCommitment() {
     return Arrays.copyOf(mCommitment, mCommitment.length);
   }
+
+  @Override
+  public String toString() {
+    return String.format("CommitmentMessage{sender=%s}", getSender());
+  }
 }

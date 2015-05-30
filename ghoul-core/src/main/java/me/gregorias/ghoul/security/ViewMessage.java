@@ -37,4 +37,9 @@ public final class ViewMessage extends RegistrarMessage {
   public byte[] getSolution() {
     return Arrays.copyOf(mSolution, mSolution.length);
   }
+
+  @Override
+  public String toString() {
+    return String.format("ViewMessage{sender=%s}", getSender());
+  }
 }

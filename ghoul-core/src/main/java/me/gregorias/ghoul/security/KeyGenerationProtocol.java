@@ -15,10 +15,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -42,8 +46,10 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
   private final Map<Key, ViewMessage> mReceivedViewMessages;
   private final Collection<Key> mReceivedShareKeys;
 
-  private CommitmentMessage mMyCommitmentMessage;
+  private final Set<Key> mLeftoverCommitments;
+  private final Set<Key> mLeftoverViews;
 
+  private CommitmentMessage mMyCommitmentMessage;
 
   private boolean mIsStage0Timeout = false;
   private boolean mIsStage1Timeout = false;
@@ -77,10 +83,20 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
     mReceivedCommitmentMessages = new HashMap<>();
     mReceivedViewMessages = new HashMap<>();
     mReceivedShareKeys = new ArrayList<>();
+
+    mLeftoverCommitments = new HashSet<>();
+    mLeftoverViews = new HashSet<>();
+    for (Key key : mRegistrars) {
+      if (!key.equals(myRegistrarKey)) {
+        mLeftoverCommitments.add(key);
+        mLeftoverViews.add(key);
+      }
+    }
   }
 
   @Override
   public Optional<Key> call() {
+    LOGGER.trace("call(): Starting key generation protocol.");
     try {
       mMyShareKey = Key.newRandomKey(mRandom);
       mCommitmentPair = bitCommitKey(mMyShareKey);
@@ -89,6 +105,7 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
       LOGGER.trace("call(): Waiting for commitments.");
       boolean wasWaitSuccessful = waitForCommitments();
       if (!wasWaitSuccessful) {
+        LOGGER.warn("call(): Wait for commitment has timed out.");
         return Optional.empty();
       }
       LOGGER.trace("call(): Broadcasting view.");
@@ -106,6 +123,8 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
       Thread.currentThread().interrupt();
     } catch (InvalidKeyException | IOException | SignatureException e) {
       LOGGER.error("Exception thrown during signing.", e);
+    } catch (RuntimeException e) {
+      LOGGER.error("call(): Caught runtime exception. Ending the protocol.", e);
     }
     return Optional.empty();
   }
@@ -131,12 +150,24 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
 
   private void broadcastCommitment(byte[] commitment)
       throws InvalidKeyException, IOException, SignatureException {
+    LOGGER.trace("broadcastCommitment(): Broadcasting commitments.");
     mMyCommitmentMessage = new CommitmentMessage(mMyRegistrarKey, mClientPublicKey, commitment);
     SignedObject signedMsg = mCryptoTools.signObject(mMyCommitmentMessage, mPrivateKey);
 
+    Collection<Future<Boolean>> futures = new ArrayList<>();
     for (Key registrar : mRegistrars) {
-      mMessageSender.sendMessage(registrar, signedMsg);
+      LOGGER.trace("broadcastCommitment(): Sending commitment to: {}.", registrar);
+      //mMessageSender.sendMessage(registrar, signedMsg);
+      futures.add(mMessageSender.sendMessageAsynchronously(registrar, signedMsg));
     }
+    for (Future<Boolean> future : futures) {
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new IOException(e);
+      }
+    }
+    LOGGER.trace("broadcastCommitment() -> All commitments have been sent.");
   }
 
   private void broadcastView()
@@ -152,8 +183,17 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
         mMyShareKey);
     SignedObject signedObject = mCryptoTools.signObject(msg, mPrivateKey);
 
+    Collection<Future<Boolean>> futures = new ArrayList<>();
     for (Key registrar : mRegistrars) {
-      mMessageSender.sendMessage(registrar, signedObject);
+      //mMessageSender.sendMessage(registrar, signedObject);
+      futures.add(mMessageSender.sendMessageAsynchronously(registrar, signedObject));
+    }
+    for (Future<Boolean> future : futures) {
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new IOException(e);
+      }
     }
   }
 
@@ -182,6 +222,8 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
       }
 
       mReceivedCommitmentMessages.put(commit.getSender(), commit);
+      mLeftoverCommitments.remove(commit.getSender());
+      LOGGER.trace("handleRegistrarMessage(): Leftover commitments: {}", mLeftoverCommitments);
     } else if (registrarMessage instanceof ViewMessage) {
       ViewMessage view = (ViewMessage) registrarMessage;
       if (!mRegistrars.contains(view.getSender())) {
@@ -213,6 +255,8 @@ public class KeyGenerationProtocol implements Callable<Optional<Key>> {
       }
 
       mReceivedViewMessages.put(view.getSender(), view);
+      mLeftoverViews.remove(view.getSender());
+      LOGGER.trace("handleRegistrarMessage(): Leftover views: {}", mLeftoverViews);
       mReceivedShareKeys.add(view.getShareKey());
     }
 

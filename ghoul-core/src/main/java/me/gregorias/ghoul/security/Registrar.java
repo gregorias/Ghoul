@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -157,6 +159,7 @@ public class Registrar implements Runnable {
         }
 
         Collection<RegistrarDescription> participants = chooseParticipants();
+        long beginningOfProtocol = System.nanoTime();
         broadcastStartProtocol(participants, joinMsg.getPublicKey());
         KeyGenerationProtocol kgp = createKGP(
             participants.stream().map(RegistrarDescription::getKey).collect(Collectors.toList()),
@@ -165,7 +168,8 @@ public class Registrar implements Runnable {
         LOGGER.trace("handleClient(): Running key generation protocol.");
         Optional<Key> keyOptional = kgp.call();
         if (!keyOptional.isPresent()) {
-          LOGGER.warn("handleClient(): Could not generate key.");
+          LOGGER.warn("handleClient(): Could not generate key because key generation protocol has"
+              + " failed.");
           return;
         }
 
@@ -182,6 +186,9 @@ public class Registrar implements Runnable {
         SignedCertificate myCertificate = createCertificate(joinMsg.getPublicKey(),
             keyOptional.get());
         certificates.add(myCertificate);
+        long endOfProtocol = System.nanoTime();
+        LOGGER.info("handleClient(): Key Generation took: {} nanoseconds.",
+            endOfProtocol - beginningOfProtocol);
 
         JoinDHTReplyMessage reply = new JoinDHTReplyMessage(certificates);
         SignedObject signedReply =
@@ -276,6 +283,8 @@ public class Registrar implements Runnable {
 
       boolean isSignatureValid = mCryptoTools.verifyObject(signedObject, pubKey);
       if (!isSignatureValid) {
+        LOGGER.warn("handleRegistrar(): Received message, {}, has invalid signature.",
+            registrarMessage);
         registrarMessage = null;
         continue;
       }
@@ -285,6 +294,8 @@ public class Registrar implements Runnable {
 
         Collection<Key> participants;
         if (!startMsg.getRegistrars().stream().anyMatch((reg) -> reg.equals(mKey))) {
+          LOGGER.warn("handleRegistrar(): Received message, {}, came from unknown registrar.",
+              registrarMessage);
           registrarMessage = null;
           continue;
         } else {
@@ -292,7 +303,11 @@ public class Registrar implements Runnable {
               .collect(Collectors.toList());
         }
 
-        mInputQueues.put(startMsg.getClientPublicKey(), new LinkedBlockingQueue<>());
+        synchronized (mInputQueues) {
+          if (!mInputQueues.containsKey(startMsg.getClientPublicKey())) {
+            mInputQueues.put(startMsg.getClientPublicKey(), new LinkedBlockingQueue<>());
+          }
+        }
 
         KeyGenerationProtocol keyGenProtocol = createKGP(participants,
             registrarMessage.getSender(),
@@ -315,13 +330,19 @@ public class Registrar implements Runnable {
               }
               mRegistrarMessageSender.sendMessage(finalRegistrarMessage.getSender(), signedMsg);
             }
-            mInputQueues.remove(startMsg.getClientPublicKey());
+            synchronized (mInputQueues) {
+              mInputQueues.remove(startMsg.getClientPublicKey());
+            }
           });
       } else if (registrarMessage instanceof CommitmentMessage
           || registrarMessage instanceof ViewMessage) {
-        BlockingQueue<Optional<SignedObject>> inputQueue = mInputQueues
-            .get(registrarMessage.getClientPublicKey());
-        if (inputQueue != null) {
+        synchronized (mInputQueues) {
+          BlockingQueue<Optional<SignedObject>> inputQueue = mInputQueues
+              .get(registrarMessage.getClientPublicKey());
+          if (inputQueue == null) {
+            inputQueue = new LinkedBlockingQueue<>();
+            mInputQueues.put(registrarMessage.getClientPublicKey(), inputQueue);
+          }
           inputQueue.put(Optional.of(signedObject));
         }
       } else if (registrarMessage instanceof CertificateMessage) {
@@ -345,10 +366,26 @@ public class Registrar implements Runnable {
         clientPublicKey,
         keys);
     SignedObject signedMsg = mCryptoTools.signObject(stmMsg, mPrivateKey);
+
+    Collection<Future<Boolean>> futures = new ArrayList<>();
+
     for (RegistrarDescription registrar : participants) {
       LOGGER.trace("broadcastStartProtocol(): Sending StartProtocolMessage to: {}",
           registrar.getKey());
-      mRegistrarMessageSender.sendMessage(registrar.getKey(), signedMsg);
+      Future<Boolean> future = mRegistrarMessageSender.sendMessageAsynchronously(
+          registrar.getKey(), signedMsg);
+      futures.add(future);
+    }
+    for (Future<Boolean> future : futures) {
+      try {
+        future.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      } catch (ExecutionException e) {
+        LOGGER.error("broadcastStartProtocol(): Caught exception when broadcasting start messages.",
+            e);
+        throw new IOException(e);
+      }
     }
   }
 
