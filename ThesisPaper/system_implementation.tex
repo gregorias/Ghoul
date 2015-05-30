@@ -211,14 +211,14 @@ node's certificates valid.
 perspective, returning signed certificates on success.
 
 \texttt{KeyGenerator} generates public-key cryptography keys. 
-Current implementation of \texttt{KeyGenerator} uses hard-coded SHA256WithDSA
-algorithm, but we plan to make it configurable in the official public release.
+Currently, we use SHA256WithDSA algorithm for signatures,
+but we plan to make it configurable in the official public release.
 
 \section{Building and running}
 \label{sec:build}
 
 \subsection{Gradle}
-Currently Ghoul's code contains around 9000 lines of code in 126 Java files
+Currently, Ghoul's code contains around 9000 lines of code in 126 Java files
 (excluding dfuntest's project).
 To maintain this amount of code we use
 Gradle\footnote{\url{https://gradle.org/}} build automation framework.
@@ -228,8 +228,8 @@ dependencies; and build tasks.
 Those configuration scripts are written in an imperative, Java-like, dynamically
 typed language.
 This language allows for expressive and succinct definition of build tasks,
-which is an advantage over more traditional build framework --- Maven
-\footnote{\url{https://maven.apache.org/}}.
+which is an advantage over more traditional build framework ---
+Maven\footnote{\url{https://maven.apache.org/}}.
 Next, using provided information, Gradle performs, typical tasks in Java's build
 ecosystem: compilation, packaging, dependency resolution, unit testing, software
 validation etc.

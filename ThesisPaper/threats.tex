@@ -2,10 +2,13 @@
 \label{ch:threats}
 \section{Chapter overview}
   In this chapter we define what is a Distributed Hash Table and specify
-  Kademlia DHT protocol, describe reasons and methods of attacks on DHT, and
-  present examples of different classes of protection mechanisms.
+  Kademlia DHT protocol (Section \ref{sec:dht_overview}),
+  describe reasons and methods of attacks on DHT (Section
+  \ref{sec:dht_attacks}),
+  and present examples of different classes of protection mechanisms
+  (Section \ref{sec:prevention_mechanisms}).
   Finally, we provide examples of effectiveness of described attacks on popular,
-  real-world DHT deployments.
+  real-world DHT deployments (Section \ref{sec:attack_examples}).
   Those examples show that securing DHT is still an open problem in practice.
 
   This chapter also serves as a survey of related work for Ghoul.
@@ -13,11 +16,13 @@
   (testing automation), therefore dfuntest's related work will be presented in
   Chapter \ref{ch:dfuntest}.
 
+
 \section{DHT overview}
+\label{sec:dht_overview}
 
   Distributed hash table is a type of a Peer-To-Peer system providing topology
   creation and maintenance protocols.
-  They are typically designed for (and tightly coupled) with data storage
+  They are typically designed for (and tightly coupled with) data storage
   protocols for key-value pairs, hence the hash table part in the name.
   Popular DHT designs include: Chord~\cite{sto03}, Pastry \cite{row01}, Kademlia
   \cite{may02}.
@@ -137,6 +142,7 @@
   replaced by the candidate.
 
 \section{Attacks}
+\label{sec:dht_attacks}
 
   Attacks on a DHT can have three different goals:
   \begin{description}
@@ -412,6 +418,7 @@
   solving them or use social engineering like in social network solutions.
 
 \section{Examples of real attacks}
+\label{sec:attack_examples}
 These are not just theoretical divagations, but discussed attacks are really
 used in practice and are effective.
 
@@ -459,24 +466,27 @@ be noted that the Kad network is still vulnerable to moderately determined and
 resourceful attacker.
 
 \paragraph{Feasibility of Sybil attack}
-Although Sybil attack is more expensive than above mentioned Hijacking attack
-\cite{tim11} has shown that in Mainline DHT, implementation of Kademlia used in
-BitTorrent, it is still easy. In their experiment they were able to fill
-neighbors routing table with 160 Sybil nodes within 5 minutes after the attack
-phase has begun. While similar attack would be impossible in newer versions of
-Kad the only limitation is the fact that only one IP address is used.
+Although a Sybil attack is more expensive than the hijacking attack,
+\cite{tim11} has shown that in Mainline DHT --- implementation of Kademlia used
+in BitTorrent --- it is still easy.
+In their experiment they were able to fill neighbors routing table with 160
+Sybil nodes within 5 minutes after the attack phase has begun.
+While similar attacks would be impossible in newer versions of Kad, the only
+limitation is the fact that only one IP address is used to perform the attack.
 
 \paragraph{Measurements of present attacks}
-It is very easy to launch a Sybil attack in Mainline DHT and such attacks have
-distinctive footprint. Wang \cite{wan12a} has set up honeypots in the Mainline
-DHT to detect and analyze possible Sybil attackers. He discovered an attacker
-using a hijacking method described earlier running on Amazon's cloud who
-maintains over 300.000 Sybil nodes. This attacker didn't seem to do much
-and might have been just monitoring the network. A different attacker was
-impersonating specific key space ranges and had a distinctive IP address
-belonging to an international ISP service.
-The attacker was redirecting queries from inside its domain
-to other nodes inside it, localizing the traffic.
+It is easy to launch a Sybil attack in Mainline DHT and such attacks have
+distinctive footprint.
+Wang \cite{wan12a} has set up honeypots in the Mainline DHT to detect and
+analyze possible Sybil attackers.
+He discovered an attacker using a hijacking method described earlier running on
+Amazon's cloud who maintains over 300.000 Sybil nodes.
+This attacker didn't seem to do much and might have been just monitoring the
+network.
+A different attacker was impersonating specific key space ranges and had a
+distinctive IP address belonging to an international ISP service.
+The attacker was redirecting queries from inside its domain to other nodes
+inside it, localizing the traffic.
 
 Authors conclude that although those attacks didn't seem to do much global harm,
 the easiness with which they are executed proves that there are no costly

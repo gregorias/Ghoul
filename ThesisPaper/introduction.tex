@@ -42,7 +42,7 @@ Unlike the client-server model, in which there is a global known, always-present
 authority to communicate to, Peer-to-Peer applications have to handle users
 dynamically joining and leaving the network (this phenomenon is called churn)
 and find a way to efficiently send messages between two arbitrary nodes.
-This problem may be compared the problem of sending a message to an unknown
+This problem may be compared to the problem of sending a message to an unknown
 town.
 We are in a town and we want to find out what other towns are in the country and
 how to send a message to those towns.
@@ -72,14 +72,14 @@ An adversary advertises itself as multiple, independent hosts (towns).
 It makes us think that the network (the country) is populous, but in reality
 every message is sent to only one host.
 The adversary's host then has larger control over the network than it should
-have and may, for example, eavesdrop, poison (maliciously change its content), or
-drop messages.
-Another is an Eclipse attack.
+have and may, for example, eavesdrop, poison (maliciously change its content),
+or drop messages.
+Another type of attack is an Eclipse attack.
 An honest host is surrounded by malicious hosts; whenever anyone wants to find
 the honest host then their queries are blocked by the adversary.
 
 Peer-to-Peer applications using DHTs often leave the DHT woefully unprotected.
-We'll show that, for example, BitTorent's DHT --- MainlineDHT --- is especially
+We'll show that, for example, BitTorent's DHT --- Mainline DHT --- is especially
 vulnerable to even a modest adversary.
 We think there are two main reasons for this lack of care.
 First, DHT security mechanisms are seen as unpractical: either they require
@@ -111,10 +111,10 @@ We hope that Ghoul will prove to be an useful tool to application developers in
 creation of secure Peer-To-Peer applications.
 
 \section{Outline}
-In chapter \ref{ch:threats} we present the problem domain.
+In Chapter \ref{ch:threats} we present the problem domain.
 We define what is a Distributed Hash Table (DHT) and evaluate its typical
 weaknesses.
-We discuss the main types of security threats that DHTs are vulnerable to.
+We discuss main types of security threats that DHTs are vulnerable to.
 Finally, we review security mechanisms proposed in related work.
 In Chapter \ref{ch:description} we describe the protocols used in Ghoul and
 discuss Ghoul's strengths and weaknesses.
