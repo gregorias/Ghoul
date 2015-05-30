@@ -20,7 +20,7 @@ We need to provide to dfuntest information on how to start and use our
 application. This is done only once and does not need to be rewritten as long as
 the Ghoul API and its requirements remain the same.
 
-\paragraph{\texttt{App}} 
+\paragraph{\texttt{App}}
 \texttt{KademliaApp} extends the proxy \texttt{App} class with Ghoul's interface methods.
 \texttt{KademliaApp}'s main responsibility is to translate Java method calls into the RPC-over-HTTP interface of the Ghoul application.
 An example code of those methods is shown in \ref{fig:app_example}.
@@ -216,9 +216,9 @@ Additionally there's a summary for all the executed tests
 \label{fig:sumrep}
 \end{figure}
 
-We have already explained \texttt{KademliaConsistencyCheckTestScript}. 
+We have already explained \texttt{KademliaConsistencyCheckTestScript}.
 A variation of that test is:
-\texttt{KademliaChurnConsistencyCheckTestScript}. 
+\texttt{KademliaChurnConsistencyCheckTestScript}.
 The churn version additionally simulates churn in-between consistency checks by
 restarting nodes with 50\% probability.\\
 \texttt{KademliaDataReplicationTestScript} makes each node put a key-value pair
@@ -237,7 +237,7 @@ fine in that scenario).
 The summary for all tests (\ref{fig:sumrep_failure}) shows failure in all
 tests.
 The summary for consistency check (Figure~\ref{fig:conrep}) clearly points to a
-misbehaving node (19). 
+misbehaving node (19).
 This points the tester where to look to the source of this error.
 
 \begin{figure}[tbp]
@@ -297,7 +297,7 @@ to facilitate the bug triage.
 \label{sec:performance}
 
 We conducted performance measurements to verify the feasibility of Ghoul's
-design. 
+design.
 We measured the duration of DHT joining and node finding operations and how
 length of those operations behaves with relation to the network size.
 
@@ -324,7 +324,7 @@ the number of registrars, as expected from the theoretical model.
 
 In Figure \ref{fig:fin_test} we show results of the experiment which measured
 the node finding operation.
-For each measurement we used \texttt{curl} to send a find node RPC request to a
+For each measurement we used curl to send a find node RPC request to a
 random node and used shell \texttt{time} command to measure the wall-clock time.
 The results show that, with increasing network size, the variance of find
 node duration increases.

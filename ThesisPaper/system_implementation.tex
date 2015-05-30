@@ -131,7 +131,7 @@ interfaces, respectively: \texttt{ByteSender} and \texttt{ByteListeningService},
 which operate on packets of bytes.
 Ghoul provides an UDP-based implementation, but if a library's user wants a
 different protocol, then the user may easily provide her own implementation, as
-long as the protocol can send byte messages. 
+long as the protocol can send byte messages.
 \texttt{NetworkAddressDiscovery} is used for discovering current node's
 external address.
 As this is tricky to do (a common example is a user behind NAT), implementation
@@ -210,7 +210,7 @@ node's certificates valid.
 \texttt{RegistrarClient} implements the join protocol from the client's node
 perspective, returning signed certificates on success.
 
-\texttt{KeyGenerator} generates public-key cryptography keys. 
+\texttt{KeyGenerator} generates public-key cryptography keys.
 Currently, we use SHA256WithDSA algorithm for signatures,
 but we plan to make it configurable in the official public release.
 
@@ -271,7 +271,7 @@ Total time: 31.617 secs
 We have added additional automatic code quality checking tools to Ghoul's automatic build:
 
 \begin{description}
-  \item{\textbf{jUnit}\footnote{\url{http://junit.org}}} 
+  \item{\textbf{jUnit}\footnote{\url{http://junit.org}}}
     jUnit is the framework for writing repeatable unit tests for Java code.
   \item{\textbf{JaCoCo}\footnote{\url{www.eclemma.org/jacoco/}}}
     JaCoCo is a code coverage library which automatically analyzes code executed by jUnit tests and produces an HTML or XML report summarizing code coverage.
@@ -283,7 +283,7 @@ We have added additional automatic code quality checking tools to Ghoul's automa
     Findbugs is a static analysis tools which looks for bugs in Java's code.
     It can detect such bugs and code smells as: unused variables, null value
     dereference, use of \texttt{AtomicBoolean} for comparison etc.
-    
+
 \end{description}
 
 We haven't included dfuntest's test into the automatic build, because this is a
@@ -331,7 +331,7 @@ which it is possible to query and manipulate the DHT node (shown in Table
   \label{tab:http_rpc}
 \end{table}
 
-An example session which runs 2 registrars and 3 DHT nodes is shown in Figures 
+An example session which runs 2 registrars and 3 DHT nodes is shown in Figures
 \ref{fig:ghoul_manual_run} and \ref{fig:ghoul_manipulation}.
 In the session we use curl to send RPC-over-HTTP queries to DHT nodes.
 First, we start registrars (Lines 1--2) and then DHT nodes (Lines 3--8).
@@ -350,18 +350,18 @@ The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
 2 > java -cp ghoul-core-0.1.jar:lib/* \
     me.gregorias.ghoul.interfaces.RegistrarMain registrar1.xml > /dev/null &
 
-3 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+3 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \
     kademlia0.xml >/dev/null &
 
-4 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+4 > curl -X POST 127.0.0.1:10000/start
+
+5 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \
     kademlia1.xml >/dev/null &
 
-5 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \ 
+6 > curl -X POST 127.0.0.1:10001/start
+
+7 > java -cp ghoul-core-0.1.jar:lib/* me.gregorias.ghoul.interfaces.Main \
     kademlia2.xml >/dev/null &
-
-6 > curl -X POST 127.0.0.1:10000/start
-
-7 > curl -X POST 127.0.0.1:10001/start
 
 8 > curl -X POST 127.0.0.1:10002/start
 \end{verbatim}
@@ -377,7 +377,7 @@ The data returned is the \texttt{DATA} string encoded with BASE64 encoding.
   {"inetAddress":"localhost","port":9002,
       "key":"2d1386c9c601676189faa7790b60dbeda3ed3e9b"}]}
 
-10 > curl -X POST --header "Content-Type:application/octet-stream" \ 
+10 > curl -X POST --header "Content-Type:application/octet-stream" \
    --data-binary DATA 127.0.0.1:10000/put/100
 
 11 > curl -X GET 127.0.0.1:10002/get/100
