@@ -6,9 +6,11 @@ We use dfuntest to test and verify correctness of our implementation
 that the implementation maintains the correct DHT topology.
 
 Dfuntest was initially built for our bare Kademlia implementation.
-Ghoul extends Kademlia with additional background security protocols, therefore distributed tests for Kademlia are also tests for Ghoul (with small adjusments in environment preparation).
+Ghoul extends Kademlia with additional background security protocols, therefore distributed tests for Kademlia are also tests for Ghoul (with small adjustments in environment preparation).
 For this historical reason the name Kademlia is used in examples in
 Section~\ref{sec:exampl-test-kademl}.
+In Section \ref{sec:performance} we show results of our performance
+measurements.
 \section{Testing Ghoul DHT with dfuntest}
 \label{sec:exampl-test-kademl}
 In this section we will present how we have prepared dfuntests for Ghoul.
@@ -230,7 +232,7 @@ To inject a failure into Ghoul, we used a too small bucket size (1, compared
 with a usual value of 5).
 Such a small bucket should make the graph inconsistent, because node finding
 messages will have too little diversity.
-This set up led to failure of all tests (occassionally data replication works
+This set up led to failure of all tests (occasionally data replication works
 fine in that scenario).
 The summary for all tests (\ref{fig:sumrep_failure}) shows failure in all
 tests.
@@ -294,11 +296,46 @@ to facilitate the bug triage.
 \section{Performance evaluation}
 \label{sec:performance}
 
-\subsection{Registration speed}
+We conducted performance measurements to verify the feasibility of Ghoul's
+design. 
+We measured the duration of DHT joining and node finding operations and how
+length of those operations behaves with relation to the network size.
+
+Both experiments were conducted on European Planet-lab network.
+We started a number of Ghoul instances on remote hosts; then, for each test
+configuration, we run 100 executions of the tested operation.
+Each measured operation execution was performed on a random host among hosts
+running the experiment.
+
+In Figure \ref{fig:reg_test} we show results of the experiment which measured
+the duration of the key generation protocol (without the challenge phase node's
+join operation is dominated by the distributed key generation protocol).
+We measured the wall-clock duration of the registration phase from the client
+perspective using Java's \texttt{System.getNanoTime()} method.
+The results show that the median duration of the operation grows linearly with
+the number of registrars, as expected from the theoretical model.
+
 \begin{figure}[tbp]
   \centering
 \resizebox{\columnwidth}{!}{\input{regtest.pdf_tex}}
-\caption{TODO}
-\label{fig:reg_test}.
+\caption{Results of the node join duration measurement}
+\label{fig:reg_test}
 \end{figure}
-\subsection{Find node speed}
+
+In Figure \ref{fig:fin_test} we show results of the experiment which measured
+the node finding operation.
+For each measurement we used \texttt{curl} to send a find node RPC request to a
+random node and used shell \texttt{time} command to measure the wall-clock time.
+The results show that, with increasing network size, the variance of find
+node duration increases.
+However, the median duration increases only slightly.
+We hypothesize that if we were to test the application on larger network (our
+Planet-lab slice limits us to a maximum of 50-60 operational hosts), we would
+see the expected logarithmic growth.
+
+\begin{figure}[tbp]
+  \centering
+\resizebox{\columnwidth}{!}{\input{fintest.pdf_tex}}
+\caption{Results of the find node duration measurement}
+\label{fig:fin_test}
+\end{figure}
