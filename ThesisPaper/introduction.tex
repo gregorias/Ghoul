@@ -3,10 +3,10 @@
 BitTorrent --- a popular file sharing protocol --- is used by millions of users
 around the world, yet current implementations of its Distributed Hash Table
 (DHT) protocol, which may be used to download file metadata, are insecure.
-A modest attacker may abuse the Distributed Hash Table protocol to slow down the
-metadata search, block access to some files, or even effectively shut down the
-service for significant portion of its users.
-Luckily for BitTorrent, DHT is only an optional mechanism for metadata
+An attacker with modest resources may abuse the Distributed Hash Table protocol
+to slow down the metadata search, block access to some files, or even
+effectively shut down the service for a significant portion of its users.
+In BitTorrent, DHT is only an optional mechanism for metadata
 retrieval, but not every application may treat DHT as an optional mechanism.
 DHT is a general and efficient tool that serves as a basis for Peer-to-Peer
 applications.
@@ -55,7 +55,7 @@ One of the roles of a Peer-to-Peer application is to define this cooperation
 protocol for establishment of a neighborhood relation between two nodes
 (equivalent of a road in our analogy; the entire map is called a topology) and
 establishment of routes between two non-neighboring nodes.
-A popular approach is to use structured topologies created by DHT.
+A popular approach is to use structured topologies created by a DHT.
 A structural topology means that there are strict rules which nodes may be
 neighbors and how messages should propagate.
 Topology may also be unstructured, meaning non-strict (or even lack of) rules.
@@ -70,9 +70,9 @@ on the topology is often enough to shut down the application entirely.
 One type of attack is a Sybil attack.
 An adversary advertises itself as multiple, independent hosts (towns).
 It makes us think that the network (the country) is populous, but in reality
-every message is sent to only one host.
+every message is sent to a single host.
 The adversary's host then has larger control over the network than it should
-have and may, for example, eavesdrop, poison (maliciously change its content),
+have and may, for example, eavesdrop, poison (maliciously change the content),
 or drop messages.
 Another type of attack is an Eclipse attack.
 An honest host is surrounded by malicious hosts; whenever anyone wants to find
@@ -92,20 +92,19 @@ In this thesis we design Ghoul --- a prototype secure DHT ---
 as an answer to the impracticality concerns.
 We show that it is possible to have a reasonable DHT protocol, that is secure
 against common types of attacks, does not require additional resources from the
-user (such as access to user's social network), and whose message complexity of
-common operations is at worst logarithmic with regard to the size of the
-network.
+user (such as access to the user's social network), and whose message complexity
+of common operations is the same as the standard DHT (at worst logarithmic with
+regard to the size of the network).
 We also argue that some backward compatible security extensions, such as those
 used in Kad DHT (a DHT used by eMule file-sharing application), are not
 bullet-proof and with incoming wide adoption of IPv6, they might be rendered
 void.
 
-Additionally, to ensure high quality of the prototype, we designed and
-implemented dfuntest --- a framework for distributed testing of Peer-to-Peer
-applications.
-Dfuntest was originally developed by the author to test Kademlia application in
-Planet-lab environment, but its design later proved to be flexible enough to be
-a general framework for any P2P application.
+Additionally, to ensure high quality of the prototype, we design and implement
+dfuntest --- a framework for distributed testing of Peer-to-Peer applications.
+Dfuntest was originally developed us to test Kademlia application in Planet-lab
+environment, but its design later proved to be flexible enough to be a general
+framework for any P2P application.
 
 We hope that Ghoul will prove to be an useful tool to application developers in
 creation of secure Peer-To-Peer applications.
@@ -115,17 +114,17 @@ In Chapter \ref{ch:threats} we present the problem domain.
 We define what is a Distributed Hash Table (DHT) and evaluate its typical
 weaknesses.
 We discuss main types of security threats that DHTs are vulnerable to.
-Finally, we review security mechanisms proposed in related work.
-In Chapter \ref{ch:description} we describe the protocols used in Ghoul and
+Finally, we review security mechanisms proposed in literature.
+In Chapter~\ref{ch:description} we describe the protocols used in Ghoul and
 discuss Ghoul's strengths and weaknesses.
-In Chapter \ref{ch:implementation} we explain how Ghoul is built and run as a
+In Chapter~\ref{ch:implementation} we explain how Ghoul is built and run as a
 stand-alone application.
 We focus on presenting tools and techniques used to guarantee high-quality code.
-In Chapter \ref{ch:dfuntest} we present dfuntest --- a framework for testing
-distributed peer-to-peer applications.
-In Chapter \ref{ch:evaluation} we show how we test correctness and
+In Chapter~\ref{ch:dfuntest} we present dfuntest --- a framework for testing
+distributed peer-to-peer applications and review related work.
+In Chapter~\ref{ch:evaluation} we show how we test correctness and
 performance of Ghoul.
-In Chapter \ref{ch:conclusion} we summarize our contribution and state future
+In Chapter~\ref{ch:conclusion} we summarize our contribution and state future
 plans towards the prototype we have developed.
 
 \section{Contributions}
@@ -133,6 +132,9 @@ This thesis has the following contributions:
 \begin{itemize}
   \item Design of Ghoul --- a security extension of the Kademlia protocol that
     protects against malicious attacks.
+    In particular, we propose a distributed protocol for generating unbiased DHT
+    keys; and inclusion of SybilControl --- a proof-of-work protocol --- for
+    Ghoul.
   \item Ghoul's prototype --- Java implementation of the Kademlia protocol with
     message extensions, certificate management, and registration mechanisms.
     Ghoul is an open-source project.

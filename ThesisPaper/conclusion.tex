@@ -1,14 +1,18 @@
 \chapter{Conclusion and future work}
 \label{ch:conclusion}
-We have presented Ghoul - a security extension of Kademlia distributed hash table protocol.
+We have presented Ghoul - a security extension of Kademlia distributed hash
+table protocol.
 We also provide a prototype implementation of Ghoul, i.e. message extensions,
 certificate generation and management, and registrars.
 This prototype allows for deployment of Kademlia DHT with centralized
 gatekeeper, where node's entry is controlled and key-generation is guaranteed to
 be random.
 
-The main goal of the prototype is to show that it is possible to achieve secure
-DHT without additional effort from the user.
+The main goal of the prototype is to show that it is possible to achieve a
+DHT, which addresses well-known security problems, does not require
+any additional effort from the user, and has minimal performance overhead (join
+operation duration is in the order of seconds, time of node finding remains
+unchanged).
 We believe that the example shown in Chapter \ref{ch:implementation} proves
 that, indeed, running Ghoul is as simple as running a bare Kademlia node.
 
@@ -22,11 +26,10 @@ This abstraction allows for clean automation of the testing process which in
 turn also gives greater control of the real-world testing environment.
 
 The main goal of dfuntest are jUnit-like acceptance tests: set up environments,
-run the tested application, check some assertions on the state. However, thanks
-to flexible test scripts, we are currently using dfuntest also for performance
-evaluation of various subsystems of
-nebulostore\footnote{\url{http://nebulostore.org}}, which previously required
-ad-hoc deployment scripts.
+run the tested application, check some assertions on the state. 
+However, thanks to flexible test scripts, we are using dfuntest
+for performance evaluation of not only Ghoul, but also of various subsystems of
+nebulostore, which previously required ad-hoc deployment scripts.
 
 In the immediate future we plan to extend dfuntest library with ability to run
 tests of heterogeneous applications in heterogeneous environmnents---e.g., a

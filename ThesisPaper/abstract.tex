@@ -1,20 +1,28 @@
 \begin{abstract}
 Topology creation and maintenance protocols are one of the first choices a
-designer of a Peer-to-Peer system has to face. Distributed hash tables, such as
-Chord or Kademlia, are frequently chosen due to their good performance.
-Unfortunately these core protocols rely on correct behavior of their
-participants and are prone to malicious behavior. A completely unprotected
-system may be controlled or shutdown by even a modest adversary.
+designer of a Peer-to-Peer system has to face.
+Distributed hash tables (DHTs), such as Chord or Kademlia, are frequently chosen
+due to their good performance.
+These core protocols rely, however, on correct behavior of their participants
+and are thus prone to malicious behavior.
+A completely unprotected system may be controlled or shutdown by an adversary
+with modest resources.
 
 There exists a rich set of proposals which aim to secure DHTs, and yet most of
 the popular and widely used Peer-to-Peer applications using DHTs, such as:
-Bittorrent Mainline DHT, Kad, OpenDHT, are not using them and are known to be
-insecure. We feel that this is the case, because these solutions are often found
-to be impractical by developers.
+BitTorrent Mainline DHT, Kad, OpenDHT, are not using them and are known to be
+insecure. We suspect the reason is that security extensions are found to be
+impractical by developers.
 Impracticalities include things such as: suboptimal performance, too stringent
-assumptions, and lack of good implementation.
+assumptions, and lack of robust implementation.
 
 This goal of this work is to design and implement an extensible DHT system
-that is protected against wide array of attacks.
-This implementation is done using Java using tested software engineering practices that provide elasticity and customizability necessary to allow easy inclusion of the library into an application.
+that is protected against a wide array of attacks.
+This implementation is done using Java using tested software engineering
+practices that provide elasticity and customizability necessary to allow easy
+inclusion of the library into an application.
+
+We experimentally verified that the additional time needed by our protocol for
+joining the DHT is in the order of 1--4 seconds for up to 21 registration nodes.
+A time in the order of seconds means that the new join operation is practical.
 \end{abstract}

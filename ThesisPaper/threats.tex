@@ -1,15 +1,15 @@
 \chapter{DHT, its weaknesses, and defense mechanisms}
 \label{ch:threats}
 \section{Chapter overview}
-  In this chapter we define what is a Distributed Hash Table and specify
-  Kademlia DHT protocol (Section \ref{sec:dht_overview}),
-  describe reasons and methods of attacks on DHT (Section
-  \ref{sec:dht_attacks}),
+  In this chapter we define what is a Distributed Hash Table (DHT) and specify
+  Kademlia DHT protocol (Section~\ref{sec:dht_overview}),
+  describe reasons and methods of attacks on DHTs
+  (Section~\ref{sec:dht_attacks}),
   and present examples of different classes of protection mechanisms
-  (Section \ref{sec:prevention_mechanisms}).
+  (Section~\ref{sec:prevention_mechanisms}).
   Finally, we provide examples of effectiveness of described attacks on popular,
-  real-world DHT deployments (Section \ref{sec:attack_examples}).
-  Those examples show that securing DHT is still an open problem in practice.
+  real-world DHT deployments (Section~\ref{sec:attack_examples}).
+  Those examples show that securing DHTs is still an open problem in practice.
 
   This chapter also serves as a survey of related work for Ghoul.
   Since our another contribution is dfuntest, but it touches a different field 
@@ -20,12 +20,12 @@
 \section{DHT overview}
 \label{sec:dht_overview}
 
-  Distributed hash table is a type of a Peer-To-Peer system providing topology
+  A Distributed Hash Table is a type of a Peer-To-Peer system providing topology
   creation and maintenance protocols.
   They are typically designed for (and tightly coupled with) data storage
   protocols for key-value pairs, hence the hash table part in the name.
-  Popular DHT designs include: Chord~\cite{sto03}, Pastry \cite{row01}, Kademlia
-  \cite{may02}.
+  Popular DHT designs include: Chord~\cite{sto03}, Pastry~\cite{row01},
+  Kademlia~\cite{may02}.
 
   A structure of a typical DHT consists of a three main components. The first is
   the key space, a collection of identifiers such as 160-bit bitstrings.

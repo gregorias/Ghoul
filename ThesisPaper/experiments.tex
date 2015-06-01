@@ -106,8 +106,10 @@ method - needs to be defined.
 
 \subsection{Test script}
 
-We show how to check whether the topology graph induced by Kademlia routing
-tables is connected (consistent).
+We show in detail how to check whether the topology graph induced by Kademlia
+routing tables is connected (consistent).
+We additionally test behavior of the DHT under churn and correctness of the
+storage protocol.
 
 To define the testing scenario, the tester writes the \texttt{run} method defined by the
 \texttt{TestScript} interface (Figure~\ref{fig:core}).
@@ -299,11 +301,17 @@ to facilitate the bug triage.
 We conducted performance measurements to verify the feasibility of Ghoul's
 design.
 We measured the duration of DHT joining and node finding operations and how
-length of those operations behaves with relation to the network size.
+the length of those operations behaves with relation to the network size.
+We chose join and find node operations, because they are the dominant operations
+of the DHT protocol.
+Put and get operations are payload extensions of the find node operation,
+which do not increase message count.
 
 Both experiments were conducted on European Planet-lab network.
-We started a number of Ghoul instances on remote hosts; then, for each test
-configuration, we run 100 executions of the tested operation.
+We started a number of Ghoul instances on remote hosts, which were chosen
+randomly from the set of 60 active hosts available in our slice;
+then, for each test configuration, we run 100 executions of the tested
+operation.
 Each measured operation execution was performed on a random host among hosts
 running the experiment.
 
@@ -314,6 +322,8 @@ We measured the wall-clock duration of the registration phase from the client
 perspective using Java's \texttt{System.getNanoTime()} method.
 The results show that the median duration of the operation grows linearly with
 the number of registrars, as expected from the theoretical model.
+A join in the order of seconds is a reasonable delay for this one-time
+operation.
 
 \begin{figure}[tbp]
   \centering

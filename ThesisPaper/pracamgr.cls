@@ -110,6 +110,7 @@ electronic version.
 \def\@zakres{}
 \def\opiekun#1{\gdef\@opiekun{#1}}
 \def\@opiekun{???\ClassError{pracamgr}{Brak danych opiekuna pracy}\@ehc}
+\def\funding#1{\gdef\@funding{#1}}
 \def\keywords#1{\gdef\@keywords{#1}}
 \def\@keywords{???\ClassError{pracamgr}{Brak slow kluczowych}\@ehc}
 \def\dziedzina#1{\gdef\@dziedzina{#1}}
@@ -129,7 +130,14 @@ electronic version.
     \@endparpenalty\@M
   \end{center}}%
 {\par  
-  \vspace*{26pt}%
+  \vspace*{13pt}%
+  \begin{center}%
+    \bfseries\large This work was partly supported by
+    \@endparpenalty\@M
+  \end{center}
+  \@funding
+  \par  
+  \vspace*{13pt}%
   \begin{center}%
     \bfseries\large Keywords
     \@endparpenalty\@M
@@ -142,7 +150,7 @@ electronic version.
     \@endparpenalty\@M
   \end{center}
    \@dziedzina\par
-  \vspace*{26pt}%
+  \vspace*{10pt}%
   \begin{center}%
     \bfseries\large Subject classification
     \@endparpenalty\@M
